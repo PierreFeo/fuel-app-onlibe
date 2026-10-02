@@ -13,9 +13,9 @@
 - [x] 1.1 Каркас FastAPI + Docker Compose (api + PostgreSQL), `GET /api/v1/health`, ruff, pytest
   - Готово, когда: `docker compose up -d` → в браузере `http://localhost:8000/docs` открывается Swagger,
     `/api/v1/health` отвечает `{"status":"ok"}`, `docker compose exec api pytest` зелёный
-- [ ] 1.2 SQLAlchemy + Alembic, модели всех таблиц из `03_DATA_MODEL.md`, первая миграция
+- [x] 1.2 SQLAlchemy + Alembic, модели всех таблиц из `03_DATA_MODEL.md`, первая миграция
   - Готово, когда: миграция применяется на пустую БД, тест проверяет, что таблицы созданы
-- [ ] 1.3 Единый формат ошибок из `04_API_CONTRACT.md` (обработчики исключений)
+- [x] 1.3 Единый формат ошибок из `04_API_CONTRACT.md` (обработчики исключений)
 
 ## Фаза 2. Backend: авторизация
 - [ ] 2.1 `SmsSender` + `ConsoleSmsSender` + `FakeSmsSender` для тестов
