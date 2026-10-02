@@ -5,11 +5,11 @@
 «Готово, когда» — критерий, который проверяет ЧЕЛОВЕК своими руками.
 
 ## Фаза 0. Подготовка (делает человек)
-- [ ] 0.1 Установлены: Git, Android Studio, Docker Desktop, Claude Code; аккаунт GitHub
-- [ ] 0.2 Создан репозиторий `fuel-app`, в него положены эти контрактные файлы, первый коммит
+- [x] 0.1 Установлены: Git, Android Studio, Docker Desktop, Claude Code; аккаунт GitHub
+- [x] 0.2 Создан репозиторий `fuel-app`, в него положены эти контрактные файлы, первый коммит
 
 ## Фаза 1. Backend: каркас
-- [ ] 1.1 Каркас FastAPI + Docker Compose (api + PostgreSQL), `GET /api/v1/health`, ruff, pytest
+- [x] 1.1 Каркас FastAPI + Docker Compose (api + PostgreSQL), `GET /api/v1/health`, ruff, pytest
   - Готово, когда: `docker compose up -d` → в браузере `http://localhost:8000/docs` открывается Swagger,
     `/api/v1/health` отвечает `{"status":"ok"}`, `docker compose exec api pytest` зелёный
 - [ ] 1.2 SQLAlchemy + Alembic, модели всех таблиц из `03_DATA_MODEL.md`, первая миграция
