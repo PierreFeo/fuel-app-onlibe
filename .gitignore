@@ -1,0 +1,36 @@
+# Секреты
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.jks
+*.keystore
+keystore.properties
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Android / Gradle
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/captures/
+*.apk
+*.aab
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Claude Code — локальные личные настройки
+.claude/settings.local.json
