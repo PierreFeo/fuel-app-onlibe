@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug: HTTP разрешён только к локальному backend, всё остальное — HTTPS -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- компьютер разработчика, если смотреть из эмулятора -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <!-- Реальный телефон в той же Wi-Fi: допишите IP компьютера, например
+             <domain includeSubdomains="false">192.168.1.50</domain>
+             (подсеть целиком Android указать не позволяет) -->
+    </domain-config>
+</network-security-config>

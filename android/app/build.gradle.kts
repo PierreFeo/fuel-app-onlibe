@@ -23,7 +23,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Эмулятор видит компьютер по адресу 10.0.2.2 (см. 02_ARCHITECTURE.md)
+            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8000/api/v1/\"")
+        }
         release {
+            // TODO(7.4): заменить на домен продакшен-сервера
+            buildConfigField("String", "BASE_URL", "\"https://example.invalid/api/v1/\"")
             optimization {
                 enable = false
             }
@@ -35,6 +41,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -66,6 +73,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
