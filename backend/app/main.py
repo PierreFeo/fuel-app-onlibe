@@ -1,8 +1,13 @@
+import logging
+
 from fastapi import FastAPI
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
+
+# Без этого логи уровня INFO (в т. ч. «[DEV SMS]») не видны в `docker compose logs api`.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(name)s - %(message)s")
 
 
 def create_app() -> FastAPI:

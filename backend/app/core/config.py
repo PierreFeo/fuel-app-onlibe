@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -12,6 +13,8 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     database_url: str = "postgresql+asyncpg://fuel:fuel@db:5432/fuel"
     test_database_url: str = "postgresql+asyncpg://fuel:fuel@db:5432/fuel_test"
+
+    sms_provider: Literal["console", "smsgate"] = "console"
 
 
 @lru_cache

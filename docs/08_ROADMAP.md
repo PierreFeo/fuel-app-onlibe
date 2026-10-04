@@ -18,7 +18,7 @@
 - [x] 1.3 Единый формат ошибок из `04_API_CONTRACT.md` (обработчики исключений)
 
 ## Фаза 2. Backend: авторизация
-- [ ] 2.1 `SmsSender` + `ConsoleSmsSender` + `FakeSmsSender` для тестов
+- [x] 2.1 `SmsSender` + `ConsoleSmsSender` + `FakeSmsSender` для тестов
 - [ ] 2.2 `/auth/request-code`, `/auth/verify-code`, OTP-правила, rate limit, whitelist
 - [ ] 2.3 JWT, `/auth/refresh` (ротация), `/auth/logout`, зависимость `get_current_user`, `/me`
   - Готово, когда: через Swagger можно запросить код, увидеть его в логах
