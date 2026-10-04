@@ -89,7 +89,8 @@ Content-Type: application/json
   "plate_number": "А123ВС77",
   "fuel_type": "AI95",
   "tank_capacity_l": "50",
-  "norm_l_per_100km": "8.5"
+  "norm_l_per_100km": "10.068",
+  "norm_winter_l_per_100km": "11.684"
 }
 
 > {% client.global.set("car_id", response.body.id); %}
@@ -102,12 +103,12 @@ Authorization: Bearer {{access_token}}
 GET {{base}}/cars/{{car_id}}
 Authorization: Bearer {{access_token}}
 
-### 11. Изменить норму расхода
+### 11. Изменить зимнюю норму (null — убрать)
 PATCH {{base}}/cars/{{car_id}}
 Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
-{ "norm_l_per_100km": "9.1" }
+{ "norm_winter_l_per_100km": "11.7" }
 
 ### 12. Убрать в архив
 DELETE {{base}}/cars/{{car_id}}

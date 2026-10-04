@@ -13,6 +13,10 @@ class Car(UUIDPkMixin, TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint("tank_capacity_l > 0", name="tank_capacity_positive"),
         CheckConstraint("norm_l_per_100km > 0", name="norm_positive"),
+        CheckConstraint(
+            "norm_winter_l_per_100km IS NULL OR norm_winter_l_per_100km > 0",
+            name="norm_winter_positive",
+        ),
     )
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
@@ -29,5 +33,7 @@ class Car(UUIDPkMixin, TimestampMixin, Base):
         )
     )
     tank_capacity_l: Mapped[Decimal] = mapped_column(Numeric(6, 2))
-    norm_l_per_100km: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    # Нормы расхода, л/100 км, 3 знака (10.068). Летняя — основная, зимняя — по желанию.
+    norm_l_per_100km: Mapped[Decimal] = mapped_column(Numeric(6, 3))
+    norm_winter_l_per_100km: Mapped[Decimal | None] = mapped_column(Numeric(6, 3))
     is_archived: Mapped[bool] = mapped_column(default=False, server_default=false())

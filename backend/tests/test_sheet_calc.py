@@ -11,10 +11,12 @@ from app.services.sheet_calc import (
     ODOMETER_GAP,
     REFUELING_ODOMETER_OUT_OF_RANGE,
     REFUELING_OVER_TANK,
+    ConsumptionStatus,
     RefuelingData,
     SheetData,
     calculate,
     round2,
+    round3,
 )
 
 TANK = D("50.00")
@@ -53,7 +55,8 @@ def test_example_a_closed_month_with_actual_fuel() -> None:
         "fuel_end_calc_l": D("7.00"),
         "fuel_end_l": D("10.00"),
         "actual_consumption_l": D("82.00"),
-        "actual_l_per_100km": D("8.20"),
+        "actual_l_per_100km": D("8.200"),
+        "consumption_status": ConsumptionStatus.NORMAL,
         "deviation_l": D("-3.00"),
         "cost_per_km": D("4.40"),
     }
@@ -82,6 +85,7 @@ def test_example_b_open_month_only_start() -> None:
         "fuel_end_l": None,
         "actual_consumption_l": None,
         "actual_l_per_100km": None,
+        "consumption_status": None,
         "deviation_l": None,
         "cost_per_km": None,
     }
@@ -96,6 +100,7 @@ def test_example_c_closed_without_actual_fuel() -> None:
     assert calc.actual_consumption_l is None
     assert calc.actual_l_per_100km is None
     assert calc.deviation_l is None
+    assert calc.consumption_status is None
     # то, что не зависит от фактического остатка, считается как в примере A
     assert calc.norm_consumption_l == D("85.00")
     assert calc.cost_per_km == D("4.40")
@@ -149,6 +154,7 @@ def test_example_e_zero_mileage_with_actual_fuel() -> None:
     assert calc.actual_consumption_l == D("0.00")
     assert calc.deviation_l == D("0.00")
     assert calc.actual_l_per_100km is None  # на 0 км делить нельзя
+    assert calc.consumption_status is None  # нет расхода на 100 км — нет и цвета
 
 
 def test_example_f_rounding() -> None:
@@ -205,10 +211,10 @@ def test_no_refuelings_gives_zeros_not_null() -> None:
 
 
 def test_actual_l_per_100km_is_rounded() -> None:
-    # 92.00 − 10.00 = 82.00 л на 333 км → 24.6246... → 24.62
+    # 92.00 − 10.00 = 82.00 л на 333 км → 24.6246... → 24.625 (3 знака, как у нормы)
     calc = calculate(replace(EXAMPLE_A, odometer_end_km=52673), tank_capacity_l=TANK)
 
-    assert calc.actual_l_per_100km == D("24.62")
+    assert str(calc.actual_l_per_100km) == "24.625"
     assert calc.cost_per_km == D("13.21")  # 4400 / 333 = 13.2132...
 
 
@@ -309,3 +315,146 @@ def test_several_warnings_in_table_order() -> None:
         "REFUELING_ODOMETER_OUT_OF_RANGE",
     ]
     assert all(w.message for w in calc.warnings)
+
+
+# --- сезонные нормы и цвет расхода: примеры G–I (docs/06_BUSINESS_RULES.md) ---
+
+
+def test_example_g_summer_overspending_is_red() -> None:
+    sheet = SheetData(
+        odometer_start_km=52340,
+        odometer_end_km=53340,
+        fuel_start_l=D("12.00"),
+        fuel_end_actual_l=D("9.00"),
+        norm_l_per_100km=D("10.068"),
+        refuelings=(
+            RefuelingData(liters=D("50.00"), total_cost=D("2750.00")),
+            RefuelingData(liters=D("48.50"), total_cost=D("2667.50")),
+        ),
+    )
+
+    calc = calculate(sheet, tank_capacity_l=TANK)
+
+    assert _fields(calc) == {
+        "refueled_l": D("98.50"),
+        "refueled_cost": D("5417.50"),
+        "fuel_available_l": D("110.50"),
+        "mileage_km": 1000,
+        "norm_consumption_l": D("100.68"),
+        "fuel_end_calc_l": D("9.82"),
+        "fuel_end_l": D("9.00"),
+        "actual_consumption_l": D("101.50"),
+        "actual_l_per_100km": D("10.150"),
+        "consumption_status": ConsumptionStatus.OVER,
+        "deviation_l": D("0.82"),
+        "cost_per_km": D("5.42"),
+    }
+    assert calc.warnings == []
+
+
+def test_example_h_winter_within_norm_is_green() -> None:
+    sheet = SheetData(
+        odometer_start_km=53340,
+        odometer_end_km=54240,
+        fuel_start_l=D("20.00"),
+        fuel_end_actual_l=D("19.50"),
+        norm_l_per_100km=D("11.684"),
+        refuelings=(
+            RefuelingData(liters=D("45.00"), total_cost=D("2520.00")),
+            RefuelingData(liters=D("50.00"), total_cost=D("2800.00")),
+        ),
+    )
+
+    calc = calculate(sheet, tank_capacity_l=TANK)
+
+    assert _fields(calc) == {
+        "refueled_l": D("95.00"),
+        "refueled_cost": D("5320.00"),
+        "fuel_available_l": D("115.00"),
+        "mileage_km": 900,
+        "norm_consumption_l": D("105.16"),  # 900 × 11.684 / 100 = 105.156
+        "fuel_end_calc_l": D("9.84"),
+        "fuel_end_l": D("19.50"),
+        "actual_consumption_l": D("95.50"),
+        "actual_l_per_100km": D("10.611"),  # 95.5 / 900 × 100 = 10.6111...
+        "consumption_status": ConsumptionStatus.NORMAL,
+        "deviation_l": D("-9.66"),
+        "cost_per_km": D("5.91"),
+    }
+    assert calc.warnings == []
+
+
+@pytest.mark.parametrize(
+    ("fuel_end_actual_l", "per_100km", "status"),
+    [
+        (D("0.00"), "10.068", ConsumptionStatus.NORMAL),  # ушло 100.68 л — ровно норма: зелёный
+        (D("0.01"), "10.067", ConsumptionStatus.NORMAL),
+    ],
+)
+def test_example_i_exactly_norm_is_green(
+    fuel_end_actual_l: D, per_100km: str, status: ConsumptionStatus
+) -> None:
+    sheet = SheetData(
+        odometer_start_km=0,
+        odometer_end_km=1000,
+        fuel_start_l=D("0.68"),
+        fuel_end_actual_l=fuel_end_actual_l,
+        norm_l_per_100km=D("10.068"),
+        refuelings=(
+            RefuelingData(liters=D("50.00"), total_cost=D("2750.00")),
+            RefuelingData(liters=D("50.00"), total_cost=D("2750.00")),
+        ),
+    )
+
+    calc = calculate(sheet, tank_capacity_l=TANK)
+
+    assert str(calc.actual_l_per_100km) == per_100km
+    assert calc.consumption_status is status
+
+
+def test_example_i_one_hundredth_over_norm_is_red() -> None:
+    # ушло 100.69 л на 1000 км → 10.069 > 10.068
+    sheet = SheetData(
+        odometer_start_km=0,
+        odometer_end_km=1000,
+        fuel_start_l=D("0.69"),
+        fuel_end_actual_l=D("0.00"),
+        norm_l_per_100km=D("10.068"),
+        refuelings=(RefuelingData(liters=D("50.00"), total_cost=D("2750.00")),) * 2,
+    )
+
+    calc = calculate(sheet, tank_capacity_l=TANK)
+
+    assert str(calc.actual_l_per_100km) == "10.069"
+    assert calc.consumption_status is ConsumptionStatus.OVER
+
+
+def test_status_compares_rounded_value_user_sees() -> None:
+    # Ушло 1006.84 л на 10 000 км → точно 10.0684, это чуть БОЛЬШЕ нормы 10.068.
+    # Но на экране пользователь видит 10.068 = норма, поэтому цвет — зелёный.
+    sheet = SheetData(
+        odometer_start_km=0,
+        odometer_end_km=10000,
+        fuel_start_l=D("6.84"),
+        fuel_end_actual_l=D("0.00"),
+        norm_l_per_100km=D("10.068"),
+        refuelings=(RefuelingData(liters=D("1000.00"), total_cost=D("0.00")),),
+    )
+
+    calc = calculate(sheet, tank_capacity_l=D("2000.00"))
+
+    assert str(calc.actual_l_per_100km) == "10.068"
+    assert calc.consumption_status is ConsumptionStatus.NORMAL
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (D("10.0684"), "10.068"),
+        (D("10.0685"), "10.069"),  # половина — вверх
+        (D("8.2"), "8.200"),
+        (D("-0.0004"), "0.000"),  # без «−0.000»
+    ],
+)
+def test_round3(value: D, expected: str) -> None:
+    assert str(round3(value)) == expected

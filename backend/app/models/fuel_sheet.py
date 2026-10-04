@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin, UUIDPkMixin
-from app.models.enums import SheetStatus
+from app.models.enums import Season, SheetStatus
 
 
 class FuelSheet(UUIDPkMixin, TimestampMixin, Base):
@@ -45,8 +45,19 @@ class FuelSheet(UUIDPkMixin, TimestampMixin, Base):
     odometer_end_km: Mapped[int | None]
     fuel_start_l: Mapped[Decimal] = mapped_column(Numeric(8, 2))
     fuel_end_actual_l: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
-    # Копия нормы авто на момент создания листа: смена нормы не меняет прошлые месяцы.
-    norm_l_per_100km: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    # Сезон листа (☀️/❄️) и копия нормы авто для этого сезона — на момент создания листа или
+    # переключения сезона: смена нормы у авто не меняет прошлые месяцы.
+    season: Mapped[Season] = mapped_column(
+        Enum(
+            Season,
+            name="season",
+            native_enum=False,
+            create_constraint=True,
+            length=6,
+            values_callable=lambda e: [m.value for m in e],
+        )
+    )
+    norm_l_per_100km: Mapped[Decimal] = mapped_column(Numeric(6, 3))
     status: Mapped[SheetStatus] = mapped_column(
         Enum(
             SheetStatus,

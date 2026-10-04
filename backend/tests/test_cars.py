@@ -15,7 +15,8 @@ VESTA = {
     "plate_number": "А123ВС77",
     "fuel_type": "AI95",
     "tank_capacity_l": "50.00",
-    "norm_l_per_100km": "8.50",
+    "norm_l_per_100km": "10.068",
+    "norm_winter_l_per_100km": "11.684",
 }
 
 
@@ -51,6 +52,7 @@ async def test_create_car(api: AsyncClient, headers: dict[str, str]) -> None:
         "fuel_type",
         "tank_capacity_l",
         "norm_l_per_100km",
+        "norm_winter_l_per_100km",
         "is_archived",
         "created_at",
     }
@@ -59,13 +61,15 @@ async def test_create_car(api: AsyncClient, headers: dict[str, str]) -> None:
     uuid.UUID(car["id"])
 
 
-async def test_decimals_are_returned_as_strings_with_2_places(
-    api: AsyncClient, headers: dict[str, str]
-) -> None:
-    car = await _create(api, headers, tank_capacity_l="50", norm_l_per_100km=8.5)
+async def test_decimals_are_returned_as_strings(api: AsyncClient, headers: dict[str, str]) -> None:
+    car = await _create(
+        api, headers, tank_capacity_l="50", norm_l_per_100km=8.5, norm_winter_l_per_100km="10"
+    )
 
     assert car["tank_capacity_l"] == "50.00"
-    assert car["norm_l_per_100km"] == "8.50"
+    # литры — 2 знака, нормы — 3 знака (docs/04_API_CONTRACT.md)
+    assert car["norm_l_per_100km"] == "8.500"
+    assert car["norm_winter_l_per_100km"] == "10.000"
 
 
 async def test_plate_is_normalized_and_optional(api: AsyncClient, headers: dict[str, str]) -> None:
@@ -94,6 +98,10 @@ async def test_plate_is_normalized_and_optional(api: AsyncClient, headers: dict[
         ("tank_capacity_l", "abc"),
         ("norm_l_per_100km", "0.00"),
         ("norm_l_per_100km", "1000"),
+        ("norm_l_per_100km", "10.0681"),
+        ("norm_winter_l_per_100km", "0"),
+        ("norm_winter_l_per_100km", "-11.684"),
+        ("norm_winter_l_per_100km", "11.6841"),
         ("norm_l_per_100km", None),
     ],
 )
@@ -199,7 +207,7 @@ async def test_patch_changes_only_given_fields(api: AsyncClient, headers: dict[s
     )
 
     assert response.status_code == 200
-    assert response.json() == {**car, "norm_l_per_100km": "9.10"}
+    assert response.json() == {**car, "norm_l_per_100km": "9.100"}
 
 
 async def test_patch_can_remove_plate(api: AsyncClient, headers: dict[str, str]) -> None:
@@ -315,3 +323,30 @@ async def test_without_token_is_401(api: AsyncClient, method: str, path: str) ->
 
     assert response.status_code == 401
     assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+# --- зимняя норма (docs/06_BUSINESS_RULES.md, «Сезон и норма листа») ---
+
+
+async def test_winter_norm_is_optional(api: AsyncClient, headers: dict[str, str]) -> None:
+    car = {k: v for k, v in VESTA.items() if k != "norm_winter_l_per_100km"}
+
+    response = await api.post(CARS, json=car, headers=headers)
+
+    assert response.status_code == 201
+    assert response.json()["norm_winter_l_per_100km"] is None
+
+
+async def test_patch_sets_and_removes_winter_norm(
+    api: AsyncClient, headers: dict[str, str]
+) -> None:
+    car = await _create(api, headers, norm_winter_l_per_100km=None)
+    url = f"{CARS}/{car['id']}"
+
+    added = await api.patch(url, json={"norm_winter_l_per_100km": "11.7"}, headers=headers)
+    removed = await api.patch(url, json={"norm_winter_l_per_100km": None}, headers=headers)
+
+    assert added.json()["norm_winter_l_per_100km"] == "11.700"
+    assert removed.status_code == 200
+    assert removed.json()["norm_winter_l_per_100km"] is None
+    assert removed.json()["norm_l_per_100km"] == "10.068"  # летняя не тронута

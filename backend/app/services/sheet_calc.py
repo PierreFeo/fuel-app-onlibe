@@ -1,16 +1,19 @@
 """Расчёты ЛУТ — чистые функции без БД и сети (docs/06_BUSINESS_RULES.md).
 
-Все числа — Decimal. Каждое поле округляется до 2 знаков (ROUND_HALF_UP) в конце своего
-вычисления, а поля, которые зависят от других, берут их уже ОКРУГЛЁННЫЕ значения — так цифры
-в карточке сходятся «на глаз»: доступно 40.00 − по норме 25.87 = остаток 14.13.
+Все числа — Decimal. Каждое поле округляется (ROUND_HALF_UP) в конце своего вычисления:
+литры и деньги — до 2 знаков, расход на 100 км — до 3 (как нормы: 10.068). Поля, которые
+зависят от других, берут их уже ОКРУГЛЁННЫЕ значения — так цифры в карточке сходятся
+«на глаз»: доступно 40.00 − по норме 25.87 = остаток 14.13.
 Если для поля не хватает данных — None (в API — null).
 """
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
+from enum import StrEnum
 
 _CENT = Decimal("0.01")
+_MILLI = Decimal("0.001")
 _ZERO = Decimal("0")
 
 
@@ -31,6 +34,13 @@ class SheetData:
     refuelings: Sequence[RefuelingData] = ()
 
 
+class ConsumptionStatus(StrEnum):
+    """Цвет расхода в приложении: NORMAL — зелёный (не больше нормы), OVER — красный."""
+
+    NORMAL = "NORMAL"
+    OVER = "OVER"
+
+
 @dataclass(frozen=True)
 class CalcWarning:
     code: str
@@ -48,6 +58,7 @@ class SheetCalc:
     fuel_end_l: Decimal | None
     actual_consumption_l: Decimal | None
     actual_l_per_100km: Decimal | None
+    consumption_status: ConsumptionStatus | None
     deviation_l: Decimal | None
     cost_per_km: Decimal | None
     warnings: list[CalcWarning] = field(default_factory=list)
@@ -70,10 +81,19 @@ REFUELING_ODOMETER_OUT_OF_RANGE = CalcWarning(
 )
 
 
+def _round(value: Decimal, step: Decimal) -> Decimal:
+    result = value.quantize(step, rounding=ROUND_HALF_UP)
+    return result.copy_abs() if result.is_zero() else result  # без «−0.00»
+
+
 def round2(value: Decimal) -> Decimal:
-    """До 2 знаков по правилам школьной математики (0.005 → 0.01); без «−0.00»."""
-    result = value.quantize(_CENT, rounding=ROUND_HALF_UP)
-    return result.copy_abs() if result.is_zero() else result
+    """До 2 знаков по правилам школьной математики (0.005 → 0.01) — литры и деньги."""
+    return _round(value, _CENT)
+
+
+def round3(value: Decimal) -> Decimal:
+    """До 3 знаков (0.0005 → 0.001) — расход на 100 км, как у норм."""
+    return _round(value, _MILLI)
 
 
 def calculate(
@@ -101,7 +121,7 @@ def calculate(
         round2(sheet.fuel_end_actual_l) if sheet.fuel_end_actual_l is not None else fuel_end_calc_l
     )
 
-    actual_consumption_l = actual_l_per_100km = deviation_l = None
+    actual_consumption_l = actual_l_per_100km = consumption_status = deviation_l = None
     if (
         mileage_km is not None
         and norm_consumption_l is not None
@@ -110,7 +130,13 @@ def calculate(
         actual_consumption_l = round2(fuel_available_l - sheet.fuel_end_actual_l)
         deviation_l = round2(actual_consumption_l - norm_consumption_l)
         if mileage_km > 0:
-            actual_l_per_100km = round2(actual_consumption_l * 100 / mileage_km)
+            actual_l_per_100km = round3(actual_consumption_l * 100 / mileage_km)
+            # Сравниваем то же число с 3 знаками, что видит пользователь: ровно по норме — зелёный.
+            consumption_status = (
+                ConsumptionStatus.NORMAL
+                if actual_l_per_100km <= sheet.norm_l_per_100km
+                else ConsumptionStatus.OVER
+            )
 
     cost_per_km = round2(refueled_cost / mileage_km) if mileage_km else None
 
@@ -124,6 +150,7 @@ def calculate(
         fuel_end_l=fuel_end_l,
         actual_consumption_l=actual_consumption_l,
         actual_l_per_100km=actual_l_per_100km,
+        consumption_status=consumption_status,
         deviation_l=deviation_l,
         cost_per_km=cost_per_km,
         warnings=_warnings(

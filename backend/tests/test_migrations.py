@@ -93,6 +93,10 @@ def test_schema_details_follow_data_model(migrated_db: Config) -> None:
             "sheets_unique": insp.get_unique_constraints("fuel_sheets"),
             "sheets_fk": insp.get_foreign_keys("fuel_sheets"),
             "fuel_start_type": sheet_cols["fuel_start_l"]["type"],
+            "sheet_norm_type": sheet_cols["norm_l_per_100km"]["type"],
+            "car_norm_types": [
+                c["type"] for c in insp.get_columns("cars") if c["name"].startswith("norm_")
+            ],
             "odometer_end_nullable": sheet_cols["odometer_end_km"]["nullable"],
             "base_cols": {c["name"] for c in insp.get_columns("refuelings")},
         }
@@ -104,11 +108,16 @@ def test_schema_details_follow_data_model(migrated_db: Config) -> None:
     assert d["sheets_fk"][0]["referred_table"] == "cars"
     assert d["sheets_fk"][0]["options"]["ondelete"] == "CASCADE"
     assert (d["fuel_start_type"].precision, d["fuel_start_type"].scale) == (8, 2)
+    # нормы — 3 знака после точки (10.068), docs/03_DATA_MODEL.md
+    assert (d["sheet_norm_type"].precision, d["sheet_norm_type"].scale) == (6, 3)
+    assert [(t.precision, t.scale) for t in d["car_norm_types"]] == [(6, 3), (6, 3)]
     assert d["odometer_end_nullable"] is True
     assert {"id", "created_at", "updated_at"} <= d["base_cols"]
 
 
-def _insert_user_and_car(conn: Connection, fuel_type: str = "AI95") -> uuid.UUID:
+def _insert_user_and_car(
+    conn: Connection, fuel_type: str = "AI95", winter_norm: str | None = None
+) -> uuid.UUID:
     user_id, car_id = uuid.uuid4(), uuid.uuid4()
     conn.execute(
         text("INSERT INTO users (id, phone) VALUES (:id, :phone)"),
@@ -116,21 +125,23 @@ def _insert_user_and_car(conn: Connection, fuel_type: str = "AI95") -> uuid.UUID
     )
     conn.execute(
         text(
-            "INSERT INTO cars (id, user_id, name, fuel_type, tank_capacity_l, norm_l_per_100km) "
-            "VALUES (:id, :uid, 'Lada Vesta', :ft, 50, 8.5)"
+            "INSERT INTO cars (id, user_id, name, fuel_type, tank_capacity_l, norm_l_per_100km, "
+            "norm_winter_l_per_100km) VALUES (:id, :uid, 'Lada Vesta', :ft, 50, 10.068, :winter)"
         ),
-        {"id": car_id, "uid": user_id, "ft": fuel_type},
+        {"id": car_id, "uid": user_id, "ft": fuel_type, "winter": winter_norm},
     )
     return car_id
 
 
-def _insert_sheet(conn: Connection, car_id: uuid.UUID, month: int = 10) -> None:
+def _insert_sheet(
+    conn: Connection, car_id: uuid.UUID, month: int = 10, season: str = "SUMMER"
+) -> None:
     conn.execute(
         text(
             "INSERT INTO fuel_sheets (id, car_id, year, month, odometer_start_km, fuel_start_l, "
-            "norm_l_per_100km) VALUES (:id, :car, 2026, :m, 52340, 12, 8.5)"
+            "season, norm_l_per_100km) VALUES (:id, :car, 2026, :m, 52340, 12, :season, 10.068)"
         ),
-        {"id": uuid.uuid4(), "car": car_id, "m": month},
+        {"id": uuid.uuid4(), "car": car_id, "m": month, "season": season},
     )
 
 
@@ -151,6 +162,10 @@ def test_valid_rows_are_accepted_with_defaults(migrated_db: Config) -> None:
         pytest.param(lambda c: _insert_user_and_car(c, fuel_type="AI100"), id="bad-fuel-type"),
         pytest.param(lambda c: _insert_sheet(c, _insert_user_and_car(c), month=13), id="month-13"),
         pytest.param(
+            lambda c: _insert_sheet(c, _insert_user_and_car(c), season="SPRING"), id="bad-season"
+        ),
+        pytest.param(lambda c: _insert_user_and_car(c, winter_norm="0"), id="winter-norm-zero"),
+        pytest.param(
             lambda c: [_insert_sheet(c, car := _insert_user_and_car(c)), _insert_sheet(c, car)],
             id="duplicate-sheet-month",
         ),
@@ -167,3 +182,13 @@ def test_downgrade_removes_all_tables(migrated_db: Config) -> None:
     command.downgrade(migrated_db, "base")
 
     assert run_on_db(table_names) == {"alembic_version"}
+
+
+def test_norms_keep_three_decimals(migrated_db: Config) -> None:
+    def scenario(conn: Connection) -> tuple[str, str]:
+        _insert_sheet(conn, _insert_user_and_car(conn, winter_norm="11.684"), season="WINTER")
+        winter = conn.execute(text("SELECT norm_winter_l_per_100km FROM cars")).scalar_one()
+        sheet_norm = conn.execute(text("SELECT norm_l_per_100km FROM fuel_sheets")).scalar_one()
+        return str(winter), str(sheet_norm)
+
+    assert run_on_db(scenario) == ("11.684", "10.068")

@@ -5,10 +5,12 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
 
 from app.models.enums import FuelType
-from app.schemas.types import Decimal2
+from app.schemas.types import Decimal2, Decimal3
 
 TankCapacity = Annotated[Decimal2, Field(gt=0, max_digits=6, examples=["50.00"])]
-Norm = Annotated[Decimal2, Field(gt=0, max_digits=5, examples=["8.50"])]
+# Нормы расхода, л/100 км — 3 знака после точки, как NUMERIC(6,3) в БД.
+Norm = Annotated[Decimal3, Field(gt=0, max_digits=6, examples=["10.068"])]
+WinterNorm = Annotated[Decimal3, Field(gt=0, max_digits=6, examples=["11.684"])]
 CarName = Annotated[str, Field(min_length=1, max_length=60, examples=["Lada Vesta"])]
 
 
@@ -34,6 +36,7 @@ class CarCreate(BaseModel):
     fuel_type: FuelType
     tank_capacity_l: TankCapacity
     norm_l_per_100km: Norm
+    norm_winter_l_per_100km: WinterNorm | None = None  # зимняя норма — по желанию
 
 
 class CarUpdate(BaseModel):
@@ -46,9 +49,10 @@ class CarUpdate(BaseModel):
     fuel_type: FuelType | None = None
     tank_capacity_l: TankCapacity | None = None
     norm_l_per_100km: Norm | None = None
+    norm_winter_l_per_100km: WinterNorm | None = None  # null — убрать зимнюю норму
     is_archived: bool | None = None  # false — вернуть авто из архива
 
-    # null допустим только для госномера (= удалить номер); остальные поля у авто обязательны.
+    # null допустим только для госномера и зимней нормы (= удалить); остальные поля обязательны.
     # Валидатор вызывается только для переданных полей — пропущенные остаются как есть.
     @field_validator(
         "name", "fuel_type", "tank_capacity_l", "norm_l_per_100km", "is_archived", mode="after"
@@ -68,6 +72,7 @@ class CarOut(BaseModel):
     plate_number: str | None
     fuel_type: FuelType
     tank_capacity_l: Decimal2
-    norm_l_per_100km: Decimal2
+    norm_l_per_100km: Decimal3
+    norm_winter_l_per_100km: Decimal3 | None
     is_archived: bool
     created_at: datetime
