@@ -11,10 +11,11 @@ from sqlalchemy import (
     SmallInteger,
     UniqueConstraint,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPkMixin
 from app.models.enums import Season, SheetStatus
+from app.models.refueling import Refueling
 
 
 class FuelSheet(UUIDPkMixin, TimestampMixin, Base):
@@ -71,3 +72,11 @@ class FuelSheet(UUIDPkMixin, TimestampMixin, Base):
         server_default=SheetStatus.OPEN.value,
     )
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # Заправки листа, по дате по возрастанию. Грузятся сразу вместе с листом (selectin):
+    # в async-режиме «ленивая» подгрузка при обращении к полю невозможна.
+    refuelings: Mapped[list[Refueling]] = relationship(
+        order_by=(Refueling.refueled_at, Refueling.created_at, Refueling.id),
+        lazy="selectin",
+        passive_deletes=True,
+    )
