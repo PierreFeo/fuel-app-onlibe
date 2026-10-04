@@ -40,7 +40,7 @@ App                    Backend                         SMSGate            Дом
 
 ## Токены
 - Access JWT: 15 минут, claims: `sub` (user_id), `type: "access"`, `exp`.
-- Refresh JWT: 30 дней, claims: `sub`, `type: "refresh"`, `jti` (id в `refresh_tokens`).
+- Refresh JWT: 90 дней (отсчёт заново при каждом /auth/refresh — активного пользователя не разлогинивает), claims: `sub`, `type: "refresh"`, `jti` (id в `refresh_tokens`).
 - Refresh-ротация: при `/auth/refresh` старый отзывается, выдаётся новый.
 - Подпись HS256, ключ `JWT_SECRET` (минимум 32 случайных символа).
 
@@ -141,7 +141,7 @@ OTP_TTL_SEC=300
 OTP_PEPPER=change-me
 JWT_SECRET=change-me-at-least-32-chars
 ACCESS_TOKEN_TTL_MIN=15
-REFRESH_TOKEN_TTL_DAYS=30
+REFRESH_TOKEN_TTL_DAYS=90
 REGISTRATION_MODE=whitelist   # whitelist | open
 ALLOWED_PHONES=+79991234567,+79997654321
 DEFAULT_PHONE_REGION=RU

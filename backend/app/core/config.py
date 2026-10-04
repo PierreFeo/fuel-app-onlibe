@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # Токены (docs/05_AUTH_SMS.md, «Токены»)
     jwt_secret: str = Field(min_length=32)
     access_token_ttl_min: int = 15
-    refresh_token_ttl_days: int = 30
+    refresh_token_ttl_days: int = 90
 
     # Коды из SMS и ограничения частоты (docs/05_AUTH_SMS.md)
     otp_pepper: str = Field(min_length=8)

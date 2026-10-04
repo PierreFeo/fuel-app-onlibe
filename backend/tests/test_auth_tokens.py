@@ -127,11 +127,15 @@ async def test_old_refresh_token_cannot_be_reused(api: AsyncClient, sms: FakeSms
     assert response.json()["error"]["code"] == "REFRESH_INVALID"
 
 
-async def test_refresh_token_expires_after_30_days(
+async def test_refresh_token_expires_after_90_days(
     api: AsyncClient, sms: FakeSmsSender, clock: FakeClock
 ) -> None:
     tokens = await login(api, sms)
-    clock.advance(days=30)
+    clock.advance(days=89, hours=23)
+    response = await api.post(REFRESH, json={"refresh_token": tokens["refresh_token"]})
+    assert response.status_code == 200
+    tokens = response.json()
+    clock.advance(days=90)  # 90 дней без входа в приложение
 
     response = await api.post(REFRESH, json={"refresh_token": tokens["refresh_token"]})
 
