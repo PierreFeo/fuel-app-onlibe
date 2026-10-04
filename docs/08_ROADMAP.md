@@ -23,6 +23,11 @@
 - [ ] 2.3 JWT, `/auth/refresh` (ротация), `/auth/logout`, зависимость `get_current_user`, `/me`
   - Готово, когда: через Swagger можно запросить код, увидеть его в логах
     (`docker compose logs api`), войти, нажать «Authorize» и вызвать `/me`
+- [ ] 2.4 Запасной вход по паролю: поля `password_hash`, `failed_login_attempts`, `locked_until`
+  в `users` (миграция 0002), хэширование scrypt, `POST /auth/login`, блокировка после 5 ошибок,
+  команды `python -m app.cli set-password` / `disable-password` (см. `05_AUTH_SMS.md`)
+  - Готово, когда: `docker compose exec api python -m app.cli set-password --phone "+79991234567"`
+    печатает пароль, через Swagger `/auth/login` с ним выдаёт токены, 5 неверных паролей → 429
 
 ## Фаза 3. Backend: предметная область
 - [ ] 3.1 CRUD автомобилей
@@ -39,7 +44,8 @@
   - Готово, когда: приложение запускается на эмуляторе, тесты `./gradlew test` зелёные
 
 ## Фаза 5. Android: экраны
-- [ ] 5.1 Splash + PhoneScreen + CodeScreen + NameScreen (вход работает с локальным backend)
+- [ ] 5.1 Splash + PhoneScreen + CodeScreen + PasswordLoginScreen + NameScreen
+  (вход по SMS и по паролю работает с локальным backend)
 - [ ] 5.2 CarsScreen + CarEditScreen + выбор авто
 - [ ] 5.3 SheetsFeedScreen + SheetCard (только отображение, пагинация, pull-to-refresh)
 - [ ] 5.4 NewSheetDialog + CloseSheetDialog + reopen

@@ -46,8 +46,9 @@ backend/
 │   ├── db/              engine, session, Base
 │   ├── models/          SQLAlchemy-модели (таблицы)
 │   ├── schemas/         Pydantic-схемы запросов/ответов (= контракт API)
-│   ├── services/        auth_service.py, sheet_calc.py, sheet_service.py, sms/
-│   └── api/v1/          роутеры: auth, me, cars, sheets, refuelings
+│   ├── services/        auth_service.py, password_service.py, sheet_calc.py, sheet_service.py, sms/
+│   ├── api/v1/          роутеры: auth, me, cars, sheets, refuelings
+│   └── cli.py           консольные команды для сервера (выдача паролей): python -m app.cli
 ├── alembic/             миграции
 ├── tests/
 ├── Dockerfile

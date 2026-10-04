@@ -11,6 +11,11 @@
 | phone | varchar(16) | UNIQUE, NOT NULL, формат E.164 (`+79991234567`) |
 | name | varchar(100) | NULL до первого заполнения |
 | is_active | bool | default true |
+| password_hash | varchar(255) | NULL = вход по паролю выключен. Формат — `05_AUTH_SMS.md`. Пароль в открытом виде НЕ хранить |
+| failed_login_attempts | int | NOT NULL, default 0; неудачные попытки входа по паролю подряд |
+| locked_until | timestamptz | NULL; до этого момента вход по паролю заблокирован |
+
+Логин для входа по паролю — это `phone`, отдельного поля логина нет.
 
 ## otp_codes
 | Поле | Тип | Ограничения |
