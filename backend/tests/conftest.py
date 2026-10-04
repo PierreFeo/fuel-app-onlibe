@@ -21,6 +21,7 @@ from app.services.sms import get_sms_sender
 from tests.fakes import FakeClock, FakeSmsSender
 
 ALLOWED_PHONE = "+79991234567"
+OTHER_PHONE = "+79995554433"  # второй сотрудник — для проверок «чужое не видно»
 
 
 @pytest.fixture
@@ -39,7 +40,7 @@ def settings() -> Settings:
         jwt_secret="test-secret-test-secret-test-secret!",
         otp_pepper="test-pepper",
         registration_mode="whitelist",
-        allowed_phones=ALLOWED_PHONE,
+        allowed_phones=f"{ALLOWED_PHONE},{OTHER_PHONE}",
         default_phone_region="RU",
     )
 

@@ -76,3 +76,50 @@ POST {{base}}/auth/logout
 Content-Type: application/json
 
 { "refresh_token": "{{refresh_token}}" }
+
+### ================= Автомобили (нужен вход: шаг 3 или 3a) =================
+
+### 8. Добавить авто
+POST {{base}}/cars
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "name": "Lada Vesta",
+  "plate_number": "А123ВС77",
+  "fuel_type": "AI95",
+  "tank_capacity_l": "50",
+  "norm_l_per_100km": "8.5"
+}
+
+> {% client.global.set("car_id", response.body.id); %}
+
+### 9. Мои авто (без архивных)
+GET {{base}}/cars
+Authorization: Bearer {{access_token}}
+
+### 10. Одно авто
+GET {{base}}/cars/{{car_id}}
+Authorization: Bearer {{access_token}}
+
+### 11. Изменить норму расхода
+PATCH {{base}}/cars/{{car_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{ "norm_l_per_100km": "9.1" }
+
+### 12. Убрать в архив
+DELETE {{base}}/cars/{{car_id}}
+Authorization: Bearer {{access_token}}
+
+### 13. Все авто, включая архивные
+GET {{base}}/cars?include_archived=true
+Authorization: Bearer {{access_token}}
+
+### 14. Вернуть из архива
+PATCH {{base}}/cars/{{car_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{ "is_archived": false }
