@@ -103,10 +103,14 @@ FastAPI автоматически публикует интерактивную
 ```json
 {
   "id": "uuid", "name": "Lada Vesta", "plate_number": "А123ВС77",
-  "fuel_type": "AI95", "tank_capacity_l": "50.00", "norm_l_per_100km": "8.50",
+  "fuel_type": "AI95", "tank_capacity_l": "50.00",
+  "norm_l_per_100km": "10.068", "norm_winter_l_per_100km": "11.684",
   "is_archived": false, "created_at": "2026-10-02T08:15:00Z"
 }
 ```
+`norm_l_per_100km` — летняя (основная) норма, обязательна. `norm_winter_l_per_100km` — зимняя,
+необязательна (`null` — не задана). Как они попадают в листы — `06_BUSINESS_RULES.md`,
+«Сезон и норма листа».
 | Метод | Путь | Тело | Ответ |
 |---|---|---|---|
 | GET | `/cars?include_archived=false` | — | 200 `[Car]` |
@@ -119,9 +123,11 @@ FastAPI автоматически публикует интерактивную
 - `GET /cars` — по дате добавления, старые сверху.
 - `plate_number`: пробелы по краям обрезаются, буквы — в верхний регистр; пустая строка = `null`.
 - `PATCH` принимает и `is_archived`: `false` возвращает авто из архива. `null` допустим только
-  для `plate_number` (удалить номер), для остальных полей — 400.
-- Дробные поля на вход принимают строку или число (`"50"`, `"8.5"`, `8.5`), не больше 2 знаков
-  после точки; в ответе — всегда строка с 2 знаками (`"50.00"`).
+  для `plate_number` (удалить номер) и `norm_winter_l_per_100km` (убрать зимнюю норму),
+  для остальных полей — 400.
+- Дробные поля на вход принимают строку или число (`"50"`, `"8.5"`, `8.5`). Литры и деньги —
+  не больше 2 знаков после точки, в ответе строка с 2 знаками (`"50.00"`). Нормы и расход на
+  100 км — не больше 3 знаков, в ответе строка с 3 знаками (`"10.068"`, `"8.500"`).
 - Неверный формат id в пути (не UUID) — 400 `VALIDATION_ERROR`.
 
 ## Листы учёта топлива (ЛУТ)
@@ -132,7 +138,8 @@ FastAPI автоматически публикует интерактивную
   "status": "OPEN",
   "odometer_start_km": 52340, "odometer_end_km": null,
   "fuel_start_l": "12.00", "fuel_end_actual_l": null,
-  "norm_l_per_100km": "8.50",
+  "season": "SUMMER",
+  "norm_l_per_100km": "10.068",
   "refuelings": [ /* Refueling[], по дате по возрастанию */ ],
   "calc": {
     "refueled_l": "80.00",
@@ -144,6 +151,7 @@ FastAPI автоматически публикует интерактивную
     "fuel_end_l": null,
     "actual_consumption_l": null,
     "actual_l_per_100km": null,
+    "consumption_status": null,
     "deviation_l": null,
     "cost_per_km": null,
     "warnings": []
@@ -152,17 +160,24 @@ FastAPI автоматически публикует интерактивную
 }
 ```
 Смысл каждого поля `calc` и формулы — `06_BUSINESS_RULES.md`.
+`season` — `SUMMER` (☀️) или `WINTER` (❄️); `norm_l_per_100km` — норма авто для этого сезона,
+скопированная в лист. `calc.consumption_status` — `NORMAL` (зелёный), `OVER` (красный) или `null`.
 
 | Метод | Путь | Тело | Ответ |
 |---|---|---|---|
 | GET | `/cars/{car_id}/sheets?limit=12&before=2026-10` | — | 200 `{ "items": [FuelSheet], "next_before": "2025-10" \| null }` — новые сверху |
-| GET | `/cars/{car_id}/sheets/next-prefill` | — | 200 `{ "year", "month", "odometer_start_km", "fuel_start_l" }` — подсказка для нового листа |
-| POST | `/cars/{car_id}/sheets` | `{ year, month, odometer_start_km, fuel_start_l }` | 201 `FuelSheet` · 409 `SHEET_EXISTS` |
+| GET | `/cars/{car_id}/sheets/next-prefill` | — | 200 `{ "year", "month", "odometer_start_km", "fuel_start_l", "season" }` — подсказка для нового листа |
+| POST | `/cars/{car_id}/sheets` | `{ year, month, odometer_start_km, fuel_start_l, season? }` (без `season` — как в `next-prefill`) | 201 `FuelSheet` · 409 `SHEET_EXISTS` · 422 `WINTER_NORM_NOT_SET` |
 | GET | `/sheets/{sheet_id}` | — | 200 `FuelSheet` |
-| PATCH | `/sheets/{sheet_id}` | `{ odometer_start_km?, odometer_end_km?, fuel_start_l?, fuel_end_actual_l? }` | 200 · 409 `SHEET_CLOSED` |
+| PATCH | `/sheets/{sheet_id}` | `{ odometer_start_km?, odometer_end_km?, fuel_start_l?, fuel_end_actual_l?, season? }` | 200 · 409 `SHEET_CLOSED` · 422 `WINTER_NORM_NOT_SET` |
 | POST | `/sheets/{sheet_id}/close` | `{ odometer_end_km, fuel_end_actual_l? }` | 200 `FuelSheet` (status `CLOSED`) |
 | POST | `/sheets/{sheet_id}/reopen` | — | 200 `FuelSheet` (status `OPEN`) |
 | DELETE | `/sheets/{sheet_id}` | — | 204 (только если нет заправок, иначе 422) |
+
+Переключение сезона (иконка ☀️/❄️) — `PATCH /sheets/{id}` с `{ "season": "WINTER" }`: норма
+листа заново копируется из авто, в ответе лист с пересчитанным `calc`.
+`422 WINTER_NORM_NOT_SET` — это `BUSINESS_RULE` с `details: { "reason": "WINTER_NORM_NOT_SET" }`:
+у авто не задана зимняя норма.
 
 ## Заправки
 Объект **Refueling**:

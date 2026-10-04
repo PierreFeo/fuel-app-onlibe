@@ -1,7 +1,8 @@
 # 06. Бизнес-правила и формулы ЛУТ
 
 Все расчёты — в `backend/app/services/sheet_calc.py`, чистые функции, тип `Decimal`.
-Округление — до 2 знаков, `ROUND_HALF_UP`, в конце вычисления каждого поля. Поле, которое
+Округление — `ROUND_HALF_UP`, в конце вычисления каждого поля: литры и деньги — до 2 знаков,
+расход на 100 км (`actual_l_per_100km`) — до 3 знаков, как нормы (`10.068`). Поле, которое
 зависит от другого вычисляемого поля, берёт его УЖЕ ОКРУГЛЁННОЕ значение — чтобы цифры в карточке
 сходились: доступно 40.00 − по норме 25.87 = остаток 14.13.
 Если для поля не хватает данных — значение `null`.
@@ -17,12 +18,39 @@
 | `fuel_end_calc_l` | `fuel_available_l` − `norm_consumption_l` | если есть `mileage_km` |
 | `fuel_end_l` | `fuel_end_actual_l`, иначе `fuel_end_calc_l` | итоговый остаток на конец месяца |
 | `actual_consumption_l` | `fuel_available_l` − `fuel_end_actual_l` | если введены пробег на конец И фактический остаток |
-| `actual_l_per_100km` | `actual_consumption_l` / `mileage_km` × 100 | если есть `actual_consumption_l` и `mileage_km` > 0 |
+| `actual_l_per_100km` | `actual_consumption_l` / `mileage_km` × 100, **3 знака** | если есть `actual_consumption_l` и `mileage_km` > 0 |
+| `consumption_status` | `NORMAL`, если `actual_l_per_100km` <= `norm_l_per_100km` листа, иначе `OVER` | если есть `actual_l_per_100km` |
 | `deviation_l` | `actual_consumption_l` − `norm_consumption_l` (> 0 — перерасход, < 0 — экономия) | если есть оба |
 | `cost_per_km` | `refueled_cost` / `mileage_km` | если `mileage_km` > 0 |
 
 «Остаток в баке» в карточке = `fuel_end_l`. Пока пробег на конец не введён, карточка показывает
 «доступно: `fuel_available_l` л» (остаток на начало + заправлено).
+
+**Цвет расхода** в приложении — по `consumption_status`: `NORMAL` — зелёный, `OVER` — красный,
+`null` — без цвета. Сравнивается то же число с 3 знаками, которое видит пользователь, поэтому
+ровно по норме (10.068 при норме 10.068) — зелёный. Это правило старого приложения MyFuel.
+
+## Сезон и норма листа
+У авто две нормы: летняя `norm_l_per_100km` (обязательная) и зимняя `norm_winter_l_per_100km`
+(необязательная). У каждого листа есть `season` (`SUMMER` ☀️ / `WINTER` ❄️), а в
+`norm_l_per_100km` листа копируется норма авто для этого сезона.
+
+1. **Новый лист наследует сезон** самого позднего листа этого авто — переключать каждый месяц
+   не нужно. `next-prefill` возвращает этот сезон.
+2. **Самый первый лист** (наследовать не от чего): сезон по месяцу — месяцы из настройки
+   `WINTER_MONTHS` (по умолчанию `11,12,1,2,3`, как в MyFuel) — `WINTER`, остальные — `SUMMER`.
+3. Если по пп. 1–2 выходит `WINTER`, а зимняя норма у авто не задана, подсказка `next-prefill`
+   даёт `SUMMER`.
+4. **Переключение сезона** — `PATCH /sheets/{id}` с `season`: норма листа заново копируется
+   из авто для нового сезона, `calc` пересчитывается. Только для открытого листа
+   (закрытый → 409 `SHEET_CLOSED`).
+5. Явный запрос `WINTER` (при создании или переключении), когда у авто нет зимней нормы, →
+   422 `BUSINESS_RULE`, `details: { "reason": "WINTER_NORM_NOT_SET" }`. Приложение показывает
+   «Зимняя норма не указана» с кнопкой «Указать» (открывает карточку авто).
+6. Изменение норм у авто НЕ меняет существующие листы — только новые и те, где сезон
+   переключат после изменения.
+7. Один лист — одна норма на весь месяц: если зима началась в середине месяца, пользователь
+   сам решает, какой сезон у этого месяца.
 
 ## Предупреждения (`calc.warnings`) — не блокируют сохранение
 | code | Условие |
@@ -51,12 +79,15 @@
 7. Закрыть лист можно только с `odometer_end_km`.
 8. Закрытый лист и его заправки не редактируются (409 `SHEET_CLOSED`) — сначала `reopen`.
 9. `total_cost`, если не передан, = `liters` × `price_per_liter`.
+10. `WINTER` нельзя выбрать, если у авто нет зимней нормы (422 `BUSINESS_RULE`, см. «Сезон и норма листа»).
 
 ## Перенос между месяцами (`next-prefill`)
 - Есть предыдущий лист (самый поздний): следующий месяц после него;
   `odometer_start_km` = его `odometer_end_km` (если null — его `odometer_start_km`);
-  `fuel_start_l` = его `calc.fuel_end_l` (если null — `0.00`).
-- Листов нет: текущий месяц, `odometer_start_km` = 0, `fuel_start_l` = 0.00 — пользователь вводит сам.
+  `fuel_start_l` = его `calc.fuel_end_l` (если null — `0.00`);
+  `season` = его `season` (см. «Сезон и норма листа»).
+- Листов нет: текущий месяц, `odometer_start_km` = 0, `fuel_start_l` = 0.00 — пользователь вводит сам;
+  `season` — по месяцу (`WINTER_MONTHS`).
 - Пользователь может изменить подставленные значения (тогда может появиться `ODOMETER_GAP`).
 - Переоткрытие и изменение прошлого листа НЕ меняет автоматически следующий лист.
 
@@ -66,14 +97,16 @@
 40.00 л / 2200.00 ₽; фактический остаток 10.00.
 → refueled_l 80.00 · refueled_cost 4400.00 · fuel_available_l 92.00 · mileage_km 1000 ·
 norm_consumption_l 85.00 · fuel_end_calc_l 7.00 · fuel_end_l 10.00 · actual_consumption_l 82.00 ·
-actual_l_per_100km 8.20 · deviation_l −3.00 · cost_per_km 4.40 · warnings [].
+actual_l_per_100km 8.200 · consumption_status NORMAL · deviation_l −3.00 · cost_per_km 4.40 ·
+warnings [].
 
 **Пример B — открытый месяц, только начало.**
 Пробег на начало 53340, конец null; остаток 10.00; одна заправка 30.00 л / 1650.00 ₽.
 → refueled_l 30.00 · fuel_available_l 40.00 · все поля, зависящие от пробега, — null.
 
 **Пример C — закрыт без фактического остатка.**
-Как A, но `fuel_end_actual_l` = null → fuel_end_l 7.00 · actual_* и deviation_l — null.
+Как A, но `fuel_end_actual_l` = null → fuel_end_l 7.00 · actual_*, consumption_status и
+deviation_l — null.
 
 **Пример D — отрицательный остаток.**
 Норма 8.50; пробег 1500 км; остаток на начало 12.00; заправлено 80.00.
@@ -81,7 +114,27 @@ actual_l_per_100km 8.20 · deviation_l −3.00 · cost_per_km 4.40 · warnings [
 
 **Пример E — нулевой пробег.**
 Пробег 53340 → 53340, заправка 20.00 л → mileage_km 0 · norm_consumption_l 0.00 ·
-actual_l_per_100km null · cost_per_km null.
+actual_l_per_100km null · consumption_status null · cost_per_km null.
 
 **Пример F — округление.**
 Пробег 333 км, норма 7.77 → 333 × 7.77 / 100 = 25.8741 → norm_consumption_l 25.87.
+
+**Пример G — лето, перерасход (красный).**
+Норма 10.068 (лето); пробег 52340 → 53340; остаток на начало 12.00; заправки 50.00 л / 2750.00 ₽
+и 48.50 л / 2667.50 ₽; фактический остаток 9.00.
+→ refueled_l 98.50 · refueled_cost 5417.50 · fuel_available_l 110.50 · mileage_km 1000 ·
+norm_consumption_l 100.68 · fuel_end_calc_l 9.82 · fuel_end_l 9.00 · actual_consumption_l 101.50 ·
+actual_l_per_100km 10.150 · consumption_status OVER · deviation_l 0.82 · cost_per_km 5.42.
+
+**Пример H — зима, в норме (зелёный).**
+Норма 11.684 (зима); пробег 53340 → 54240; остаток на начало 20.00; заправки 45.00 л / 2520.00 ₽
+и 50.00 л / 2800.00 ₽; фактический остаток 19.50.
+→ refueled_l 95.00 · refueled_cost 5320.00 · fuel_available_l 115.00 · mileage_km 900 ·
+norm_consumption_l 105.16 (900 × 11.684 / 100 = 105.156) · fuel_end_calc_l 9.84 ·
+fuel_end_l 19.50 · actual_consumption_l 95.50 · actual_l_per_100km 10.611 (95.5 / 900 × 100 =
+10.6111…) · consumption_status NORMAL · deviation_l −9.66 · cost_per_km 5.91 · warnings [].
+
+**Пример I — ровно по норме — зелёный.**
+Норма 10.068; пробег 1000 км; остаток на начало 0.68; заправки 50.00 и 50.00 л; фактический
+остаток 0.00 → actual_consumption_l 100.68 · actual_l_per_100km 10.068 · consumption_status
+NORMAL · deviation_l 0.00. Если ушло 100.69 л → 10.069 · OVER.

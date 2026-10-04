@@ -44,7 +44,8 @@
 | plate_number | varchar(15) | NULL, напр. «А123ВС77» |
 | fuel_type | varchar(10) | enum: `AI92`, `AI95`, `AI98`, `DIESEL`, `GAS` |
 | tank_capacity_l | numeric(6,2) | > 0 |
-| norm_l_per_100km | numeric(5,2) | > 0 |
+| norm_l_per_100km | numeric(6,3) | > 0, NOT NULL; летняя (основная) норма, напр. `10.068` |
+| norm_winter_l_per_100km | numeric(6,3) | NULL или > 0; зимняя норма, напр. `11.684`; NULL — не задана |
 | is_archived | bool | default false |
 
 ## fuel_sheets (ЛУТ)
@@ -58,14 +59,16 @@
 | odometer_end_km | int | NULL до ввода; >= odometer_start_km |
 | fuel_start_l | numeric(8,2) | >= 0, NOT NULL |
 | fuel_end_actual_l | numeric(8,2) | NULL; фактический остаток, если пользователь его ввёл |
-| norm_l_per_100km | numeric(5,2) | КОПИЯ нормы авто на момент создания листа |
+| season | varchar(6) | enum: `SUMMER`, `WINTER`, NOT NULL — сезон листа (иконка ☀️/❄️) |
+| norm_l_per_100km | numeric(6,3) | КОПИЯ нормы авто для сезона листа (летней или зимней) — на момент создания листа или переключения сезона |
 | status | varchar(10) | enum: `OPEN`, `CLOSED`, default `OPEN` |
 | closed_at | timestamptz | NULL |
 
 UNIQUE (`car_id`, `year`, `month`).
 
 Почему норма копируется в лист: если пользователь позже поменяет норму у авто, расчёты
-старых месяцев не должны измениться.
+старых месяцев не должны измениться. Правила выбора сезона и нормы — `06_BUSINESS_RULES.md`,
+раздел «Сезон и норма листа».
 
 ## refuelings (заправки)
 | Поле | Тип | Ограничения |
