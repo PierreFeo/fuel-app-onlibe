@@ -1,3 +1,13 @@
 <resources>
-    <string name="app_name">FuelTracker</string>
+    <string name="app_name">Учёт топлива</string>
+
+    <!-- Общие -->
+    <string name="action_retry">Повторить</string>
+    <string name="error_no_connection">Нет связи с сервером</string>
+
+    <!-- Единицы: число форматирует ui/common/Formatters -->
+    <string name="format_liters">%1$s л</string>
+    <string name="format_money">%1$s ₽</string>
+    <string name="format_km">%1$s км</string>
+    <string name="format_l_per_100km">%1$s л/100 км</string>
 </resources>
