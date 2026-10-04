@@ -36,6 +36,19 @@ Content-Type: application/json
     client.global.set("refresh_token", response.body.refresh_token);
 %}
 
+### 3b. Запасной вход по паролю. Пароль выдать командой:
+###     docker compose exec api python -m app.cli set-password --phone "+79991234567"
+###     и ЗАМЕНИТЕ ПАРОЛЬ_ИЗ_КОМАНДЫ на него
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "phone": "{{phone}}", "password": "ПАРОЛЬ_ИЗ_КОМАНДЫ" }
+
+> {%
+    client.global.set("access_token", response.body.access_token);
+    client.global.set("refresh_token", response.body.refresh_token);
+%}
+
 ### 4. Мой профиль
 GET {{base}}/me
 Authorization: Bearer {{access_token}}

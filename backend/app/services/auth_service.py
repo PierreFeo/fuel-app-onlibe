@@ -1,5 +1,6 @@
-"""Вход по коду из SMS и работа с токенами (docs/05_AUTH_SMS.md)."""
+"""Вход по коду из SMS, запасной вход по паролю и работа с токенами (docs/05_AUTH_SMS.md)."""
 
+import asyncio
 import logging
 import math
 import uuid
@@ -21,6 +22,7 @@ from app.core.security import (
 )
 from app.models import OtpCode, RefreshToken, User
 from app.schemas.auth import RequestCodeOut, TokensOut, UserOut, VerifyCodeOut
+from app.services import password_service
 from app.services.phone import DEV_TEST_PHONE, normalize_phone
 from app.services.rate_limit import SlidingWindowLimiter
 from app.services.sms import SmsSender
@@ -257,3 +259,51 @@ async def logout(
     if stored is not None:
         stored.revoked_at = now
         await session.commit()
+
+
+def _invalid_credentials() -> AppError:
+    return AppError(ErrorCode.INVALID_CREDENTIALS, "Неверный номер или пароль", 401)
+
+
+async def login_with_password(
+    session: AsyncSession,
+    *,
+    raw_phone: str,
+    password: str,
+    client_ip: str,
+    now: datetime,
+    settings: Settings,
+    ip_limiter: SlidingWindowLimiter,
+) -> VerifyCodeOut:
+    """Запасной вход по паролю. Порядок проверок — docs/05_AUTH_SMS.md."""
+    phone = normalize_phone(raw_phone, settings.default_phone_region)
+
+    retry_after = ip_limiter.hit(client_ip, now)
+    if retry_after is not None:
+        raise _rate_limited(retry_after)
+
+    user = await _get_user(session, phone)
+    if user is None or not user.is_active or user.password_hash is None:
+        await asyncio.to_thread(password_service.burn_time)
+        logger.warning("Password login failed (no such login) phone=%s ip=%s", phone, client_ip)
+        raise _invalid_credentials()
+
+    if user.locked_until is not None and user.locked_until > now:
+        raise _rate_limited(_seconds_until(user.locked_until, now))
+
+    # scrypt нарочно медленный — считаем в отдельном потоке, чтобы не тормозить другие запросы.
+    ok = await asyncio.to_thread(password_service.verify_password, password, user.password_hash)
+    if not ok:
+        user.failed_login_attempts += 1
+        if user.failed_login_attempts >= settings.password_max_attempts:
+            user.failed_login_attempts = 0
+            user.locked_until = now + timedelta(minutes=settings.password_lock_min)
+        await session.commit()
+        logger.warning("Password login failed (wrong password) phone=%s ip=%s", phone, client_ip)
+        raise _invalid_credentials()
+
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    tokens = _issue_tokens(session, user, now, settings)
+    await session.commit()
+    return VerifyCodeOut(**tokens.model_dump(), is_new_user=user.name is None)

@@ -12,7 +12,11 @@ from app.core.config import Settings, get_settings
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.services.rate_limit import SlidingWindowLimiter, get_otp_ip_limiter
+from app.services.rate_limit import (
+    SlidingWindowLimiter,
+    get_otp_ip_limiter,
+    get_password_ip_limiter,
+)
 from app.services.sms import get_sms_sender
 from tests.fakes import FakeClock, FakeSmsSender
 
@@ -85,12 +89,16 @@ async def api(
             yield session
 
     ip_limiter = SlidingWindowLimiter(settings.otp_max_per_ip_hour, timedelta(hours=1))
+    password_ip_limiter = SlidingWindowLimiter(
+        settings.password_max_per_ip_hour, timedelta(hours=1)
+    )
     overrides: dict[Callable[..., object], Callable[..., object]] = {
         get_db: _get_db,
         get_settings: lambda: settings,
         get_now: clock,
         get_sms_sender: lambda: sms,
         get_otp_ip_limiter: lambda: ip_limiter,
+        get_password_ip_limiter: lambda: password_ip_limiter,
     }
     app.dependency_overrides.update(overrides)
     try:

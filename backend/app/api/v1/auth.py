@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.core.deps import AppSettings, Db, Now
 from app.schemas.auth import (
+    LoginIn,
     RefreshIn,
     RequestCodeIn,
     RequestCodeOut,
@@ -12,10 +13,18 @@ from app.schemas.auth import (
     VerifyCodeOut,
 )
 from app.services import auth_service
-from app.services.rate_limit import SlidingWindowLimiter, get_otp_ip_limiter
+from app.services.rate_limit import (
+    SlidingWindowLimiter,
+    get_otp_ip_limiter,
+    get_password_ip_limiter,
+)
 from app.services.sms import SmsSender, get_sms_sender
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
 
 
 @router.post("/request-code", response_model=RequestCodeOut)
@@ -29,11 +38,10 @@ async def request_code(
     ip_limiter: Annotated[SlidingWindowLimiter, Depends(get_otp_ip_limiter)],
 ) -> RequestCodeOut:
     """Отправить 6-значный код входа по SMS."""
-    client_ip = request.client.host if request.client else "unknown"
     return await auth_service.request_code(
         db,
         raw_phone=body.phone,
-        client_ip=client_ip,
+        client_ip=_client_ip(request),
         now=now,
         settings=settings,
         sms_sender=sms_sender,
@@ -46,6 +54,27 @@ async def verify_code(body: VerifyCodeIn, db: Db, now: Now, settings: AppSetting
     """Проверить код из SMS и выдать токены."""
     return await auth_service.verify_code(
         db, raw_phone=body.phone, code=body.code, now=now, settings=settings
+    )
+
+
+@router.post("/login", response_model=VerifyCodeOut)
+async def login(
+    body: LoginIn,
+    request: Request,
+    db: Db,
+    now: Now,
+    settings: AppSettings,
+    ip_limiter: Annotated[SlidingWindowLimiter, Depends(get_password_ip_limiter)],
+) -> VerifyCodeOut:
+    """Запасной вход по номеру телефона и паролю (если SMS не пришла)."""
+    return await auth_service.login_with_password(
+        db,
+        raw_phone=body.phone,
+        password=body.password,
+        client_ip=_client_ip(request),
+        now=now,
+        settings=settings,
+        ip_limiter=ip_limiter,
     )
 
 

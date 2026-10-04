@@ -23,7 +23,7 @@
 - [x] 2.3 JWT (проверка; выдача токенов уже сделана в 2.2), `/auth/refresh` (ротация), `/auth/logout`, зависимость `get_current_user`, `/me`
   - Готово, когда: через Swagger можно запросить код, увидеть его в логах
     (`docker compose logs api`), войти, нажать «Authorize» и вызвать `/me`
-- [ ] 2.4 Запасной вход по паролю: поля `password_hash`, `failed_login_attempts`, `locked_until`
+- [x] 2.4 Запасной вход по паролю: поля `password_hash`, `failed_login_attempts`, `locked_until`
   в `users` (миграция 0002), хэширование scrypt, `POST /auth/login`, блокировка после 5 ошибок,
   команды `python -m app.cli set-password` / `disable-password` (см. `05_AUTH_SMS.md`)
   - Готово, когда: `docker compose exec api python -m app.cli set-password --phone "+79991234567"`

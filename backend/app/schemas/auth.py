@@ -38,3 +38,8 @@ class VerifyCodeOut(TokensOut):
 
 class RefreshIn(BaseModel):
     refresh_token: str = Field(min_length=1)
+
+
+class LoginIn(BaseModel):
+    phone: str = Field(min_length=1, max_length=32, examples=["+79991234567"])
+    password: str = Field(min_length=1, max_length=128, examples=["k7Fm2xQp9a"])

@@ -33,3 +33,9 @@ class SlidingWindowLimiter:
 def get_otp_ip_limiter() -> SlidingWindowLimiter:
     """Зависимость FastAPI: один общий счётчик запросов кода по IP."""
     return SlidingWindowLimiter(get_settings().otp_max_per_ip_hour, timedelta(hours=1))
+
+
+@lru_cache
+def get_password_ip_limiter() -> SlidingWindowLimiter:
+    """Зависимость FastAPI: общий счётчик попыток входа по паролю по IP."""
+    return SlidingWindowLimiter(get_settings().password_max_per_ip_hour, timedelta(hours=1))

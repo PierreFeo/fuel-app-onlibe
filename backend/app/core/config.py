@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     otp_max_per_phone_hour: int = 5
     otp_max_per_ip_hour: int = 20
 
+    # Запасной вход по паролю (docs/05_AUTH_SMS.md)
+    password_max_attempts: int = 5  # неверных паролей подряд до блокировки
+    password_lock_min: int = 15  # на сколько минут блокируется вход по паролю
+    password_max_per_ip_hour: int = 20
+
     # Кто может войти
     registration_mode: Literal["whitelist", "open"] = "whitelist"
     allowed_phones: str = ""  # через запятую: +79991234567,+79997654321
