@@ -23,3 +23,6 @@ Decimal3 = Annotated[
     Field(decimal_places=3),
     PlainSerializer(lambda d: f"{d:.3f}", return_type=str, when_used="json"),
 ]
+
+# Пробег — целые км. Верхняя граница — с запасом, но влезает в INTEGER PostgreSQL.
+Odometer = Annotated[int, Field(ge=0, le=9_999_999, examples=[52340])]

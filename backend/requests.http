@@ -124,3 +124,73 @@ Authorization: Bearer {{access_token}}
 Content-Type: application/json
 
 { "is_archived": false }
+
+### ================= Листы ЛУТ (нужны вход и авто: шаги 3a и 8) =================
+
+### 15. Подсказка для нового листа: месяц, пробег и остаток на начало, сезон
+GET {{base}}/cars/{{car_id}}/sheets/next-prefill
+Authorization: Bearer {{access_token}}
+
+### 16. Создать лист за октябрь 2026
+POST {{base}}/cars/{{car_id}}/sheets
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{ "year": 2026, "month": 10, "odometer_start_km": 52340, "fuel_start_l": "12.00" }
+
+> {% client.global.set("sheet_id", response.body.id); %}
+
+### 17. Один лист (с заправками и расчётом calc)
+GET {{base}}/sheets/{{sheet_id}}
+Authorization: Bearer {{access_token}}
+
+### 18. Переключить сезон ☀️/❄️ (норма копируется из авто)
+PATCH {{base}}/sheets/{{sheet_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{ "season": "WINTER" }
+
+### 19. Лента листов авто, новые сверху
+GET {{base}}/cars/{{car_id}}/sheets?limit=12
+Authorization: Bearer {{access_token}}
+
+### ================= Заправки (нужен лист: шаг 16) =================
+
+### 20. Добавить заправку (сумма не указана — посчитается: 40 × 55 = 2200.00)
+POST {{base}}/sheets/{{sheet_id}}/refuelings
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{ "refueled_at": "2026-10-05", "liters": "40.00", "price_per_liter": "55.00", "odometer_km": 52610, "station": "Лукойл" }
+
+> {% client.global.set("refueling_id", response.body.refuelings[response.body.refuelings.length - 1].id); %}
+
+### 21. Изменить заправку: другие литры — сумма пересчитается
+PATCH {{base}}/refuelings/{{refueling_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{ "liters": "38.50" }
+
+### 22. Ещё заправка, оплачена топливной картой
+POST {{base}}/sheets/{{sheet_id}}/refuelings
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{ "refueled_at": "2026-10-19", "liters": "40.00", "price_per_liter": "55.00", "payment_type": "FUEL_CARD" }
+
+### 23. Удалить заправку из шага 20 (в ответе — лист без неё)
+DELETE {{base}}/refuelings/{{refueling_id}}
+Authorization: Bearer {{access_token}}
+
+### 24. Закрыть месяц: пробег на конец и фактический остаток
+POST {{base}}/sheets/{{sheet_id}}/close
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{ "odometer_end_km": 53340, "fuel_end_actual_l": "10.00" }
+
+### 25. Переоткрыть лист, чтобы снова его менять
+POST {{base}}/sheets/{{sheet_id}}/reopen
+Authorization: Bearer {{access_token}}

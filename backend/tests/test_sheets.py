@@ -61,7 +61,7 @@ async def _create_sheet(
 async def _add_refueling(
     db: AsyncSession, sheet: dict[str, Any], liters: str, cost: str, **changes: Any
 ) -> None:
-    """Заправки через API появятся в задаче 3.4 — пока кладём прямо в БД."""
+    """Заправка прямо в БД, минуя API (сам API заправок — в test_refuelings.py)."""
     fields: dict[str, Any] = {
         "sheet_id": uuid.UUID(sheet["id"]),
         "refueled_at": date(sheet["year"], sheet["month"], 5),

@@ -48,7 +48,8 @@ class Prefill:
 # --- ошибки ---
 
 
-def _business_rule(reason: str, message: str) -> AppError:
+def business_rule(reason: str, message: str) -> AppError:
+    """422 BUSINESS_RULE: правило зависит от данных в БД, причина — в details.reason."""
     return AppError(ErrorCode.BUSINESS_RULE, message, 422, {"reason": reason})
 
 
@@ -82,7 +83,7 @@ def _norm_for(car: Car, season: Season) -> Decimal:
     if season is Season.SUMMER:
         return car.norm_l_per_100km
     if car.norm_winter_l_per_100km is None:
-        raise _business_rule("WINTER_NORM_NOT_SET", "Зимняя норма не указана")
+        raise business_rule("WINTER_NORM_NOT_SET", "Зимняя норма не указана")
     return car.norm_winter_l_per_100km
 
 
@@ -120,29 +121,29 @@ async def _view(session: AsyncSession, sheet: FuelSheet, car: Car) -> SheetView:
     return SheetView(sheet, _calculate(sheet, car, await _prev_odometer_end(session, sheet)))
 
 
-async def _save(session: AsyncSession, sheet: FuelSheet, car: Car) -> SheetView:
+async def save_sheet(session: AsyncSession, sheet: FuelSheet, car: Car) -> SheetView:
+    """Сохранить лист (вместе с заправками) и вернуть его с пересчитанным calc."""
     await session.commit()
     # created_at/updated_at ставит БД — перечитываем лист, чтобы отдать их в ответе.
+    # Заправки (selectin) перечитываются вместе с ним — снова по дате.
     await session.refresh(sheet)
     return await _view(session, sheet, car)
 
 
-def _validate(sheet: FuelSheet, car: Car) -> None:
+def validate_sheet(sheet: FuelSheet, car: Car) -> None:
     """Блокирующие правила, которые зависят от уже сохранённых данных (06, «Валидации»)."""
     if sheet.odometer_end_km is not None and sheet.odometer_end_km < sheet.odometer_start_km:
-        raise _business_rule(
-            "ODOMETER_END_BEFORE_START", "Пробег на конец меньше пробега на начало"
-        )
+        raise business_rule("ODOMETER_END_BEFORE_START", "Пробег на конец меньше пробега на начало")
     if sheet.fuel_end_actual_l is not None:
         available = _calculate(sheet, car, None).fuel_available_l
         if sheet.fuel_end_actual_l > available:
-            raise _business_rule(
+            raise business_rule(
                 "FUEL_END_OVER_AVAILABLE",
                 "Остаток на конец больше, чем было топлива (на начало + заправки)",
             )
 
 
-def _ensure_open(sheet: FuelSheet) -> None:
+def ensure_open(sheet: FuelSheet) -> None:
     if sheet.status is SheetStatus.CLOSED:
         raise _sheet_closed()
 
@@ -251,7 +252,7 @@ async def create_sheet(
 ) -> SheetView:
     # Правило 6: не дальше следующего месяца.
     if _month_index(data.year, data.month) > _month_index(now.year, now.month) + 1:
-        raise _business_rule("MONTH_TOO_FAR", "Нельзя создать лист позже следующего месяца")
+        raise business_rule("MONTH_TOO_FAR", "Нельзя создать лист позже следующего месяца")
 
     season = data.season
     if season is None:
@@ -288,13 +289,13 @@ async def create_sheet(
         # Тот же месяц успели создать параллельным запросом.
         await session.rollback()
         raise _sheet_exists() from None
-    return await _save(session, sheet, car)
+    return await save_sheet(session, sheet, car)
 
 
 async def update_sheet(
     session: AsyncSession, sheet: FuelSheet, car: Car, data: SheetUpdate
 ) -> SheetView:
-    _ensure_open(sheet)
+    ensure_open(sheet)
     changes = data.model_dump(exclude_unset=True)
     season = changes.pop("season", None)
     # Тот же сезон — ничего не переключаем: норма остаётся прежней (правило 6).
@@ -303,32 +304,32 @@ async def update_sheet(
         sheet.season = season
     for field, value in changes.items():
         setattr(sheet, field, value)
-    _validate(sheet, car)
-    return await _save(session, sheet, car)
+    validate_sheet(sheet, car)
+    return await save_sheet(session, sheet, car)
 
 
 async def close_sheet(
     session: AsyncSession, sheet: FuelSheet, car: Car, data: SheetClose, *, now: datetime
 ) -> SheetView:
-    _ensure_open(sheet)
+    ensure_open(sheet)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(sheet, field, value)
-    _validate(sheet, car)
+    validate_sheet(sheet, car)
     sheet.status = SheetStatus.CLOSED
     sheet.closed_at = now
-    return await _save(session, sheet, car)
+    return await save_sheet(session, sheet, car)
 
 
 async def reopen_sheet(session: AsyncSession, sheet: FuelSheet, car: Car) -> SheetView:
     """Открытый лист остаётся открытым — повторный reopen ничего не ломает."""
     sheet.status = SheetStatus.OPEN
     sheet.closed_at = None
-    return await _save(session, sheet, car)
+    return await save_sheet(session, sheet, car)
 
 
 async def delete_sheet(session: AsyncSession, sheet: FuelSheet) -> None:
-    _ensure_open(sheet)
+    ensure_open(sheet)
     if sheet.refuelings:
-        raise _business_rule("SHEET_HAS_REFUELINGS", "В листе есть заправки — сначала удалите их")
+        raise business_rule("SHEET_HAS_REFUELINGS", "В листе есть заправки — сначала удалите их")
     await session.delete(sheet)
     await session.commit()

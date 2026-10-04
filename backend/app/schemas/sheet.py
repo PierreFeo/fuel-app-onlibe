@@ -1,17 +1,16 @@
 """ЛУТ и заправки в ответах API (docs/04_API_CONTRACT.md, «Листы учёта топлива»)."""
 
 import uuid
-from datetime import date, datetime
+from datetime import datetime
 from typing import Annotated, Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.enums import PaymentType, Season, SheetStatus
-from app.schemas.types import Decimal2, Decimal3
+from app.models.enums import Season, SheetStatus
+from app.schemas.refueling import RefuelingOut
+from app.schemas.types import Decimal2, Decimal3, Odometer
 from app.services.sheet_calc import ConsumptionStatus
 
-# Пробег — целые км. Верхняя граница — с запасом, но влезает в INTEGER PostgreSQL.
-Odometer = Annotated[int, Field(ge=0, le=9_999_999, examples=[52340])]
 # Литры в листе — как NUMERIC(8,2) в БД.
 Liters = Annotated[Decimal2, Field(ge=0, max_digits=8, examples=["12.00"])]
 Year = Annotated[int, Field(ge=2020, le=2100, examples=[2026])]
@@ -47,21 +46,6 @@ class SheetUpdate(BaseModel):
 class SheetClose(BaseModel):
     odometer_end_km: Odometer
     fuel_end_actual_l: Liters | None = None  # не передан — остаётся как был
-
-
-class RefuelingOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: uuid.UUID
-    sheet_id: uuid.UUID
-    refueled_at: date
-    liters: Decimal2
-    price_per_liter: Decimal2
-    total_cost: Decimal2
-    odometer_km: int | None
-    station: str | None
-    payment_type: PaymentType
-    note: str | None
 
 
 class WarningOut(BaseModel):
