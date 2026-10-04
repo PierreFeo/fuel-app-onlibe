@@ -48,3 +48,7 @@ asyncio_default_fixture_loop_scope = "session"
 # Тесты и фикстуры в одном event loop — иначе соединения asyncpg «привязаны» к чужому loop.
 asyncio_default_test_loop_scope = "session"
 testpaths = ["tests"]
+
+[tool.coverage.run]
+# SQLAlchemy async выполняет код внутри greenlet — без этого покрытие «теряет» строки сервисов
+concurrency = ["greenlet", "thread"]
