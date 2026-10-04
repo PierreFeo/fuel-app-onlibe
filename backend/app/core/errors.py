@@ -41,12 +41,14 @@ class AppError(Exception):
         message: str,
         status: int,
         details: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
         self.message = message
         self.status = status
         self.details = details or {}
+        self.headers = headers
 
 
 def error_response(
@@ -70,7 +72,7 @@ def _field_name(loc: tuple[Any, ...]) -> str:
 
 
 async def _app_error_handler(_: Request, exc: AppError) -> JSONResponse:
-    return error_response(exc.status, exc.code, exc.message, exc.details)
+    return error_response(exc.status, exc.code, exc.message, exc.details, exc.headers)
 
 
 async def _validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:

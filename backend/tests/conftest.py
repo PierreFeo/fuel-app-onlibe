@@ -99,3 +99,18 @@ async def api(
             yield ac
     finally:
         app.dependency_overrides.clear()
+
+
+async def login(api: AsyncClient, sms: FakeSmsSender, phone: str = ALLOWED_PHONE) -> dict:
+    """Пройти вход по SMS и вернуть ответ verify-code (токены + user)."""
+    response = await api.post("/api/v1/auth/request-code", json={"phone": phone})
+    assert response.status_code == 200, response.text
+    response = await api.post(
+        "/api/v1/auth/verify-code", json={"phone": phone, "code": sms.last_code()}
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def bearer(tokens: dict) -> dict[str, str]:
+    return {"Authorization": f"Bearer {tokens['access_token']}"}

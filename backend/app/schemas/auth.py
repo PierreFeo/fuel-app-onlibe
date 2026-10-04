@@ -34,3 +34,7 @@ class TokensOut(BaseModel):
 
 class VerifyCodeOut(TokensOut):
     is_new_user: bool
+
+
+class RefreshIn(BaseModel):
+    refresh_token: str = Field(min_length=1)

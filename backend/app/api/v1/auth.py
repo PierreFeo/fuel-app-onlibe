@@ -1,22 +1,21 @@
-from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, Request, Response, status
 
-from app.core.clock import get_now
-from app.core.config import Settings, get_settings
-from app.db.session import get_db
-from app.schemas.auth import RequestCodeIn, RequestCodeOut, VerifyCodeIn, VerifyCodeOut
+from app.core.deps import AppSettings, Db, Now
+from app.schemas.auth import (
+    RefreshIn,
+    RequestCodeIn,
+    RequestCodeOut,
+    TokensOut,
+    VerifyCodeIn,
+    VerifyCodeOut,
+)
 from app.services import auth_service
 from app.services.rate_limit import SlidingWindowLimiter, get_otp_ip_limiter
 from app.services.sms import SmsSender, get_sms_sender
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-Db = Annotated[AsyncSession, Depends(get_db)]
-Now = Annotated[datetime, Depends(get_now)]
-AppSettings = Annotated[Settings, Depends(get_settings)]
 
 
 @router.post("/request-code", response_model=RequestCodeOut)
@@ -48,3 +47,18 @@ async def verify_code(body: VerifyCodeIn, db: Db, now: Now, settings: AppSetting
     return await auth_service.verify_code(
         db, raw_phone=body.phone, code=body.code, now=now, settings=settings
     )
+
+
+@router.post("/refresh", response_model=TokensOut)
+async def refresh(body: RefreshIn, db: Db, now: Now, settings: AppSettings) -> TokensOut:
+    """Обменять refresh-токен на новую пару токенов (старый отзывается)."""
+    return await auth_service.refresh_tokens(
+        db, refresh_token=body.refresh_token, now=now, settings=settings
+    )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(body: RefreshIn, db: Db, now: Now, settings: AppSettings) -> Response:
+    """Выйти: отозвать refresh-токен."""
+    await auth_service.logout(db, refresh_token=body.refresh_token, now=now, settings=settings)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -1,4 +1,4 @@
-"""Вход по коду из SMS (docs/05_AUTH_SMS.md)."""
+"""Вход по коду из SMS и работа с токенами (docs/05_AUTH_SMS.md)."""
 
 import logging
 import math
@@ -11,8 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.core.errors import AppError, ErrorCode
 from app.core.security import (
+    InvalidTokenError,
     create_access_token,
     create_refresh_token,
+    decode_token,
     generate_otp,
     hash_otp,
     otp_matches,
@@ -211,3 +213,47 @@ async def verify_code(
     tokens = _issue_tokens(session, user, now, settings)
     await session.commit()
     return VerifyCodeOut(**tokens.model_dump(), is_new_user=is_new_user)
+
+
+async def _find_active_refresh(
+    session: AsyncSession, token: str, now: datetime, settings: Settings
+) -> RefreshToken | None:
+    """Запись refresh-токена, если он подлинный, не отозван и не истёк; иначе None."""
+    try:
+        claims = decode_token(token, "refresh", now, settings)
+        jti = uuid.UUID(str(claims.get("jti")))
+    except (InvalidTokenError, ValueError):
+        return None
+    stored = await session.get(RefreshToken, jti)
+    if (
+        stored is None
+        or stored.user_id != claims["sub"]
+        or stored.revoked_at is not None
+        or stored.expires_at <= now
+    ):
+        return None
+    return stored
+
+
+async def refresh_tokens(
+    session: AsyncSession, *, refresh_token: str, now: datetime, settings: Settings
+) -> TokensOut:
+    """Ротация: старый refresh-токен отзывается, выдаётся новая пара."""
+    stored = await _find_active_refresh(session, refresh_token, now, settings)
+    user = await session.get(User, stored.user_id) if stored is not None else None
+    if stored is None or user is None or not user.is_active:
+        raise AppError(ErrorCode.REFRESH_INVALID, "Сессия истекла — войдите заново", 401)
+    stored.revoked_at = now
+    tokens = _issue_tokens(session, user, now, settings)
+    await session.commit()
+    return tokens
+
+
+async def logout(
+    session: AsyncSession, *, refresh_token: str, now: datetime, settings: Settings
+) -> None:
+    """Отозвать refresh-токен. Недействительный токен — не ошибка: выйти можно всегда."""
+    stored = await _find_active_refresh(session, refresh_token, now, settings)
+    if stored is not None:
+        stored.revoked_at = now
+        await session.commit()

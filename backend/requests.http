@@ -1,0 +1,65 @@
+### Ручная проверка API из Android Studio / IntelliJ: открыть файл и нажать ▶ слева от запроса.
+### Запросы выполнять по порядку сверху вниз — токены запоминаются автоматически.
+### Сервер должен быть запущен: docker compose up -d
+
+@base = http://localhost:8000/api/v1
+@phone = +79991234567
+
+### 1. Сервер жив
+GET {{base}}/health
+
+### 2. Запросить код. Сам код смотреть в логах: docker compose logs api --tail 20
+POST {{base}}/auth/request-code
+Content-Type: application/json
+
+{ "phone": "{{phone}}" }
+
+### 3. Ввести код — ЗАМЕНИТЕ 123456 на код из лога
+POST {{base}}/auth/verify-code
+Content-Type: application/json
+
+{ "phone": "{{phone}}", "code": "123456" }
+
+> {%
+    client.global.set("access_token", response.body.access_token);
+    client.global.set("refresh_token", response.body.refresh_token);
+%}
+
+### 3a. (только ENV=dev) Вход тестовым аккаунтом без SMS
+POST {{base}}/auth/verify-code
+Content-Type: application/json
+
+{ "phone": "+70000000000", "code": "000000" }
+
+> {%
+    client.global.set("access_token", response.body.access_token);
+    client.global.set("refresh_token", response.body.refresh_token);
+%}
+
+### 4. Мой профиль
+GET {{base}}/me
+Authorization: Bearer {{access_token}}
+
+### 5. Задать имя
+PATCH {{base}}/me
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{ "name": "Иван Петров" }
+
+### 6. Обновить токены (старый refresh после этого не работает)
+POST {{base}}/auth/refresh
+Content-Type: application/json
+
+{ "refresh_token": "{{refresh_token}}" }
+
+> {%
+    client.global.set("access_token", response.body.access_token);
+    client.global.set("refresh_token", response.body.refresh_token);
+%}
+
+### 7. Выйти
+POST {{base}}/auth/logout
+Content-Type: application/json
+
+{ "refresh_token": "{{refresh_token}}" }

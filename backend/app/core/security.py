@@ -5,6 +5,7 @@ import hmac
 import secrets
 import uuid
 from datetime import datetime, timedelta
+from typing import Any
 
 import jwt
 
@@ -36,6 +37,30 @@ def create_access_token(user_id: uuid.UUID, now: datetime, settings: Settings) -
         "exp": now + timedelta(minutes=settings.access_token_ttl_min),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=JWT_ALGORITHM)
+
+
+class InvalidTokenError(Exception):
+    """Токен не прошёл проверку: подпись, формат, тип или срок."""
+
+
+def decode_token(
+    token: str, expected_type: str, now: datetime, settings: Settings
+) -> dict[str, Any]:
+    """Проверить подпись и тип токена. Срок сверяем с `now` (часы приложения), а не с системными."""
+    try:
+        claims = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[JWT_ALGORITHM],
+            options={"verify_exp": False, "require": ["sub", "type", "exp"]},
+        )
+        user_id = uuid.UUID(claims["sub"])
+    except (jwt.InvalidTokenError, ValueError) as exc:
+        raise InvalidTokenError from exc
+    if claims["type"] != expected_type or claims["exp"] <= now.timestamp():
+        raise InvalidTokenError
+    claims["sub"] = user_id
+    return claims
 
 
 def create_refresh_token(
