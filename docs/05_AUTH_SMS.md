@@ -36,6 +36,7 @@ App                    Backend                         SMSGate            Дом
 - Нормализуем к E.164 библиотекой `phonenumbers`, регион по умолчанию `DEFAULT_PHONE_REGION` (напр. `RU`).
   `8 999 123-45-67` → `+79991234567`.
 - Если `REGISTRATION_MODE=whitelist` и номера нет в `ALLOWED_PHONES` и нет в `users` → 403.
+- Пользователь с `is_active=false` → тоже 403 `PHONE_NOT_ALLOWED` (SMS не отправляется) при любом режиме.
 
 ## Токены
 - Access JWT: 15 минут, claims: `sub` (user_id), `type: "access"`, `exp`.

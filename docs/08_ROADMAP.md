@@ -19,8 +19,8 @@
 
 ## Фаза 2. Backend: авторизация
 - [x] 2.1 `SmsSender` + `ConsoleSmsSender` + `FakeSmsSender` для тестов
-- [ ] 2.2 `/auth/request-code`, `/auth/verify-code`, OTP-правила, rate limit, whitelist
-- [ ] 2.3 JWT, `/auth/refresh` (ротация), `/auth/logout`, зависимость `get_current_user`, `/me`
+- [x] 2.2 `/auth/request-code`, `/auth/verify-code`, OTP-правила, rate limit, whitelist
+- [ ] 2.3 JWT (проверка; выдача токенов уже сделана в 2.2), `/auth/refresh` (ротация), `/auth/logout`, зависимость `get_current_user`, `/me`
   - Готово, когда: через Swagger можно запросить код, увидеть его в логах
     (`docker compose logs api`), войти, нажать «Authorize» и вызвать `/me`
 - [ ] 2.4 Запасной вход по паролю: поля `password_hash`, `failed_login_attempts`, `locked_until`
