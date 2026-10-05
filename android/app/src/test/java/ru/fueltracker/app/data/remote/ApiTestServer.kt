@@ -13,8 +13,11 @@ import java.util.concurrent.TimeUnit
 /**
  * Поддельный сервер для тестов сетевого слоя: тот же Retrofit и Json, что в приложении,
  * но запросы уходят на MockWebServer по адресу `…/api/v1/`.
+ * [configureClient] — добавить в клиент interceptor'ы и authenticator, как в NetworkModule.
  */
-class ApiTestServer : AutoCloseable {
+class ApiTestServer(
+    configureClient: OkHttpClient.Builder.() -> Unit = {},
+) : AutoCloseable {
 
     val server = MockWebServer().apply { start() }
 
@@ -22,6 +25,7 @@ class ApiTestServer : AutoCloseable {
         baseUrl = server.url("/api/v1/").toString(),
         client = OkHttpClient.Builder()
             .readTimeout(5, TimeUnit.SECONDS)
+            .apply(configureClient)
             .build(),
         json = ApiJson,
     )

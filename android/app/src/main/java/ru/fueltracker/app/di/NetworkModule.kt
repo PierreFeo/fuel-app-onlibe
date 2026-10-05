@@ -12,11 +12,14 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import ru.fueltracker.app.BuildConfig
 import ru.fueltracker.app.data.remote.ApiJson
+import ru.fueltracker.app.data.remote.AuthInterceptor
+import ru.fueltracker.app.data.remote.TokenAuthenticator
 import ru.fueltracker.app.data.remote.api.AuthApi
 import ru.fueltracker.app.data.remote.api.CarsApi
 import ru.fueltracker.app.data.remote.api.ProfileApi
 import ru.fueltracker.app.data.remote.api.RefuelingsApi
 import ru.fueltracker.app.data.remote.api.SheetsApi
+import ru.fueltracker.app.data.remote.api.TokenRefreshApi
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
@@ -30,11 +33,16 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(
+        authInterceptor: AuthInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
+    ): OkHttpClient {
         val builder = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .addInterceptor(authInterceptor)
+            .authenticator(tokenAuthenticator)
         if (BuildConfig.DEBUG) {
             // BASIC — только метод, адрес, код ответа и время: токены из заголовков и тел в лог не попадают
             builder.addInterceptor(
@@ -52,6 +60,11 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideAuthApi(retrofit: Retrofit): AuthApi = retrofit.create(AuthApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideTokenRefreshApi(retrofit: Retrofit): TokenRefreshApi =
+        retrofit.create(TokenRefreshApi::class.java)
 
     @Provides
     @Singleton
