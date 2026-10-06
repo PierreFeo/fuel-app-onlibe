@@ -57,13 +57,14 @@
 |---|---|
 | `FUEL_END_NEGATIVE` | `fuel_end_calc_l` < 0 (по норме топлива не хватило — проверьте данные) |
 | `FUEL_END_OVER_TANK` | `fuel_end_l` > `tank_capacity_l` авто |
-| `REFUELING_OVER_TANK` | одна заправка > `tank_capacity_l` |
 | `ODOMETER_GAP` | `odometer_start_km` ≠ `odometer_end_km` предыдущего месяца |
 | `REFUELING_ODOMETER_OUT_OF_RANGE` | `odometer_km` заправки вне [`odometer_start_km`, `odometer_end_km`] |
 
 Формат: `{ "code": "FUEL_END_NEGATIVE", "message": "Расчётный остаток отрицательный — проверьте пробег и заправки" }`.
-- Каждый вид предупреждения — не больше одного раза в листе (две большие заправки → одно
-  `REFUELING_OVER_TANK`), порядок — как в таблице.
+- Каждый вид предупреждения — не больше одного раза в листе (две заправки с пробегом вне месяца →
+  одно `REFUELING_ODOMETER_OUT_OF_RANGE`), порядок — как в таблице.
+- Заправка больше объёма бака — НЕ предупреждение: сотрудники часто вводят одной записью все
+  заправки за месяц.
 - `REFUELING_ODOMETER_OUT_OF_RANGE`: пока `odometer_end_km` не введён, проверяется только нижняя
   граница (`odometer_km` >= `odometer_start_km`).
 - `ODOMETER_GAP` не проверяется, если предыдущего листа нет или в нём не введён пробег на конец.
