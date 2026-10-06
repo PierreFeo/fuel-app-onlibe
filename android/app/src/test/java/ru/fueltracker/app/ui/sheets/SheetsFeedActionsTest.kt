@@ -13,10 +13,12 @@ import ru.fueltracker.app.R
 import ru.fueltracker.app.data.local.FakeSelectedCarStorage
 import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.remote.dto.ErrorCodes
+import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.Season
 import ru.fueltracker.app.domain.model.SheetPage
 import ru.fueltracker.app.domain.model.SheetStatus
 import ru.fueltracker.app.testutil.FakeCarRepository
+import ru.fueltracker.app.testutil.FakeRefuelingRepository
 import ru.fueltracker.app.testutil.FakeSheetRepository
 import ru.fueltracker.app.testutil.MainDispatcherRule
 import ru.fueltracker.app.testutil.httpError
@@ -33,6 +35,7 @@ class SheetsFeedActionsTest {
 
     private val cars = FakeCarRepository().apply { cars = mutableListOf(testCar(id = "car-1")) }
     private val sheets = FakeSheetRepository()
+    private val refuelings = FakeRefuelingRepository()
     private val selected = FakeSelectedCarStorage(initial = "car-1")
 
     private val october = previewOpenSheet().copy(id = "s-10", month = 10, refuelings = emptyList())
@@ -45,9 +48,15 @@ class SheetsFeedActionsTest {
         details = mapOf("reason" to ErrorCodes.REASON_WINTER_NORM_NOT_SET),
     )
 
-    private fun TestScope.createViewModel(): SheetsFeedViewModel {
-        sheets.pages[null] = ApiResult.Success(SheetPage(listOf(october, september), nextBefore = null))
-        val viewModel = SheetsFeedViewModel(cars, sheets, selected)
+    /** Открытый октябрь с одной заправкой — для удаления из списка. */
+    private val octoberWithRefueling = october.copy(refuelings = previewOpenSheet().refuelings)
+    private val refueling = octoberWithRefueling.refuelings.first()
+
+    private fun TestScope.createViewModel(
+        feed: List<FuelSheet> = listOf(october, september),
+    ): SheetsFeedViewModel {
+        sheets.pages[null] = ApiResult.Success(SheetPage(feed, nextBefore = null))
+        val viewModel = SheetsFeedViewModel(cars, sheets, refuelings, selected)
         advanceUntilIdle()
         return viewModel
     }
@@ -328,6 +337,66 @@ class SheetsFeedActionsTest {
         viewModel.onEvent(SheetsFeedEvent.RefuelingSaved(updated))
 
         assertEquals(updated, viewModel.state.value.refuelingsSheet)
+    }
+
+    // --- Удаление заправки из списка ---
+
+    @Test
+    fun `удаление заправки из списка — с подтверждением, список обновлён`() = runTest {
+        val afterDelete = october // сервер вернул лист без заправки
+        refuelings.deleteResult = ApiResult.Success(afterDelete)
+        val viewModel = createViewModel(feed = listOf(octoberWithRefueling, september))
+        viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
+
+        viewModel.onEvent(SheetsFeedEvent.RequestDeleteRefueling(refueling))
+        assertEquals(refueling, viewModel.state.value.refuelingToDelete)
+        assertTrue(refuelings.deleteCalls.isEmpty()) // без подтверждения не удаляем
+
+        viewModel.onEvent(SheetsFeedEvent.ConfirmDeleteRefueling)
+        assertTrue("s-10" in viewModel.state.value.busySheetIds)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(listOf(refueling.id), refuelings.deleteCalls)
+        assertNull(state.refuelingToDelete)
+        assertTrue(state.busySheetIds.isEmpty())
+        assertEquals(afterDelete, state.refuelingsSheet) // шторка открыта, данные свежие
+        assertEquals(afterDelete, state.sheets.first { it.id == "s-10" }) // и карточка тоже
+    }
+
+    @Test
+    fun `отмена удаления заправки — запроса нет`() = runTest {
+        val viewModel = createViewModel(feed = listOf(octoberWithRefueling, september))
+        viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
+        viewModel.onEvent(SheetsFeedEvent.RequestDeleteRefueling(refueling))
+
+        viewModel.onEvent(SheetsFeedEvent.DismissDeleteRefueling)
+        advanceUntilIdle()
+
+        assertNull(viewModel.state.value.refuelingToDelete)
+        assertTrue(refuelings.deleteCalls.isEmpty())
+        assertEquals(octoberWithRefueling, viewModel.state.value.refuelingsSheet)
+    }
+
+    @Test
+    fun `удаление заправки не удалось — текст ошибки в шторке, заправка осталась`() = runTest {
+        refuelings.deleteResult = networkError
+        val viewModel = createViewModel(feed = listOf(octoberWithRefueling, september))
+        viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
+        viewModel.onEvent(SheetsFeedEvent.RequestDeleteRefueling(refueling))
+
+        viewModel.onEvent(SheetsFeedEvent.ConfirmDeleteRefueling)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(UiText.Resource(R.string.error_no_connection), state.refuelingsError)
+        assertNull(state.snackbar) // Snackbar под шторкой не виден
+        assertEquals(octoberWithRefueling, state.refuelingsSheet)
+
+        // Шторку закрыли и открыли снова — старой ошибки нет
+        viewModel.onEvent(SheetsFeedEvent.DismissRefuelings)
+        viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
+        assertNull(viewModel.state.value.refuelingsError)
     }
 
     @Test

@@ -17,6 +17,7 @@ import ru.fueltracker.app.data.remote.ApiError
 import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.remote.dto.ErrorCodes
 import ru.fueltracker.app.data.repository.CarRepository
+import ru.fueltracker.app.data.repository.RefuelingRepository
 import ru.fueltracker.app.data.repository.SheetRepository
 import ru.fueltracker.app.domain.model.Car
 import ru.fueltracker.app.domain.model.FuelSheet
@@ -67,6 +68,10 @@ data class SheetsFeedUiState(
      * список показывает свежие данные. Пока открыта форма заправки, список скрыт.
      */
     val refuelingsSheetId: String? = null,
+    /** Заправка, для которой открыт диалог «Удалить заправку?» (из списка). */
+    val refuelingToDelete: Refueling? = null,
+    /** Ошибка удаления заправки — показывается в шторке списка. */
+    val refuelingsError: UiText? = null,
     /** Открыта шторка заправки (новой или существующей). */
     val refuelingTarget: RefuelingTarget? = null,
     val snackbar: UiText? = null,
@@ -114,6 +119,11 @@ sealed interface SheetsFeedEvent {
     data class OpenRefuelings(val sheetId: String) : SheetsFeedEvent
     data object DismissRefuelings : SheetsFeedEvent
 
+    /** 🗑 в списке заправок → диалог «Удалить заправку?». */
+    data class RequestDeleteRefueling(val refueling: Refueling) : SheetsFeedEvent
+    data object ConfirmDeleteRefueling : SheetsFeedEvent
+    data object DismissDeleteRefueling : SheetsFeedEvent
+
     /** «+ Заправка» ([refueling] null) или нажатие на заправку открытого листа. */
     data class OpenRefueling(val sheet: FuelSheet, val refueling: Refueling? = null) : SheetsFeedEvent
     data object DismissRefueling : SheetsFeedEvent
@@ -128,6 +138,7 @@ sealed interface SheetsFeedEvent {
 class SheetsFeedViewModel @Inject constructor(
     private val carRepository: CarRepository,
     private val sheetRepository: SheetRepository,
+    private val refuelingRepository: RefuelingRepository,
     private val selectedCarStorage: SelectedCarStorage,
 ) : ViewModel() {
 
@@ -199,8 +210,13 @@ class SheetsFeedViewModel @Inject constructor(
                 if (it.closeSheet?.isSaving == true) it else it.copy(closeSheet = null)
             }
 
-            is SheetsFeedEvent.OpenRefuelings -> _state.update { it.copy(refuelingsSheetId = event.sheetId) }
-            SheetsFeedEvent.DismissRefuelings -> _state.update { it.copy(refuelingsSheetId = null) }
+            is SheetsFeedEvent.OpenRefuelings ->
+                _state.update { it.copy(refuelingsSheetId = event.sheetId, refuelingsError = null) }
+            SheetsFeedEvent.DismissRefuelings ->
+                _state.update { it.copy(refuelingsSheetId = null, refuelingToDelete = null, refuelingsError = null) }
+            is SheetsFeedEvent.RequestDeleteRefueling -> _state.update { it.copy(refuelingToDelete = event.refueling) }
+            SheetsFeedEvent.ConfirmDeleteRefueling -> deleteRefueling()
+            SheetsFeedEvent.DismissDeleteRefueling -> _state.update { it.copy(refuelingToDelete = null) }
             is SheetsFeedEvent.OpenRefueling -> {
                 // Заправки закрытого листа не меняются (409 SHEET_CLOSED) — сначала переоткрыть
                 if (event.sheet.isClosed) {
@@ -326,10 +342,24 @@ class SheetsFeedViewModel @Inject constructor(
         }
     }
 
-    /** Запрос по одному листу: пока идёт, его кнопки неактивны; ошибка — в Snackbar. */
+    /** Удаление заправки из списка: ответ — весь лист; ошибка — в шторке (Snackbar под ней не виден). */
+    private fun deleteRefueling() {
+        val refueling = _state.value.refuelingToDelete ?: return
+        val sheetId = _state.value.refuelingsSheetId ?: return
+        _state.update { it.copy(refuelingToDelete = null, refuelingsError = null) }
+        runSheetAction(
+            sheetId = sheetId,
+            request = { refuelingRepository.delete(refueling.id) },
+            onFailure = { error -> _state.update { it.copy(refuelingsError = error.toUiText()) } },
+            onSuccess = ::replaceSheet,
+        )
+    }
+
+    /** Запрос по одному листу: пока идёт, его кнопки неактивны; ошибка — по умолчанию в Snackbar. */
     private fun <T> runSheetAction(
         sheetId: String,
         request: suspend () -> ApiResult<T>,
+        onFailure: (ApiError) -> Unit = ::showError,
         onSuccess: (T) -> Unit,
     ) {
         if (sheetId in _state.value.busySheetIds) return
@@ -339,7 +369,7 @@ class SheetsFeedViewModel @Inject constructor(
             _state.update { it.copy(busySheetIds = it.busySheetIds - sheetId) }
             when (result) {
                 is ApiResult.Success -> onSuccess(result.data)
-                is ApiResult.Failure -> showError(result.error)
+                is ApiResult.Failure -> onFailure(result.error)
             }
         }
     }

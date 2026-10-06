@@ -15,6 +15,7 @@ import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.remote.dto.ErrorCodes
 import ru.fueltracker.app.domain.model.SheetPage
 import ru.fueltracker.app.testutil.FakeCarRepository
+import ru.fueltracker.app.testutil.FakeRefuelingRepository
 import ru.fueltracker.app.testutil.FakeSheetRepository
 import ru.fueltracker.app.testutil.MainDispatcherRule
 import ru.fueltracker.app.testutil.httpError
@@ -29,6 +30,7 @@ class SheetsFeedViewModelTest {
 
     private val cars = FakeCarRepository().apply { cars = mutableListOf(testCar(id = "car-1"), testCar(id = "car-2", name = "Kia Rio")) }
     private val sheets = FakeSheetRepository()
+    private val refuelings = FakeRefuelingRepository()
     private val selected = FakeSelectedCarStorage(initial = "car-1")
 
     private val october = previewOpenSheet().copy(id = "s-10", month = 10)
@@ -36,7 +38,7 @@ class SheetsFeedViewModelTest {
     private val august = previewClosedSheet().copy(id = "s-08", month = 8)
 
     private fun TestScope.createViewModel(): SheetsFeedViewModel {
-        val viewModel = SheetsFeedViewModel(cars, sheets, selected)
+        val viewModel = SheetsFeedViewModel(cars, sheets, refuelings, selected)
         advanceUntilIdle()
         return viewModel
     }

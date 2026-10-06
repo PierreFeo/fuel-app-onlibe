@@ -7,9 +7,11 @@ import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.repository.AuthRepository
 import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.data.repository.ProfileRepository
+import ru.fueltracker.app.data.repository.RefuelingRepository
 import ru.fueltracker.app.data.repository.SheetRepository
 import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.NewSheetInput
+import ru.fueltracker.app.domain.model.RefuelingInput
 import ru.fueltracker.app.domain.model.Season
 import ru.fueltracker.app.domain.model.SheetPage
 import ru.fueltracker.app.domain.model.SheetPrefill
@@ -215,3 +217,20 @@ fun httpError(
 )
 
 val networkError: ApiResult.Failure = ApiResult.Failure(ApiError.Network(IOException("no route")))
+
+/** Удаление заправки из списка в ленте; создание и правку проверяет RefuelingEditViewModelTest. */
+class FakeRefuelingRepository : RefuelingRepository {
+
+    /** Ответ на удаление — весь лист; null — тест не ожидает удаления. */
+    var deleteResult: ApiResult<FuelSheet>? = null
+    val deleteCalls = mutableListOf<String>()
+
+    override suspend fun create(sheetId: String, input: RefuelingInput): ApiResult<FuelSheet> = error("не используется")
+
+    override suspend fun update(refuelingId: String, input: RefuelingInput): ApiResult<FuelSheet> = error("не используется")
+
+    override suspend fun delete(refuelingId: String): ApiResult<FuelSheet> {
+        deleteCalls += refuelingId
+        return checkNotNull(deleteResult) { "deleteResult не задан" }
+    }
+}

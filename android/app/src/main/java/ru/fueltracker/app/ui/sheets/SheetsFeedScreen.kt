@@ -112,9 +112,20 @@ fun SheetsFeedContent(
         RefuelingsListSheet(
             sheet = sheet,
             isBusy = sheet.id in state.busySheetIds,
-            onAdd = { onEvent(SheetsFeedEvent.OpenRefueling(sheet)) },
-            onRefuelingClick = { onEvent(SheetsFeedEvent.OpenRefueling(sheet, it)) },
+            error = state.refuelingsError,
+            actions = RefuelingsListActions(
+                onAdd = { onEvent(SheetsFeedEvent.OpenRefueling(sheet)) },
+                onRefuelingClick = { onEvent(SheetsFeedEvent.OpenRefueling(sheet, it)) },
+                onDeleteClick = { onEvent(SheetsFeedEvent.RequestDeleteRefueling(it)) },
+            ),
             onDismiss = { onEvent(SheetsFeedEvent.DismissRefuelings) },
+        )
+    }
+    state.refuelingToDelete?.let {
+        DeleteRefuelingDialog(
+            refueling = it,
+            onConfirm = { onEvent(SheetsFeedEvent.ConfirmDeleteRefueling) },
+            onDismiss = { onEvent(SheetsFeedEvent.DismissDeleteRefueling) },
         )
     }
 
@@ -297,6 +308,8 @@ object SheetsFeedTestTags {
     const val NEW_SHEET = "feed_new_sheet"
     const val PROFILE = "feed_profile"
     const val REFUELINGS_LIST = "refuelings_list"
+    const val REFUELINGS_ERROR = "refuelings_error"
+    const val DELETE_REFUELING_CONFIRM = "delete_refueling_confirm"
     fun card(sheetId: String) = "sheet_card_$sheetId"
     fun details(sheetId: String) = "sheet_details_$sheetId"
     fun consumption(sheetId: String) = "sheet_consumption_$sheetId"
@@ -306,6 +319,7 @@ object SheetsFeedTestTags {
     fun closeButton(sheetId: String) = "sheet_close_$sheetId"
     fun addRefueling(sheetId: String) = "sheet_add_refueling_$sheetId"
     fun refueling(refuelingId: String) = "refueling_row_$refuelingId"
+    fun deleteRefueling(refuelingId: String) = "refueling_delete_$refuelingId"
 }
 
 private val previewCar =
