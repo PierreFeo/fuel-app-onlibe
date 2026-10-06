@@ -9,6 +9,7 @@ import ru.fueltracker.app.domain.model.CarInput
 import ru.fueltracker.app.domain.model.FuelType
 import ru.fueltracker.app.testutil.testCar
 import ru.fueltracker.app.ui.common.UiText
+import ru.fueltracker.app.ui.common.filterDecimalInput
 import java.math.BigDecimal
 
 class CarFormTest {

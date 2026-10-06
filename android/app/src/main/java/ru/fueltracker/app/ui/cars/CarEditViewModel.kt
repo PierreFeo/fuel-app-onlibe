@@ -14,6 +14,7 @@ import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.domain.model.FuelType
 import ru.fueltracker.app.ui.common.UiText
+import ru.fueltracker.app.ui.common.filterDecimalInput
 import ru.fueltracker.app.ui.common.toUiText
 import javax.inject.Inject
 

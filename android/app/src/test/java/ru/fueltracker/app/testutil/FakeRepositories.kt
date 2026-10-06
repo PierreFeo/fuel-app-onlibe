@@ -8,7 +8,12 @@ import ru.fueltracker.app.data.repository.AuthRepository
 import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.data.repository.ProfileRepository
 import ru.fueltracker.app.data.repository.SheetRepository
+import ru.fueltracker.app.domain.model.FuelSheet
+import ru.fueltracker.app.domain.model.NewSheetInput
+import ru.fueltracker.app.domain.model.Season
 import ru.fueltracker.app.domain.model.SheetPage
+import ru.fueltracker.app.domain.model.SheetPrefill
+import ru.fueltracker.app.domain.model.SheetStatus
 import ru.fueltracker.app.domain.model.Car
 import ru.fueltracker.app.domain.model.CarInput
 import ru.fueltracker.app.domain.model.CodeRequest
@@ -92,15 +97,79 @@ class FakeCarRepository : CarRepository {
         Car(id, name, plateNumber, fuelType, tankCapacityL, normSummer, normWinter, isArchived = false)
 }
 
-/** Страницы ленты по значению `before` (null — первая страница). */
+/**
+ * Страницы ленты по значению `before` (null — первая страница).
+ * Действия с листом по умолчанию «как на сервере»: возвращают изменённую копию листа.
+ */
 class FakeSheetRepository : SheetRepository {
 
     val pages = mutableMapOf<String?, ApiResult<SheetPage>>()
     val calls = mutableListOf<Pair<String, String?>>()
 
+    var prefillResult: ApiResult<SheetPrefill> =
+        ApiResult.Success(SheetPrefill(2026, 11, 53_340, BigDecimal("10.00"), Season.SUMMER))
+
+    /** Ответ на создание; null — копия известного листа с полями из черновика. */
+    var createResult: ApiResult<FuelSheet>? = null
+    var actionResult: ApiResult<FuelSheet>? = null
+    var deleteResult: ApiResult<Unit> = ApiResult.Success(Unit)
+
+    /** Последний известный лист по id — от него строятся ответы на действия. */
+    val known = mutableMapOf<String, FuelSheet>()
+
+    val created = mutableListOf<Pair<String, NewSheetInput>>()
+    val seasonCalls = mutableListOf<Pair<String, Season>>()
+    val closeCalls = mutableListOf<Triple<String, Long, BigDecimal?>>()
+    val reopenCalls = mutableListOf<String>()
+    val deleteCalls = mutableListOf<String>()
+
     override suspend fun getSheets(carId: String, before: String?): ApiResult<SheetPage> {
         calls += carId to before
-        return pages[before] ?: ApiResult.Success(SheetPage(emptyList(), nextBefore = null))
+        val result = pages[before] ?: ApiResult.Success(SheetPage(emptyList(), nextBefore = null))
+        if (result is ApiResult.Success) result.data.items.forEach { known[it.id] = it }
+        return result
+    }
+
+    override suspend fun getNextPrefill(carId: String): ApiResult<SheetPrefill> = prefillResult
+
+    override suspend fun createSheet(carId: String, input: NewSheetInput): ApiResult<FuelSheet> {
+        created += carId to input
+        return createResult ?: ApiResult.Success(
+            known.values.first().copy(
+                id = "new-${input.year}-${input.month}",
+                year = input.year,
+                month = input.month,
+                season = input.season,
+                status = SheetStatus.OPEN,
+            ),
+        )
+    }
+
+    override suspend fun setSeason(sheetId: String, season: Season): ApiResult<FuelSheet> {
+        seasonCalls += sheetId to season
+        return actionResult ?: ApiResult.Success(
+            known.getValue(sheetId).copy(
+                season = season,
+                normLPer100km = if (season == Season.WINTER) BigDecimal("11.684") else BigDecimal("10.068"),
+            ),
+        )
+    }
+
+    override suspend fun closeSheet(sheetId: String, odometerEndKm: Long, fuelEndActualL: BigDecimal?): ApiResult<FuelSheet> {
+        closeCalls += Triple(sheetId, odometerEndKm, fuelEndActualL)
+        return actionResult ?: ApiResult.Success(
+            known.getValue(sheetId).copy(status = SheetStatus.CLOSED, odometerEndKm = odometerEndKm, fuelEndActualL = fuelEndActualL),
+        )
+    }
+
+    override suspend fun reopenSheet(sheetId: String): ApiResult<FuelSheet> {
+        reopenCalls += sheetId
+        return actionResult ?: ApiResult.Success(known.getValue(sheetId).copy(status = SheetStatus.OPEN))
+    }
+
+    override suspend fun deleteSheet(sheetId: String): ApiResult<Unit> {
+        deleteCalls += sheetId
+        return deleteResult
     }
 }
 

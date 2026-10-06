@@ -52,7 +52,7 @@
   (вход по SMS и по паролю работает с локальным backend)
 - [x] 5.2 CarsScreen + CarEditScreen + выбор авто
 - [x] 5.3 SheetsFeedScreen + SheetCard (только отображение, пагинация, pull-to-refresh)
-- [ ] 5.4 NewSheetDialog + CloseSheetDialog + reopen
+- [x] 5.4 NewSheetDialog + CloseSheetDialog + reopen
 - [ ] 5.5 RefuelingEditScreen: добавить/изменить/удалить заправку
 - [ ] 5.6 ProfileScreen + выход
   - Готово, когда: весь сценарий из `01_PRODUCT.md` проходит на эмуляторе

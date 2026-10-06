@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -36,12 +39,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.fueltracker.app.R
 import ru.fueltracker.app.domain.model.Car
+import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.FuelType
 import ru.fueltracker.app.ui.common.EmptyView
 import ru.fueltracker.app.ui.common.ErrorView
+import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.LoadingView
 import ru.fueltracker.app.ui.common.SnackbarEffect
 import ru.fueltracker.app.ui.common.UiText
@@ -52,14 +59,21 @@ import java.math.BigDecimal
 @Composable
 fun SheetsFeedScreen(
     onChangeCar: () -> Unit,
+    onEditCar: (carId: String) -> Unit,
     onNoCar: () -> Unit,
     viewModel: SheetsFeedViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onEvent(SheetsFeedEvent.Resume) }
     LaunchedEffect(state.noCar) {
         if (state.noCar) onNoCar()
     }
-    SheetsFeedContent(state = state, onEvent = viewModel::onEvent, onChangeCar = onChangeCar)
+    SheetsFeedContent(
+        state = state,
+        onEvent = viewModel::onEvent,
+        onChangeCar = onChangeCar,
+        onEditCar = { state.car?.let { onEditCar(it.id) } },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,10 +82,20 @@ fun SheetsFeedContent(
     state: SheetsFeedUiState,
     onEvent: (SheetsFeedEvent) -> Unit,
     onChangeCar: () -> Unit,
+    onEditCar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    SnackbarEffect(state.snackbar, snackbarHostState) { onEvent(SheetsFeedEvent.SnackbarShown) }
+    SnackbarEffect(
+        message = state.snackbar,
+        hostState = snackbarHostState,
+        actionLabel = state.snackbarAction?.let { UiText.Resource(R.string.winter_norm_set_action) },
+        onAction = onEditCar,
+        onShown = { onEvent(SheetsFeedEvent.SnackbarShown) },
+    )
+    state.newSheet?.let { NewSheetDialog(form = it, hasWinterNorm = state.car?.normWinter != null, onEvent = onEvent) }
+    state.closeSheet?.let { CloseSheetDialog(form = it, onEvent = onEvent) }
+    state.deleteCandidate?.let { DeleteSheetDialog(it, onEvent) }
 
     Scaffold(
         modifier = modifier,
@@ -87,6 +111,22 @@ fun SheetsFeedContent(
                     }
                 },
             )
+        },
+        floatingActionButton = {
+            if (state.hasContent) {
+                ExtendedFloatingActionButton(
+                    onClick = { if (!state.isPreparingNewSheet) onEvent(SheetsFeedEvent.NewSheet) },
+                    icon = {
+                        if (state.isPreparingNewSheet) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(painterResource(R.drawable.ic_add), contentDescription = null)
+                        }
+                    },
+                    text = { Text(stringResource(R.string.feed_new_sheet)) },
+                    modifier = Modifier.testTag(SheetsFeedTestTags.NEW_SHEET),
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
@@ -137,7 +177,8 @@ private fun SheetList(
         modifier = Modifier
             .fillMaxSize()
             .testTag(SheetsFeedTestTags.LIST),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        // Снизу место под FAB, чтобы он не закрывал кнопки последней карточки
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         if (state.sheets.isEmpty()) {
@@ -152,7 +193,14 @@ private fun SheetList(
             SheetCard(
                 sheet = sheet,
                 isRefuelingsExpanded = sheet.id in state.expandedSheetIds,
-                onToggleRefuelings = { onEvent(SheetsFeedEvent.ToggleRefuelings(sheet.id)) },
+                isBusy = sheet.id in state.busySheetIds,
+                actions = SheetCardActions(
+                    onToggleRefuelings = { onEvent(SheetsFeedEvent.ToggleRefuelings(sheet.id)) },
+                    onSeasonClick = { onEvent(SheetsFeedEvent.ToggleSeason(sheet)) },
+                    onClose = { onEvent(SheetsFeedEvent.Close(sheet)) },
+                    onReopen = { onEvent(SheetsFeedEvent.Reopen(sheet)) },
+                    onDelete = { onEvent(SheetsFeedEvent.RequestDelete(sheet)) },
+                ),
             )
         }
         if (state.isLoadingMore || state.loadMoreFailed) {
@@ -199,11 +247,34 @@ private fun LoadMoreFooter(failed: Boolean, onRetry: () -> Unit) {
     }
 }
 
+@Composable
+private fun DeleteSheetDialog(sheet: FuelSheet, onEvent: (SheetsFeedEvent) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onEvent(SheetsFeedEvent.DismissDelete) },
+        title = { Text(stringResource(R.string.sheet_delete_title)) },
+        text = { Text(stringResource(R.string.sheet_delete_text, Formatters.month(sheet.year, sheet.month))) },
+        confirmButton = {
+            TextButton(onClick = { onEvent(SheetsFeedEvent.ConfirmDelete) }) {
+                Text(stringResource(R.string.sheet_delete))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onEvent(SheetsFeedEvent.DismissDelete) }) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
 object SheetsFeedTestTags {
     const val LIST = "feed_list"
     const val CHANGE_CAR = "feed_change_car"
+    const val NEW_SHEET = "feed_new_sheet"
     const val REFUELINGS_TOGGLE = "sheet_refuelings_toggle"
     fun card(sheetId: String) = "sheet_card_$sheetId"
+    fun season(sheetId: String) = "sheet_season_$sheetId"
+    fun menu(sheetId: String) = "sheet_menu_$sheetId"
+    fun closeButton(sheetId: String) = "sheet_close_$sheetId"
 }
 
 private val previewCar =
@@ -222,6 +293,7 @@ private fun SheetsFeedContentPreview() {
             ),
             onEvent = {},
             onChangeCar = {},
+            onEditCar = {},
         )
     }
 }
@@ -234,6 +306,7 @@ private fun SheetsFeedContentEmptyPreview() {
             state = SheetsFeedUiState(car = previewCar, isLoading = false),
             onEvent = {},
             onChangeCar = {},
+            onEditCar = {},
         )
     }
 }
@@ -246,6 +319,7 @@ private fun SheetsFeedContentErrorPreview() {
             state = SheetsFeedUiState(isLoading = false, loadError = UiText.Resource(R.string.error_no_connection)),
             onEvent = {},
             onChangeCar = {},
+            onEditCar = {},
         )
     }
 }

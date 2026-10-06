@@ -4,8 +4,10 @@ import ru.fueltracker.app.R
 import ru.fueltracker.app.domain.model.Car
 import ru.fueltracker.app.domain.model.CarInput
 import ru.fueltracker.app.domain.model.FuelType
-import ru.fueltracker.app.ui.common.Formatters
+import ru.fueltracker.app.ui.common.ParsedInput
 import ru.fueltracker.app.ui.common.UiText
+import ru.fueltracker.app.ui.common.parseNonNegativeDecimal
+import ru.fueltracker.app.ui.common.toInputText
 import java.math.BigDecimal
 
 /** Поля формы как их ввёл пользователь (числа — строки с «,» или «.»). */
@@ -38,20 +40,15 @@ private const val TANK_SCALE = 2
 private const val NORM_SCALE = 3
 private const val MAX_DIGITS = 6
 
-/** Ввод в числовое поле: только цифры и разделитель. */
-internal fun filterDecimalInput(text: String): String = text.filter { it.isDigit() || it == ',' || it == '.' }
-
 /** Авто из API → поля формы: «50.00» → «50», «10.068» → «10,068». */
 fun Car.toForm() = CarForm(
     name = name,
     plateNumber = plateNumber.orEmpty(),
     fuelType = fuelType,
-    tankCapacity = tankCapacityL.toInput(),
-    normSummer = normSummer.toInput(),
-    normWinter = normWinter?.toInput().orEmpty(),
+    tankCapacity = tankCapacityL.toInputText(),
+    normSummer = normSummer.toInputText(),
+    normWinter = normWinter?.toInputText().orEmpty(),
 )
-
-private fun BigDecimal.toInput(): String = stripTrailingZeros().toPlainString().replace('.', ',')
 
 /** Проверка как на сервере (обязательность, > 0, знаки после запятой). Ошибки нет — [CarInput] для отправки. */
 fun validateCarForm(form: CarForm): Pair<CarInput?, CarFormErrors> {
@@ -86,19 +83,9 @@ fun validateCarForm(form: CarForm): Pair<CarInput?, CarFormErrors> {
     return input to errors
 }
 
-private data class Parsed(val value: BigDecimal?, val error: UiText?)
-
-private fun parsePositive(text: String, scale: Int, required: Boolean): Parsed {
-    if (text.isBlank()) {
-        return Parsed(null, if (required) UiText.Resource(R.string.error_required) else null)
-    }
-    // «50,00» → 50; без setScale(0) stripTrailingZeros дал бы 5E+1
-    val value = Formatters.parseDecimalInput(text)?.stripTrailingZeros()?.let { if (it.scale() < 0) it.setScale(0) else it }
-    return when {
-        value == null || value.signum() <= 0 -> Parsed(null, UiText.Resource(R.string.error_positive_number))
-        value.scale() > scale -> Parsed(null, UiText.Resource(R.string.error_max_decimals, listOf(scale)))
-        // numeric(6, scale): целая часть — не больше 6 - scale цифр
-        value >= BigDecimal.TEN.pow(MAX_DIGITS - scale) -> Parsed(null, UiText.Resource(R.string.error_too_big))
-        else -> Parsed(value, null)
-    }
+/** Как [parseNonNegativeDecimal], но ноль тоже ошибка: бак и нормы должны быть > 0. */
+private fun parsePositive(text: String, scale: Int, required: Boolean): ParsedInput<BigDecimal> {
+    val parsed = parseNonNegativeDecimal(text, scale, MAX_DIGITS, required)
+    val notPositive = parsed.error == UiText.Resource(R.string.error_non_negative_number) || parsed.value?.signum() == 0
+    return if (notPositive) ParsedInput(null, UiText.Resource(R.string.error_positive_number)) else parsed
 }

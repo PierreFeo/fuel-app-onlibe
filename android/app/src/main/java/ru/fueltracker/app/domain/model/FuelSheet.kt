@@ -71,3 +71,21 @@ data class SheetPage(
     val items: List<FuelSheet>,
     val nextBefore: String?,
 )
+
+/** Подсказка для нового листа (`next-prefill`): следующий месяц, пробег и остаток с прошлого листа. */
+data class SheetPrefill(
+    val year: Int,
+    val month: Int,
+    val odometerStartKm: Long,
+    val fuelStartL: BigDecimal,
+    val season: Season,
+)
+
+/** Поля нового листа из NewSheetDialog. */
+data class NewSheetInput(
+    val year: Int,
+    val month: Int,
+    val odometerStartKm: Long,
+    val fuelStartL: BigDecimal,
+    val season: Season,
+)

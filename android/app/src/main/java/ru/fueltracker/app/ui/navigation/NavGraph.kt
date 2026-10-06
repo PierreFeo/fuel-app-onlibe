@@ -93,6 +93,7 @@ fun NavGraph(
         composable<SheetsFeedRoute> {
             SheetsFeedScreen(
                 onChangeCar = { navController.navigate(CarsRoute) },
+                onEditCar = { navController.navigate(CarEditRoute(it)) },
                 // Авто не выбрано или его больше нет — список авто становится корнем
                 onNoCar = { navController.navigateClearingBackStack(CarsRoute) },
             )

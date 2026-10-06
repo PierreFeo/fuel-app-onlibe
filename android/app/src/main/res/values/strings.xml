@@ -126,4 +126,42 @@
     <string name="sheet_exact">Ровно по норме</string>
     <string name="sheet_cost_per_km">1 км = %1$s ₽</string>
     <string name="sheet_warning">⚠ %1$s</string>
+
+    <!-- Действия с ЛУТ (5.4) -->
+    <string name="feed_new_sheet">Новый лист</string>
+    <string name="sheet_close_month">Закрыть месяц</string>
+    <string name="sheet_reopen">Переоткрыть</string>
+    <string name="sheet_delete">Удалить</string>
+    <string name="sheet_delete_title">Удалить лист?</string>
+    <string name="sheet_delete_text">Лист за %1$s будет удалён.</string>
+    <string name="sheet_deleted">Лист удалён</string>
+    <string name="sheet_reopened">Месяц переоткрыт</string>
+    <string name="sheet_season_toggle">Переключить сезон</string>
+    <string name="sheet_season_switched_summer">Сезон: лето. Норма %1$s л/100 км</string>
+    <string name="sheet_season_switched_winter">Сезон: зима. Норма %1$s л/100 км</string>
+    <string name="sheet_closed_cannot_edit">Месяц закрыт. Сначала переоткройте его</string>
+    <string name="winter_norm_not_set">Зимняя норма не указана</string>
+    <string name="winter_norm_set_action">Указать</string>
+
+    <!-- NewSheetDialog -->
+    <string name="new_sheet_title">Новый лист</string>
+    <string name="new_sheet_month">Месяц</string>
+    <string name="new_sheet_prev_month">Предыдущий месяц</string>
+    <string name="new_sheet_next_month">Следующий месяц</string>
+    <string name="new_sheet_season">Сезон</string>
+    <string name="new_sheet_odometer">Пробег на начало, км</string>
+    <string name="new_sheet_fuel">Остаток на начало, л</string>
+    <string name="new_sheet_create">Создать</string>
+
+    <!-- CloseSheetDialog -->
+    <string name="close_sheet_title">Закрыть %1$s</string>
+    <string name="close_sheet_odometer">Пробег на конец месяца, км *</string>
+    <string name="close_sheet_odometer_hint">Не меньше %1$s</string>
+    <string name="close_sheet_fuel">Фактический остаток в баке, л</string>
+    <string name="close_sheet_fuel_hint">Если не знаете — посчитаем по норме</string>
+    <string name="close_sheet_confirm">Закрыть</string>
+
+    <string name="error_whole_number">Введите целое число</string>
+    <string name="error_non_negative_number">Введите число 0 или больше</string>
+    <string name="error_odometer_end_before_start">Не меньше пробега на начало (%1$s)</string>
 </resources>
