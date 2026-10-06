@@ -37,12 +37,20 @@ class FakeAppStateStorage(initial: LocalProfile = LocalProfile()) : AppStateStor
         state.value = state.value.copy(name = name ?: state.value.name, nameDirty = false)
     }
 
+    private val sync = MutableStateFlow(SyncInfo())
+    override val syncInfo: StateFlow<SyncInfo> get() = sync
+
+    override suspend fun saveSync(cursor: Long, at: String) {
+        sync.value = SyncInfo(cursor, at)
+    }
+
     override suspend fun setHasPassword(hasPassword: Boolean) {
         state.value = state.value.copy(hasPassword = hasPassword)
     }
 
     override suspend fun clear() {
         state.value = LocalProfile()
+        sync.value = SyncInfo()
     }
 }
 

@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -28,6 +29,13 @@ data class LocalProfile(
     val nameDirty: Boolean = false,
     /** Задан ли пароль для входа без SMS (по данным сервера при последнем входе / смене пароля). */
     val hasPassword: Boolean = false,
+)
+
+/** Курсор и время последней удачной синхронизации; null — синхронизации ещё не было. */
+data class SyncInfo(
+    val cursor: Long? = null,
+    /** ISO-время UTC. */
+    val lastSyncAt: String? = null,
 )
 
 /** Данные пользователя из ответа входа. */
@@ -60,6 +68,13 @@ interface AppStateStorage {
     suspend fun setSyncedName(name: String?)
 
     suspend fun setHasPassword(hasPassword: Boolean)
+
+    val syncInfo: Flow<SyncInfo>
+
+    suspend fun getSyncInfo(): SyncInfo = syncInfo.first()
+
+    /** Синхронизация удалась: новый курсор из ответа сервера. */
+    suspend fun saveSync(cursor: Long, at: String)
 
     /** Выход: всё о пользователе стирается. */
     suspend fun clear()
@@ -127,8 +142,22 @@ class DataStoreAppStateStorage @Inject constructor(
         dataStore.edit { it[HAS_PASSWORD] = hasPassword }
     }
 
+    override val syncInfo: Flow<SyncInfo> = dataStore.data
+        .map { SyncInfo(cursor = it[SYNC_CURSOR], lastSyncAt = it[LAST_SYNC_AT]) }
+        .distinctUntilChanged()
+
+    override suspend fun saveSync(cursor: Long, at: String) {
+        dataStore.edit {
+            it[SYNC_CURSOR] = cursor
+            it[LAST_SYNC_AT] = at
+        }
+    }
+
     override suspend fun clear() {
-        dataStore.edit { prefs -> listOf(MODE, OWNER_USER_ID, PHONE, NAME, NAME_DIRTY, HAS_PASSWORD).forEach { prefs.remove(it) } }
+        dataStore.edit { prefs ->
+            listOf(MODE, OWNER_USER_ID, PHONE, NAME, NAME_DIRTY, HAS_PASSWORD, SYNC_CURSOR, LAST_SYNC_AT)
+                .forEach { prefs.remove(it) }
+        }
     }
 
     private companion object {
@@ -138,5 +167,7 @@ class DataStoreAppStateStorage @Inject constructor(
         val NAME = stringPreferencesKey("name")
         val NAME_DIRTY = booleanPreferencesKey("name_dirty")
         val HAS_PASSWORD = booleanPreferencesKey("has_password")
+        val SYNC_CURSOR = longPreferencesKey("sync_cursor")
+        val LAST_SYNC_AT = stringPreferencesKey("last_sync_at")
     }
 }

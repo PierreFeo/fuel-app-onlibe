@@ -19,6 +19,7 @@ import ru.fueltracker.app.data.remote.api.CarsApi
 import ru.fueltracker.app.data.remote.api.ProfileApi
 import ru.fueltracker.app.data.remote.api.RefuelingsApi
 import ru.fueltracker.app.data.remote.api.SheetsApi
+import ru.fueltracker.app.data.remote.api.SyncApi
 import ru.fueltracker.app.data.remote.api.TokenRefreshApi
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -82,6 +83,10 @@ object NetworkModule {
     @Singleton
     fun provideRefuelingsApi(retrofit: Retrofit): RefuelingsApi =
         retrofit.create(RefuelingsApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideSyncApi(retrofit: Retrofit): SyncApi = retrofit.create(SyncApi::class.java)
 
     /** Общая сборка Retrofit — тесты подставляют адрес MockWebServer. */
     fun createRetrofit(baseUrl: String, client: OkHttpClient, json: Json): Retrofit =

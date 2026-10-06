@@ -11,6 +11,8 @@ import ru.fueltracker.app.data.local.db.AppDatabase
 import ru.fueltracker.app.data.local.db.CarDao
 import ru.fueltracker.app.data.local.db.LocalData
 import ru.fueltracker.app.data.local.db.RoomLocalData
+import ru.fueltracker.app.data.local.db.RoomSyncStore
+import ru.fueltracker.app.data.local.db.SyncStore
 import ru.fueltracker.app.data.local.db.RefuelingDao
 import ru.fueltracker.app.data.local.db.SheetDao
 import ru.fueltracker.app.data.local.db.SyncDao
@@ -40,4 +42,7 @@ object DatabaseModule {
 
     @Provides
     fun provideLocalData(impl: RoomLocalData): LocalData = impl
+
+    @Provides
+    fun provideSyncStore(impl: RoomSyncStore): SyncStore = impl
 }
