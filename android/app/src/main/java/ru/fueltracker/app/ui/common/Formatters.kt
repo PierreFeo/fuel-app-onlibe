@@ -33,6 +33,9 @@ object Formatters {
     /** Нормы и расход на 100 км из доменной модели, 3 знака. */
     fun consumption(value: BigDecimal): String = decimal(value, scale = 3)
 
+    /** 2026-07-05 → «05.07.2026». */
+    fun date(date: LocalDate): String = "%02d.%02d.%d".format(date.dayOfMonth, date.monthValue, date.year)
+
     /** 2026-07-05 → «05.07» (дата заправки внутри месяца листа). */
     fun dayMonth(date: LocalDate): String = "%02d.%02d".format(date.dayOfMonth, date.monthValue)
 

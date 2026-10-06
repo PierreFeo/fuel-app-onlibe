@@ -89,3 +89,15 @@ data class NewSheetInput(
     val fuelStartL: BigDecimal,
     val season: Season,
 )
+
+/** Поля заправки из формы. [totalCost] null — сумму посчитает сервер (литры × цена). */
+data class RefuelingInput(
+    val date: LocalDate,
+    val liters: BigDecimal,
+    val pricePerLiter: BigDecimal,
+    val totalCost: BigDecimal?,
+    val odometerKm: Long?,
+    val station: String?,
+    val paymentType: PaymentType,
+    val note: String?,
+)

@@ -9,8 +9,10 @@ import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.data.repository.DefaultAuthRepository
 import ru.fueltracker.app.data.repository.DefaultCarRepository
 import ru.fueltracker.app.data.repository.DefaultProfileRepository
+import ru.fueltracker.app.data.repository.DefaultRefuelingRepository
 import ru.fueltracker.app.data.repository.DefaultSheetRepository
 import ru.fueltracker.app.data.repository.ProfileRepository
+import ru.fueltracker.app.data.repository.RefuelingRepository
 import ru.fueltracker.app.data.repository.SheetRepository
 
 @Module
@@ -28,4 +30,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindSheetRepository(impl: DefaultSheetRepository): SheetRepository
+
+    @Binds
+    abstract fun bindRefuelingRepository(impl: DefaultRefuelingRepository): RefuelingRepository
 }

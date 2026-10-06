@@ -261,6 +261,40 @@ class SheetsFeedActionsTest {
         assertEquals(UiText.Resource(R.string.sheet_closed_cannot_edit), viewModel.state.value.snackbar)
     }
 
+    // --- Заправки (5.5) ---
+
+    @Test
+    fun `+ Заправка открывает шторку для листа`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
+        assertEquals(ru.fueltracker.app.ui.refueling.RefuelingTarget("s-10", 2026, 10), viewModel.state.value.refuelingTarget)
+
+        viewModel.onEvent(SheetsFeedEvent.DismissRefueling)
+        assertNull(viewModel.state.value.refuelingTarget)
+    }
+
+    @Test
+    fun `заправку закрытого листа не открыть`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(SheetsFeedEvent.OpenRefueling(september, september.refuelings.first()))
+        assertNull(viewModel.state.value.refuelingTarget)
+        assertEquals(UiText.Resource(R.string.sheet_closed_cannot_edit), viewModel.state.value.snackbar)
+    }
+
+    @Test
+    fun `сохранённая заправка — карточка обновлена, список раскрыт, шторка закрыта`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
+        val updated = october.copy(refuelings = previewOpenSheet().refuelings)
+
+        viewModel.onEvent(SheetsFeedEvent.RefuelingSaved(updated))
+
+        val state = viewModel.state.value
+        assertNull(state.refuelingTarget)
+        assertEquals(updated, state.sheets.first { it.id == "s-10" })
+        assertTrue("s-10" in state.expandedSheetIds)
+    }
+
     @Test
     fun `возврат на экран обновляет шапку авто`() = runTest {
         val viewModel = createViewModel()

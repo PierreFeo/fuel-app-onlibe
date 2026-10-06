@@ -161,6 +161,29 @@
     <string name="close_sheet_fuel_hint">Если не знаете — посчитаем по норме</string>
     <string name="close_sheet_confirm">Закрыть</string>
 
+    <!-- Заправка (5.5) -->
+    <string name="sheet_add_refueling">+ Заправка</string>
+    <string name="refueling_title_new">Новая заправка</string>
+    <string name="refueling_title_edit">Заправка</string>
+    <string name="refueling_date">Дата *</string>
+    <string name="refueling_date_pick">Выбрать дату</string>
+    <string name="refueling_liters">Литры *</string>
+    <string name="refueling_price">Цена за литр, ₽ *</string>
+    <string name="refueling_total">Сумма, ₽</string>
+    <string name="refueling_total_auto">Считается автоматически, можно изменить</string>
+    <string name="refueling_total_manual">Введена вручную. Сотрите, чтобы считать автоматически</string>
+    <string name="refueling_odometer">Пробег по одометру, км</string>
+    <string name="refueling_station">АЗС</string>
+    <string name="refueling_payment">Способ оплаты</string>
+    <string name="refueling_note">Комментарий</string>
+    <string name="refueling_delete">Удалить заправку</string>
+    <string name="refueling_delete_title">Удалить заправку?</string>
+    <string name="refueling_delete_text">Заправка %1$s на %2$s л будет удалена.</string>
+    <string name="payment_personal">Личные</string>
+    <string name="payment_fuel_card">Топливная карта</string>
+    <string name="payment_company">Организация</string>
+    <string name="error_date_outside_month">Дата должна быть в месяце листа</string>
+
     <string name="error_whole_number">Введите целое число</string>
     <string name="error_non_negative_number">Введите число 0 или больше</string>
     <string name="error_odometer_end_before_start">Не меньше пробега на начало (%1$s)</string>

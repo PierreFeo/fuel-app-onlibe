@@ -80,6 +80,11 @@ class FormattersTest {
     }
 
     @Test
+    fun date() {
+        assertEquals("05.07.2026", Formatters.date(java.time.LocalDate.of(2026, 7, 5)))
+    }
+
+    @Test
     fun dayMonth() {
         assertEquals("05.07", Formatters.dayMonth(java.time.LocalDate.of(2026, 7, 5)))
         assertEquals("20.12", Formatters.dayMonth(java.time.LocalDate.of(2026, 12, 20)))

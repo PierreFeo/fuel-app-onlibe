@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -16,6 +17,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,11 +56,13 @@ class SheetCardActions(
     val onClose: () -> Unit = {},
     val onReopen: () -> Unit = {},
     val onDelete: () -> Unit = {},
+    val onAddRefueling: () -> Unit = {},
+    val onRefuelingClick: (Refueling) -> Unit = {},
 )
 
 /**
  * Карточка ЛУТ: все итоги берутся из `calc` сервера.
- * [isBusy] — по листу идёт запрос, кнопки неактивны. Заправки добавляются в 5.5.
+ * [isBusy] — по листу идёт запрос, кнопки неактивны.
  */
 @Composable
 fun SheetCard(
@@ -95,8 +99,8 @@ fun SheetCard(
                 ),
                 style = MaterialTheme.typography.bodyMedium,
             )
-            if (sheet.refuelings.isNotEmpty()) {
-                RefuelingsSection(sheet.refuelings, isRefuelingsExpanded, actions.onToggleRefuelings)
+            if (sheet.refuelings.isNotEmpty() || !sheet.isClosed) {
+                RefuelingsSection(sheet, isRefuelingsExpanded, isBusy, actions)
             }
 
             if (sheet.isClosed) {
@@ -215,31 +219,61 @@ private fun mileageText(sheet: FuelSheet): String {
     }
 }
 
+/**
+ * «▸ Заправки (N)» и «+ Заправка». У открытого листа заправку можно нажать — откроется её форма;
+ * у закрытого кнопки нет и строки не нажимаются.
+ */
 @Composable
 private fun RefuelingsSection(
-    refuelings: List<Refueling>,
+    sheet: FuelSheet,
     expanded: Boolean,
-    onToggle: () -> Unit,
+    isBusy: Boolean,
+    actions: SheetCardActions,
 ) {
-    Text(
-        text = (if (expanded) "▾ " else "▸ ") + stringResource(R.string.sheet_refuelings, refuelings.size),
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier
-            .clickable(onClick = onToggle)
-            .padding(vertical = 4.dp)
-            .testTag(SheetsFeedTestTags.REFUELINGS_TOGGLE),
-    )
-    AnimatedVisibility(visible = expanded) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(start = 12.dp)) {
-            refuelings.forEach { RefuelingRow(it) }
+    val refuelings = sheet.refuelings
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (refuelings.isNotEmpty()) {
+            Text(
+                text = (if (expanded) "▾ " else "▸ ") + stringResource(R.string.sheet_refuelings, refuelings.size),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .clickable(onClick = actions.onToggleRefuelings)
+                    .padding(vertical = 4.dp)
+                    .testTag(SheetsFeedTestTags.REFUELINGS_TOGGLE),
+            )
+        }
+        Spacer(Modifier.weight(1f))
+        if (!sheet.isClosed) {
+            OutlinedButton(
+                onClick = actions.onAddRefueling,
+                enabled = !isBusy,
+                modifier = Modifier.testTag(SheetsFeedTestTags.addRefueling(sheet.id)),
+            ) {
+                Text(stringResource(R.string.sheet_add_refueling))
+            }
+        }
+    }
+    AnimatedVisibility(visible = expanded && refuelings.isNotEmpty()) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(start = 12.dp)) {
+            refuelings.forEach { refueling ->
+                val onClick = if (sheet.isClosed || isBusy) null else ({ actions.onRefuelingClick(refueling) })
+                RefuelingRow(refueling, onClick)
+            }
         }
     }
 }
 
 @Composable
-private fun RefuelingRow(refueling: Refueling) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun RefuelingRow(refueling: Refueling, onClick: (() -> Unit)?) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(vertical = 6.dp)
+            .testTag(SheetsFeedTestTags.refueling(refueling.id)),
+    ) {
         Text(Formatters.dayMonth(refueling.date), style = MaterialTheme.typography.bodySmall)
         Text(
             text = refueling.station.orEmpty(),

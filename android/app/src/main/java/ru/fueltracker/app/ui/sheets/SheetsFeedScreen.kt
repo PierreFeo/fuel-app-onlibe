@@ -53,6 +53,7 @@ import ru.fueltracker.app.ui.common.LoadingView
 import ru.fueltracker.app.ui.common.SnackbarEffect
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.asString
+import ru.fueltracker.app.ui.refueling.RefuelingEditSheet
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 import java.math.BigDecimal
 
@@ -74,6 +75,14 @@ fun SheetsFeedScreen(
         onChangeCar = onChangeCar,
         onEditCar = { state.car?.let { onEditCar(it.id) } },
     )
+    // У шторки свой ViewModel, поэтому она здесь, а не в stateless SheetsFeedContent
+    state.refuelingTarget?.let { target ->
+        RefuelingEditSheet(
+            target = target,
+            onSaved = { viewModel.onEvent(SheetsFeedEvent.RefuelingSaved(it)) },
+            onDismiss = { viewModel.onEvent(SheetsFeedEvent.DismissRefueling) },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -200,6 +209,8 @@ private fun SheetList(
                     onClose = { onEvent(SheetsFeedEvent.Close(sheet)) },
                     onReopen = { onEvent(SheetsFeedEvent.Reopen(sheet)) },
                     onDelete = { onEvent(SheetsFeedEvent.RequestDelete(sheet)) },
+                    onAddRefueling = { onEvent(SheetsFeedEvent.OpenRefueling(sheet)) },
+                    onRefuelingClick = { onEvent(SheetsFeedEvent.OpenRefueling(sheet, it)) },
                 ),
             )
         }
@@ -275,6 +286,8 @@ object SheetsFeedTestTags {
     fun season(sheetId: String) = "sheet_season_$sheetId"
     fun menu(sheetId: String) = "sheet_menu_$sheetId"
     fun closeButton(sheetId: String) = "sheet_close_$sheetId"
+    fun addRefueling(sheetId: String) = "sheet_add_refueling_$sheetId"
+    fun refueling(refuelingId: String) = "refueling_row_$refuelingId"
 }
 
 private val previewCar =

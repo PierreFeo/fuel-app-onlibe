@@ -20,6 +20,7 @@ import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.data.repository.SheetRepository
 import ru.fueltracker.app.domain.model.Car
 import ru.fueltracker.app.domain.model.FuelSheet
+import ru.fueltracker.app.domain.model.Refueling
 import ru.fueltracker.app.domain.model.Season
 import ru.fueltracker.app.domain.model.SheetPage
 import ru.fueltracker.app.ui.common.Formatters
@@ -27,6 +28,8 @@ import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.filterDecimalInput
 import ru.fueltracker.app.ui.common.filterDigitsInput
 import ru.fueltracker.app.ui.common.toUiText
+import ru.fueltracker.app.ui.refueling.RefuelingTarget
+import ru.fueltracker.app.ui.refueling.refuelingTarget
 import javax.inject.Inject
 
 /** Кнопка в Snackbar ленты. */
@@ -59,6 +62,8 @@ data class SheetsFeedUiState(
     val closeSheet: CloseSheetForm? = null,
     /** Лист, для которого открыт диалог «Удалить лист?». */
     val deleteCandidate: FuelSheet? = null,
+    /** Открыта шторка заправки (новой или существующей). */
+    val refuelingTarget: RefuelingTarget? = null,
     val snackbar: UiText? = null,
     val snackbarAction: FeedSnackbarAction? = null,
     /** Авто не выбрано или его больше нет — перейти в список авто. */
@@ -95,6 +100,13 @@ sealed interface SheetsFeedEvent {
     data class CloseFuel(val value: String) : SheetsFeedEvent
     data object ConfirmClose : SheetsFeedEvent
     data object DismissClose : SheetsFeedEvent
+
+    /** «+ Заправка» ([refueling] null) или нажатие на заправку открытого листа. */
+    data class OpenRefueling(val sheet: FuelSheet, val refueling: Refueling? = null) : SheetsFeedEvent
+    data object DismissRefueling : SheetsFeedEvent
+
+    /** Заправка сохранена или удалена — сервер вернул лист с пересчитанным `calc`. */
+    data class RefuelingSaved(val sheet: FuelSheet) : SheetsFeedEvent
 
     data object SnackbarShown : SheetsFeedEvent
 }
@@ -172,6 +184,21 @@ class SheetsFeedViewModel @Inject constructor(
             SheetsFeedEvent.ConfirmClose -> closeSheet()
             SheetsFeedEvent.DismissClose -> _state.update {
                 if (it.closeSheet?.isSaving == true) it else it.copy(closeSheet = null)
+            }
+
+            is SheetsFeedEvent.OpenRefueling -> {
+                // Заправки закрытого листа не меняются (409 SHEET_CLOSED) — сначала переоткрыть
+                if (event.sheet.isClosed) {
+                    showSnackbar(UiText.Resource(R.string.sheet_closed_cannot_edit))
+                } else {
+                    _state.update { it.copy(refuelingTarget = event.sheet.refuelingTarget(event.refueling)) }
+                }
+            }
+            SheetsFeedEvent.DismissRefueling -> _state.update { it.copy(refuelingTarget = null) }
+            is SheetsFeedEvent.RefuelingSaved -> {
+                replaceSheet(event.sheet)
+                // Раскрываем список, чтобы новая заправка была видна
+                _state.update { it.copy(refuelingTarget = null, expandedSheetIds = it.expandedSheetIds + event.sheet.id) }
             }
 
             SheetsFeedEvent.SnackbarShown -> _state.update { it.copy(snackbar = null, snackbarAction = null) }
