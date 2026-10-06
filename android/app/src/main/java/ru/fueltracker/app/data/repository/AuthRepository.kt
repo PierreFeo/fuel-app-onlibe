@@ -7,6 +7,7 @@ import ru.fueltracker.app.data.local.SignedInUser
 import ru.fueltracker.app.data.local.db.LocalData
 import ru.fueltracker.app.data.local.SelectedCarStorage
 import ru.fueltracker.app.data.local.TokenStorage
+import ru.fueltracker.app.data.remote.ApiError
 import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.remote.api.AuthApi
 import ru.fueltracker.app.data.remote.apiCall
@@ -83,8 +84,14 @@ class DefaultAuthRepository @Inject constructor(
             is ApiResult.Success -> data
         }
         val user = data.user
+        val profile = appState.get()
+        // Сессия истекла, а вошли другим номером: данные на телефоне чужие — не смешиваем
+        if (profile.ownerUserId != null && profile.ownerUserId != user.id && !localData.isEmpty()) {
+            withTimeoutOrNull(LOGOUT_TIMEOUT_MS) { apiCall { api.logout(RefreshRequest(data.refreshToken)) } }
+            return ApiResult.Failure(ApiError.WrongAccount(profile.phone))
+        }
         // Имя гостя (если было) уйдёт на сервер при синхронизации — спрашивать его снова не нужно
-        val hadLocalName = appState.get().name != null
+        val hadLocalName = profile.name != null
         tokenStorage.save(AuthTokens(data.accessToken, data.refreshToken))
         appState.signedIn(SignedInUser(user.id, user.phone, user.name, user.hasPassword))
         // is_new_user в ответе входа есть всегда; на всякий случай — «имя не заполнено»

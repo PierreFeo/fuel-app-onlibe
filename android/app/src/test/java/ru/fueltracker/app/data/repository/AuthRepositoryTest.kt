@@ -157,6 +157,44 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun `сессия истекла, вошли другим номером — вход отменён, данные не смешиваются`() = runTest {
+        appState.signedIn(ru.fueltracker.app.data.local.SignedInUser("other", "+79990000000", "Пётр", false))
+        server.enqueueJson(tokensJson(name = "Иван", isNewUser = false)) // вход как u1
+        server.enqueueEmpty(204) // отзыв только что выданного токена
+
+        val result = withContext(Dispatchers.IO) { repository.verifyCode("+79991234567", "123456") }
+
+        assertEquals(ApiResult.Failure(ApiError.WrongAccount("+79990000000")), result)
+        assertNull(tokenStorage.current)
+        assertEquals("other", appState.current.ownerUserId)
+        server.takeRequest() // verify-code
+        assertEquals("/auth/logout", server.takeRequest().apiPath)
+    }
+
+    @Test
+    fun `тот же номер после истёкшей сессии — входит`() = runTest {
+        appState.signedIn(ru.fueltracker.app.data.local.SignedInUser("u1", "+79991234567", "Иван", false))
+
+        server.enqueueJson(tokensJson(name = "Иван", isNewUser = false))
+        val result = repository.verifyCode("+79991234567", "123456")
+
+        assertEquals(ApiResult.Success(LoginResult(isNewUser = false)), result)
+        assertEquals(AuthTokens("acc-1", "ref-1"), tokenStorage.current)
+    }
+
+    @Test
+    fun `данных на телефоне нет — можно войти любым номером`() = runTest {
+        appState.signedIn(ru.fueltracker.app.data.local.SignedInUser("other", "+79990000000", "Пётр", false))
+        localData.empty = true
+        server.enqueueJson(tokensJson(name = "Иван", isNewUser = false))
+
+        val result = repository.verifyCode("+79991234567", "123456")
+
+        assertTrue(result is ApiResult.Success)
+        assertEquals("u1", appState.current.ownerUserId)
+    }
+
+    @Test
     fun `ошибка входа — токены не сохраняются`() = runTest {
         server.enqueueJson(
             """{ "error": { "code": "OTP_INVALID", "message": "Неверный код", "details": {} } }""",

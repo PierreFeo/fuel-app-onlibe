@@ -9,6 +9,9 @@ import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.data.repository.ProfileRepository
 import ru.fueltracker.app.data.repository.RefuelingRepository
 import ru.fueltracker.app.data.repository.SheetRepository
+import ru.fueltracker.app.data.repository.SyncRepository
+import ru.fueltracker.app.data.repository.SyncResult
+import ru.fueltracker.app.data.repository.SyncStatus
 import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.NewSheetInput
 import ru.fueltracker.app.domain.model.RefuelingInput
@@ -257,3 +260,19 @@ fun httpError(
 )
 
 val networkError: ApiResult.Failure = ApiResult.Failure(ApiError.Network(IOException("no route")))
+
+/** Синхронизация: отвечает [results] по очереди (последний — повторяется) и считает вызовы. */
+class FakeSyncRepository(
+    var results: MutableList<SyncResult> = mutableListOf(SyncResult.Success(sent = 0, received = 0, rejected = emptyList())),
+) : SyncRepository {
+
+    val status = MutableStateFlow(SyncStatus(pendingChanges = 0, lastSyncAt = null))
+    var syncCalls = 0
+
+    override suspend fun sync(): SyncResult {
+        syncCalls++
+        return if (results.size > 1) results.removeAt(0) else results.first()
+    }
+
+    override fun observeStatus(): Flow<SyncStatus> = status
+}

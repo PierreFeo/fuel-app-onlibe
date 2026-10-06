@@ -10,11 +10,21 @@ import org.junit.Rule
 import org.junit.Test
 import ru.fueltracker.app.R
 import ru.fueltracker.app.data.local.AppMode
+import ru.fueltracker.app.data.local.AuthTokens
+import ru.fueltracker.app.data.local.FakeTokenStorage
 import ru.fueltracker.app.data.local.FakeAppStateStorage
 import ru.fueltracker.app.data.local.LocalProfile
+import ru.fueltracker.app.data.local.db.SyncEntity
+import ru.fueltracker.app.data.remote.ApiError
+import ru.fueltracker.app.data.repository.RejectedRecord
+import ru.fueltracker.app.data.repository.SyncResult
+import ru.fueltracker.app.data.repository.SyncStatus
 import ru.fueltracker.app.testutil.FakeAuthRepository
+import ru.fueltracker.app.testutil.FakeSyncRepository
 import ru.fueltracker.app.testutil.MainDispatcherRule
 import ru.fueltracker.app.ui.common.UiText
+import java.io.IOException
+import java.time.Instant
 
 /** Профиль читает всё с телефона — сеть не нужна. */
 class ProfileViewModelTest {
@@ -25,9 +35,11 @@ class ProfileViewModelTest {
     private val account = LocalProfile(mode = AppMode.ACCOUNT, ownerUserId = "id-1", phone = "+79991234567", name = "Иван")
     private val appState = FakeAppStateStorage(account)
     private val auth = FakeAuthRepository()
+    private val sync = FakeSyncRepository()
+    private val tokens = FakeTokenStorage(initial = AuthTokens("a", "r"))
 
     private fun TestScope.createViewModel(): ProfileViewModel {
-        val viewModel = ProfileViewModel(appState, auth)
+        val viewModel = ProfileViewModel(appState, auth, sync, tokens)
         advanceUntilIdle()
         return viewModel
     }
@@ -74,6 +86,91 @@ class ProfileViewModelTest {
         assertEquals("Пётр", appState.current.name)
         assertFalse(appState.current.nameDirty) // гостю отправлять некуда
         assertEquals(0, auth.logoutCalls)
+    }
+
+    // --- Синхронизация ---
+
+    @Test
+    fun `статус синхронизации — сколько не отправлено и когда была`() = runTest {
+        val at = Instant.parse("2026-10-06T18:20:00Z")
+        sync.status.value = SyncStatus(pendingChanges = 12, lastSyncAt = at)
+        val state = createViewModel().state.value
+
+        assertEquals(12, state.pendingChanges)
+        assertEquals(at, state.lastSyncAt)
+        assertTrue(state.canSync)
+    }
+
+    @Test
+    fun `Синхронизировать — Snackbar отправлено и получено`() = runTest {
+        sync.results = mutableListOf(SyncResult.Success(sent = 3, received = 5, rejected = emptyList()))
+        val viewModel = createViewModel()
+
+        viewModel.onEvent(ProfileEvent.Sync)
+        assertTrue(viewModel.state.value.isSyncing)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertFalse(state.isSyncing)
+        assertEquals(UiText.Resource(R.string.sync_done, listOf(3, 5)), state.snackbar)
+        assertTrue(state.rejected.isEmpty())
+    }
+
+    @Test
+    fun `не принятые сервером записи — диалог «Не отправлено»`() = runTest {
+        val rejected = listOf(RejectedRecord(SyncEntity.SHEET, "s1", "Лист за октябрь 2026 по этому авто уже есть"))
+        sync.results = mutableListOf(SyncResult.Success(sent = 0, received = 0, rejected = rejected))
+        val viewModel = createViewModel()
+
+        viewModel.onEvent(ProfileEvent.Sync)
+        advanceUntilIdle()
+        assertEquals(rejected, viewModel.state.value.rejected)
+
+        viewModel.onEvent(ProfileEvent.DismissRejected)
+        assertTrue(viewModel.state.value.rejected.isEmpty())
+    }
+
+    @Test
+    fun `нет связи — Проверьте интернет`() = runTest {
+        sync.results = mutableListOf(SyncResult.Failure(ApiError.Network(IOException("no route"))))
+        val viewModel = createViewModel()
+
+        viewModel.onEvent(ProfileEvent.Sync)
+        advanceUntilIdle()
+
+        assertEquals(UiText.Resource(R.string.sync_failed), viewModel.state.value.snackbar)
+    }
+
+    @Test
+    fun `сессия истекла — Войти снова вместо кнопки синхронизации`() = runTest {
+        val viewModel = createViewModel()
+        sync.results = mutableListOf(SyncResult.SessionExpired)
+        viewModel.onEvent(ProfileEvent.Sync)
+        advanceUntilIdle()
+        assertEquals(UiText.Resource(R.string.sync_session_expired), viewModel.state.value.snackbar)
+
+        tokens.clear() // TokenAuthenticator стёр токены
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertTrue(state.isSessionExpired)
+        assertFalse(state.canSync)
+        viewModel.onEvent(ProfileEvent.Sync)
+        advanceUntilIdle()
+        assertEquals(1, sync.syncCalls) // кнопки нет — второй синхронизации нет
+    }
+
+    @Test
+    fun `гость не синхронизирует`() = runTest {
+        appState.clear()
+        appState.startGuest("Иван")
+        val viewModel = createViewModel()
+
+        viewModel.onEvent(ProfileEvent.Sync)
+        advanceUntilIdle()
+
+        assertEquals(0, sync.syncCalls)
+        assertFalse(viewModel.state.value.isSessionExpired)
     }
 
     @Test

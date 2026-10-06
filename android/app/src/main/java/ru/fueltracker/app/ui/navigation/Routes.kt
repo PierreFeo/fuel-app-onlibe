@@ -34,3 +34,7 @@ data object SheetsFeedRoute
 
 @Serializable
 data object ProfileRoute
+
+/** «Загружаем ваши данные…» — первая синхронизация после входа. */
+@Serializable
+data object SyncAfterLoginRoute

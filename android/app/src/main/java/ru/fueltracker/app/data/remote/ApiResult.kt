@@ -44,6 +44,12 @@ sealed interface ApiError {
     /** Нет связи: сервер недоступен, таймаут, нет интернета. */
     data class Network(val cause: IOException) : ApiError
 
+    /**
+     * Вход другим номером, а на телефоне данные другого аккаунта (docs/05_AUTH_SMS.md):
+     * вход отменён, чтобы не смешать данные. [ownerPhone] — номер владельца данных.
+     */
+    data class WrongAccount(val ownerPhone: String?) : ApiError
+
     /** Ответ пришёл, но не совпал с контрактом (ошибка в приложении или на сервере). */
     data class Unexpected(val cause: Throwable) : ApiError
 }

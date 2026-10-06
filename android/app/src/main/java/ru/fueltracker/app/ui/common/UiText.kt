@@ -24,6 +24,9 @@ fun UiText.asString(): String = when (this) {
 
 /** Ошибка запроса для Snackbar: `error.message` сервера, иначе «Нет связи с сервером». */
 fun ApiError.toUiText(): UiText {
+    if (this is ApiError.WrongAccount) {
+        return UiText.Resource(R.string.error_wrong_account, listOf(ownerPhone?.let(PhoneFormat::display).orEmpty()))
+    }
     val serverMessage = (this as? ApiError.Http)?.message
     return if (serverMessage != null) UiText.Raw(serverMessage) else UiText.Resource(R.string.error_no_connection)
 }

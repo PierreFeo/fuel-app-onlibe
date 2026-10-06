@@ -2,8 +2,10 @@ package ru.fueltracker.app.ui.common
 
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
 import java.time.LocalDate
 import java.time.Month
+import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -35,6 +37,12 @@ object Formatters {
 
     /** 2026-07-05 → «05.07.2026». */
     fun date(date: LocalDate): String = "%02d.%02d.%d".format(date.dayOfMonth, date.monthValue, date.year)
+
+    /** Момент → «06.10.2026 18:20» по часовому поясу телефона (последняя синхронизация). */
+    fun dateTime(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): String {
+        val local = instant.atZone(zone)
+        return "%s %02d:%02d".format(date(local.toLocalDate()), local.hour, local.minute)
+    }
 
     /** 2026-07-05 → «05.07» (дата заправки внутри месяца листа). */
     fun dayMonth(date: LocalDate): String = "%02d.%02d".format(date.dayOfMonth, date.monthValue)

@@ -10,6 +10,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import kotlinx.coroutines.flow.filterNotNull
 import ru.fueltracker.app.domain.model.LoginResult
 import ru.fueltracker.app.ui.auth.CodeScreen
@@ -21,6 +22,7 @@ import ru.fueltracker.app.ui.cars.CarsScreen
 import ru.fueltracker.app.ui.profile.ProfileScreen
 import ru.fueltracker.app.ui.sheets.SheetsFeedScreen
 import ru.fueltracker.app.ui.splash.SplashScreen
+import ru.fueltracker.app.ui.sync.SyncAfterLoginScreen
 
 @Composable
 fun NavGraph(
@@ -41,8 +43,10 @@ fun NavGraph(
     val goHome = { navController.navigateClearingBackStack(homeRoute(appViewModel.session.value)) }
 
     // После входа экраны входа убираются из истории: «Назад» закрывает приложение
+    // После входа — сразу синхронизация (новый телефон получает данные, гость — отправляет свои)
+    val syncAfterLogin = { navController.navigateClearingBackStack(SyncAfterLoginRoute) }
     val onLoggedIn: (LoginResult) -> Unit = { result ->
-        if (result.isNewUser) navController.navigateClearingBackStack(NameRoute()) else goHome()
+        if (result.isNewUser) navController.navigateClearingBackStack(NameRoute()) else syncAfterLogin()
     }
 
     NavHost(
@@ -77,9 +81,13 @@ fun NavGraph(
                 },
             )
         }
-        composable<NameRoute> {
-            // guest берёт из маршрута сам NameViewModel (SavedStateHandle)
-            NameScreen(onSaved = goHome)
+        composable<NameRoute> { entry ->
+            // guest берёт из маршрута и сам NameViewModel (SavedStateHandle)
+            val isGuest = entry.toRoute<NameRoute>().guest
+            NameScreen(onSaved = if (isGuest) goHome else syncAfterLogin)
+        }
+        composable<SyncAfterLoginRoute> {
+            SyncAfterLoginScreen(onDone = goHome)
         }
         composable<CarsRoute> {
             // Корень (авто ещё не выбрано) — без стрелки «Назад»; из ленты — со стрелкой

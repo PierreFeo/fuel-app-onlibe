@@ -4,6 +4,7 @@
     <!-- Общие -->
     <string name="action_retry">Повторить</string>
     <string name="error_no_connection">Нет связи с сервером</string>
+    <string name="error_wrong_account">На телефоне данные другого аккаунта (%1$s). Войдите с этим номером</string>
 
     <!-- Единицы: число форматирует ui/common/Formatters -->
     <string name="format_liters">%1$s л</string>
@@ -56,6 +57,7 @@
     <string name="action_cancel">Отмена</string>
     <string name="action_save">Сохранить</string>
     <string name="action_more">Ещё</string>
+    <string name="action_continue">Продолжить</string>
 
     <!-- Тип топлива -->
     <string name="fuel_ai92">АИ-92</string>
@@ -220,6 +222,27 @@
     <string name="profile_logout_text">Чтобы войти снова, понадобится код из SMS или пароль.</string>
     <string name="profile_guest_info">Данные хранятся только на этом телефоне. Удалите приложение — данные пропадут.</string>
     <string name="profile_sign_in">Войти и сохранить данные на сервере</string>
+
+    <!-- Синхронизация (07_UI_SCREENS.md, ProfileScreen и SyncAfterLogin) -->
+    <string name="sync_after_login_loading">Загружаем ваши данные…</string>
+    <string name="sync_after_login_failed">Не удалось загрузить данные</string>
+    <string name="sync_after_login_failed_hint">Можно продолжить — данные придут при следующей синхронизации в профиле</string>
+    <string name="sync_title">Синхронизация</string>
+    <string name="sync_last">Последняя: %1$s</string>
+    <string name="sync_never">Синхронизации ещё не было</string>
+    <string name="sync_pending">Не отправлено изменений: %1$d</string>
+    <string name="sync_button">Синхронизировать</string>
+    <string name="sync_done">Синхронизировано: отправлено %1$d, получено %2$d</string>
+    <string name="sync_failed">Не удалось синхронизировать. Проверьте интернет</string>
+    <string name="sync_session_expired">Сессия истекла — войдите снова. Данные на телефоне сохранены</string>
+    <string name="sync_sign_in_again">Войти снова</string>
+    <string name="sync_rejected_title">Не отправлено</string>
+    <string name="sync_rejected_item">%1$s: %2$s</string>
+    <string name="sync_entity_car">Авто</string>
+    <string name="sync_entity_sheet">Лист</string>
+    <string name="sync_entity_refueling">Заправка</string>
+    <string name="sync_entity_unknown">Запись</string>
+    <string name="action_ok">Понятно</string>
 
     <string name="error_whole_number">Введите целое число</string>
     <string name="error_non_negative_number">Введите число 0 или больше</string>
