@@ -45,7 +45,8 @@ class SheetUpdate(BaseModel):
 
 class SheetClose(BaseModel):
     odometer_end_km: Odometer
-    fuel_end_actual_l: Liters | None = None  # не передан — остаётся как был
+    # Обязателен: без фактического остатка не посчитать реальный расход (пустой бак — "0.00")
+    fuel_end_actual_l: Liters
 
 
 class WarningOut(BaseModel):

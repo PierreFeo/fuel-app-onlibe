@@ -98,6 +98,6 @@ data class SheetPatchRequest(
 @Serializable
 data class SheetCloseRequest(
     @SerialName("odometer_end_km") val odometerEndKm: Long,
-    /** null — не отправляется, остаток остаётся как был. */
-    @SerialName("fuel_end_actual_l") val fuelEndActualL: String? = null,
+    /** Обязателен: пустой бак — "0". */
+    @SerialName("fuel_end_actual_l") val fuelEndActualL: String,
 )

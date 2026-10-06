@@ -104,16 +104,16 @@ class SheetRepositoryTest {
     }
 
     @Test
-    fun `закрытие без фактического остатка — поле не отправляется`() = runTest {
+    fun `закрытие — фактический остаток отправляется всегда, пустой бак как 0`() = runTest {
         server.enqueueJson(Fixtures.closedSheet)
         server.enqueueJson(Fixtures.closedSheet)
 
-        repository.closeSheet(Fixtures.SHEET_ID, 53_340, null)
+        repository.closeSheet(Fixtures.SHEET_ID, 53_340, BigDecimal.ZERO)
         repository.closeSheet(Fixtures.SHEET_ID, 53_340, BigDecimal("10.5"))
 
         val first = server.takeRequest()
         assertEquals("/sheets/${Fixtures.SHEET_ID}/close", first.apiPath)
-        assertJsonEquals("""{ "odometer_end_km": 53340 }""", first.bodyText)
+        assertJsonEquals("""{ "odometer_end_km": 53340, "fuel_end_actual_l": "0" }""", first.bodyText)
         assertJsonEquals("""{ "odometer_end_km": 53340, "fuel_end_actual_l": "10.5" }""", server.takeRequest().bodyText)
     }
 

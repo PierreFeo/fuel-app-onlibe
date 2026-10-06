@@ -67,7 +67,9 @@ async def _get_sheet(api: AsyncClient, headers: dict[str, str], sheet: dict) -> 
 
 async def _close(api: AsyncClient, headers: dict[str, str], sheet: dict) -> None:
     response = await api.post(
-        f"{SHEETS}/{sheet['id']}/close", json={"odometer_end_km": 53340}, headers=headers
+        f"{SHEETS}/{sheet['id']}/close",
+        json={"odometer_end_km": 53340, "fuel_end_actual_l": "0"},
+        headers=headers,
     )
     assert response.status_code == 200, response.text
 

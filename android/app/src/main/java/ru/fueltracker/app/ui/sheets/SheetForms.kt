@@ -60,13 +60,18 @@ data class CloseSheetForm(
     val year: Int,
     val month: Int,
     val odometerStartKm: Long,
+    /** `calc.fuel_available_l` — подсказка «не больше» для остатка. */
+    val fuelAvailableL: BigDecimal,
     val odometerEnd: String,
     val fuelEndActual: String,
     val odometerError: UiText? = null,
     val fuelError: UiText? = null,
     val error: UiText? = null,
     val isSaving: Boolean = false,
-)
+) {
+    /** «Закрыть» активна, когда заполнены оба поля. */
+    val canConfirm: Boolean get() = odometerEnd.isNotBlank() && fuelEndActual.isNotBlank() && !isSaving
+}
 
 /** Если пробег на конец или остаток уже вводили — подставляем их. */
 fun FuelSheet.toCloseForm() = CloseSheetForm(
@@ -74,23 +79,25 @@ fun FuelSheet.toCloseForm() = CloseSheetForm(
     year = year,
     month = month,
     odometerStartKm = odometerStartKm,
+    fuelAvailableL = calc.fuelAvailableL,
     odometerEnd = odometerEndKm?.toString().orEmpty(),
     fuelEndActual = fuelEndActualL?.toInputText().orEmpty(),
 )
 
-data class CloseSheetInput(val odometerEndKm: Long, val fuelEndActualL: BigDecimal?)
+data class CloseSheetInput(val odometerEndKm: Long, val fuelEndActualL: BigDecimal)
 
 /**
- * Пробег на конец обязателен и не меньше пробега на начало; остаток необязателен.
- * «Остаток не больше доступного» проверяет сервер — его текст покажется в [CloseSheetForm.error].
+ * Пробег на конец обязателен и не меньше пробега на начало; фактический остаток тоже обязателен
+ * (пустой бак — 0). «Остаток не больше доступного» проверяет сервер — его текст покажется
+ * в [CloseSheetForm.error].
  */
 fun validateCloseSheet(form: CloseSheetForm): Pair<CloseSheetInput?, CloseSheetForm> {
     val parsedOdometer = parseKmInput(form.odometerEnd)
     val odometerError = parsedOdometer.error ?: parsedOdometer.value?.takeIf { it < form.odometerStartKm }?.let {
         UiText.Resource(R.string.error_odometer_end_before_start, listOf(Formatters.km(form.odometerStartKm)))
     }
-    val fuel = parseNonNegativeDecimal(form.fuelEndActual, FUEL_SCALE, FUEL_MAX_DIGITS, required = false)
+    val fuel = parseNonNegativeDecimal(form.fuelEndActual, FUEL_SCALE, FUEL_MAX_DIGITS, required = true)
     val checked = form.copy(odometerError = odometerError, fuelError = fuel.error, error = null)
     if (odometerError != null || fuel.error != null) return null to checked
-    return CloseSheetInput(checkNotNull(parsedOdometer.value), fuel.value) to checked
+    return CloseSheetInput(checkNotNull(parsedOdometer.value), checkNotNull(fuel.value)) to checked
 }

@@ -206,8 +206,8 @@ class ApiRequestsTest {
         assertRequest("POST", "/sheets/$id/close", """{ "odometer_end_km": 53340, "fuel_end_actual_l": "10" }""")
 
         server.enqueueJson(Fixtures.closedSheet)
-        api.closeSheet(id, SheetCloseRequest(odometerEndKm = 53340))
-        assertRequest("POST", "/sheets/$id/close", """{ "odometer_end_km": 53340 }""")
+        api.closeSheet(id, SheetCloseRequest(odometerEndKm = 53340, fuelEndActualL = "0"))
+        assertRequest("POST", "/sheets/$id/close", """{ "odometer_end_km": 53340, "fuel_end_actual_l": "0" }""")
 
         server.enqueueJson(Fixtures.openSheet)
         api.reopenSheet(id)

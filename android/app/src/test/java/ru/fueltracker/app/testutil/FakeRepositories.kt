@@ -128,7 +128,7 @@ class FakeSheetRepository : SheetRepository {
 
     val created = mutableListOf<Pair<String, NewSheetInput>>()
     val seasonCalls = mutableListOf<Pair<String, Season>>()
-    val closeCalls = mutableListOf<Triple<String, Long, BigDecimal?>>()
+    val closeCalls = mutableListOf<Triple<String, Long, BigDecimal>>()
     val reopenCalls = mutableListOf<String>()
     val deleteCalls = mutableListOf<String>()
 
@@ -164,7 +164,7 @@ class FakeSheetRepository : SheetRepository {
         )
     }
 
-    override suspend fun closeSheet(sheetId: String, odometerEndKm: Long, fuelEndActualL: BigDecimal?): ApiResult<FuelSheet> {
+    override suspend fun closeSheet(sheetId: String, odometerEndKm: Long, fuelEndActualL: BigDecimal): ApiResult<FuelSheet> {
         closeCalls += Triple(sheetId, odometerEndKm, fuelEndActualL)
         return actionResult ?: ApiResult.Success(
             known.getValue(sheetId).copy(status = SheetStatus.CLOSED, odometerEndKm = odometerEndKm, fuelEndActualL = fuelEndActualL),

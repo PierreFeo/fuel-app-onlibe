@@ -36,6 +36,7 @@ import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.asString
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
+import java.math.BigDecimal
 
 /** Новый лист: поля из `next-prefill`, сезон — переключатель ❄️ Зима | ☀️ Лето. */
 @Composable
@@ -155,7 +156,7 @@ private fun SeasonSelector(
     }
 }
 
-/** Закрыть месяц: пробег на конец обязателен, фактический остаток — по желанию. */
+/** Закрыть месяц: пробег на конец и фактический остаток обязательны. */
 @Composable
 fun CloseSheetDialog(
     form: CloseSheetForm,
@@ -184,7 +185,7 @@ fun CloseSheetDialog(
                     onValueChange = { onEvent(SheetsFeedEvent.CloseFuel(it)) },
                     label = stringResource(R.string.close_sheet_fuel),
                     error = form.fuelError,
-                    hint = stringResource(R.string.close_sheet_fuel_hint),
+                    hint = stringResource(R.string.close_sheet_fuel_hint, Formatters.amount(form.fuelAvailableL)),
                     enabled = !form.isSaving,
                     keyboardType = KeyboardType.Decimal,
                     testTag = SheetDialogTestTags.CLOSE_FUEL,
@@ -196,6 +197,7 @@ fun CloseSheetDialog(
             ConfirmButton(
                 text = stringResource(R.string.close_sheet_confirm),
                 isSaving = form.isSaving,
+                enabled = form.canConfirm,
                 onClick = { onEvent(SheetsFeedEvent.ConfirmClose) },
                 testTag = SheetDialogTestTags.CLOSE_CONFIRM,
             )
@@ -245,8 +247,14 @@ private fun DialogError(error: UiText) {
 }
 
 @Composable
-private fun ConfirmButton(text: String, isSaving: Boolean, onClick: () -> Unit, testTag: String) {
-    TextButton(onClick = onClick, enabled = !isSaving, modifier = Modifier.testTag(testTag)) {
+private fun ConfirmButton(
+    text: String,
+    isSaving: Boolean,
+    onClick: () -> Unit,
+    testTag: String,
+    enabled: Boolean = !isSaving,
+) {
+    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.testTag(testTag)) {
         if (isSaving) {
             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
         } else {
@@ -289,6 +297,7 @@ private fun CloseSheetDialogPreview() {
                     year = 2026,
                     month = 10,
                     odometerStartKm = 52_340,
+                    fuelAvailableL = BigDecimal("92.00"),
                     odometerEnd = "52000",
                     fuelEndActual = "",
                     odometerError = UiText.Resource(R.string.error_odometer_end_before_start, listOf("52 340")),

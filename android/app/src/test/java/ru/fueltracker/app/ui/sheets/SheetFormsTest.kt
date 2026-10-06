@@ -1,7 +1,9 @@
 package ru.fueltracker.app.ui.sheets
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import ru.fueltracker.app.R
 import ru.fueltracker.app.domain.model.NewSheetInput
@@ -67,15 +69,22 @@ class SheetFormsTest {
             UiText.Resource(R.string.error_odometer_end_before_start, listOf("53 340")), // неразрывный пробел, как в Formatters
             form.odometerError,
         )
-        assertEquals(53_340L, validateCloseSheet(base.copy(odometerEnd = "53340")).first?.odometerEndKm)
+        assertEquals(
+            53_340L,
+            validateCloseSheet(base.copy(odometerEnd = "53340", fuelEndActual = "0")).first?.odometerEndKm,
+        )
     }
 
     @Test
-    fun `закрытие — остаток необязателен`() {
+    fun `закрытие — остаток обязателен, пустой бак — 0`() {
         val base = previewOpenSheet().toCloseForm()
+        val (input, form) = validateCloseSheet(base.copy(odometerEnd = "54000", fuelEndActual = ""))
+        assertNull(input)
+        assertEquals(required, form.fuelError)
+
         assertEquals(
-            CloseSheetInput(54_000, null),
-            validateCloseSheet(base.copy(odometerEnd = "54000", fuelEndActual = "")).first,
+            CloseSheetInput(54_000, BigDecimal.ZERO),
+            validateCloseSheet(base.copy(odometerEnd = "54000", fuelEndActual = "0")).first,
         )
         assertEquals(
             CloseSheetInput(54_000, BigDecimal("7.5")),
@@ -87,5 +96,16 @@ class SheetFormsTest {
     fun `закрытие — пробег обязателен`() {
         val (_, form) = validateCloseSheet(previewOpenSheet().toCloseForm())
         assertEquals(required, form.odometerError)
+    }
+
+    @Test
+    fun `закрытие — кнопка активна, только когда заполнены оба поля`() {
+        val base = previewOpenSheet().toCloseForm()
+        assertEquals(BigDecimal("40.00"), base.fuelAvailableL)
+        assertFalse(base.canConfirm)
+        assertFalse(base.copy(odometerEnd = "54000").canConfirm)
+        assertFalse(base.copy(fuelEndActual = "0").canConfirm)
+        assertTrue(base.copy(odometerEnd = "54000", fuelEndActual = "0").canConfirm)
+        assertFalse(base.copy(odometerEnd = "54000", fuelEndActual = "0", isSaving = true).canConfirm)
     }
 }

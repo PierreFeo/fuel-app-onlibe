@@ -39,8 +39,8 @@ interface SheetRepository {
     /** ☀️/❄️: норма листа заново копируется из авто. 422 `WINTER_NORM_NOT_SET` — нет зимней нормы. */
     suspend fun setSeason(sheetId: String, season: Season): ApiResult<FuelSheet>
 
-    /** [fuelEndActualL] null — фактический остаток не вводили, сервер посчитает по норме. */
-    suspend fun closeSheet(sheetId: String, odometerEndKm: Long, fuelEndActualL: BigDecimal?): ApiResult<FuelSheet>
+    /** Оба значения обязательны: без фактического остатка сервер не посчитает расход. */
+    suspend fun closeSheet(sheetId: String, odometerEndKm: Long, fuelEndActualL: BigDecimal): ApiResult<FuelSheet>
 
     suspend fun reopenSheet(sheetId: String): ApiResult<FuelSheet>
 
@@ -88,10 +88,10 @@ class DefaultSheetRepository @Inject constructor(
     override suspend fun closeSheet(
         sheetId: String,
         odometerEndKm: Long,
-        fuelEndActualL: BigDecimal?,
+        fuelEndActualL: BigDecimal,
     ): ApiResult<FuelSheet> =
         apiCall {
-            api.closeSheet(sheetId, SheetCloseRequest(odometerEndKm, fuelEndActualL?.toPlainString()))
+            api.closeSheet(sheetId, SheetCloseRequest(odometerEndKm, fuelEndActualL.toPlainString()))
         }.map { it.toDomain() }
 
     override suspend fun reopenSheet(sheetId: String): ApiResult<FuelSheet> =

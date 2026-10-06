@@ -164,8 +164,8 @@
     <string name="close_sheet_title">Закрыть %1$s</string>
     <string name="close_sheet_odometer">Пробег на конец месяца, км *</string>
     <string name="close_sheet_odometer_hint">Не меньше %1$s</string>
-    <string name="close_sheet_fuel">Фактический остаток в баке, л</string>
-    <string name="close_sheet_fuel_hint">Если не знаете — посчитаем по норме</string>
+    <string name="close_sheet_fuel">Фактический остаток в баке, л *</string>
+    <string name="close_sheet_fuel_hint">Если бак пуст — 0. Не больше %1$s л</string>
     <string name="close_sheet_confirm">Закрыть</string>
 
     <!-- Заправка (5.5) -->

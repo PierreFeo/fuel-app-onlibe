@@ -336,7 +336,9 @@ async def test_list_items_have_calc_and_odometer_gap(
 ) -> None:
     september = await _create_sheet(api, headers, car, month=9, odometer_start_km=51000)
     await api.post(
-        f"{SHEETS}/{september['id']}/close", json={"odometer_end_km": 52000}, headers=headers
+        f"{SHEETS}/{september['id']}/close",
+        json={"odometer_end_km": 52000, "fuel_end_actual_l": "0"},
+        headers=headers,
     )
     await _create_sheet(api, headers, car)  # начинается с 52340, а сентябрь закончился 52000
 
@@ -701,7 +703,9 @@ async def test_patch_closed_sheet_is_409(
 ) -> None:
     sheet = await _create_sheet(api, headers, car)
     await api.post(
-        f"{SHEETS}/{sheet['id']}/close", json={"odometer_end_km": 53340}, headers=headers
+        f"{SHEETS}/{sheet['id']}/close",
+        json={"odometer_end_km": 53340, "fuel_end_actual_l": "0"},
+        headers=headers,
     )
 
     for body in ({"fuel_start_l": "1"}, {"season": "WINTER"}):
@@ -788,19 +792,40 @@ async def test_close_example_a(
     }
 
 
-async def test_close_keeps_fuel_end_if_not_passed(
+async def test_close_without_fuel_end_is_400(
     api: AsyncClient, headers: dict[str, str], car: dict
 ) -> None:
+    """Фактический остаток обязателен, даже если раньше его ввели через PATCH; null — тоже нет."""
     sheet = await _create_sheet(api, headers, car)
     await api.patch(f"{SHEETS}/{sheet['id']}", json={"fuel_end_actual_l": "3"}, headers=headers)
+    url = f"{SHEETS}/{sheet['id']}/close"
 
-    body = (
-        await api.post(
-            f"{SHEETS}/{sheet['id']}/close", json={"odometer_end_km": 52400}, headers=headers
-        )
-    ).json()
+    missing = await api.post(url, json={"odometer_end_km": 52400}, headers=headers)
+    null = await api.post(
+        url, json={"odometer_end_km": 52400, "fuel_end_actual_l": None}, headers=headers
+    )
 
-    assert body["fuel_end_actual_l"] == "3.00"
+    for response in (missing, null):
+        assert response.status_code == 400
+        assert _error(response)["code"] == "VALIDATION_ERROR"
+        assert "fuel_end_actual_l" in _error(response)["details"]
+    body = (await api.get(f"{SHEETS}/{sheet['id']}", headers=headers)).json()
+    assert body["status"] == "OPEN"
+
+
+async def test_close_with_empty_tank(api: AsyncClient, headers: dict[str, str], car: dict) -> None:
+    sheet = await _create_sheet(api, headers, car)
+
+    response = await api.post(
+        f"{SHEETS}/{sheet['id']}/close",
+        json={"odometer_end_km": 52400, "fuel_end_actual_l": "0"},
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["status"], body["fuel_end_actual_l"]) == ("CLOSED", "0.00")
+    assert body["calc"]["actual_l_per_100km"] is not None
 
 
 async def test_close_without_odometer_end_is_400(
@@ -822,7 +847,9 @@ async def test_close_business_rules_are_422(
     sheet = await _create_sheet(api, headers, car)
     url = f"{SHEETS}/{sheet['id']}/close"
 
-    before_start = await api.post(url, json={"odometer_end_km": 1}, headers=headers)
+    before_start = await api.post(
+        url, json={"odometer_end_km": 1, "fuel_end_actual_l": "0"}, headers=headers
+    )
     too_much_fuel = await api.post(
         url, json={"odometer_end_km": 53340, "fuel_end_actual_l": "12.01"}, headers=headers
     )
@@ -839,9 +866,11 @@ async def test_close_closed_sheet_is_409(
 ) -> None:
     sheet = await _create_sheet(api, headers, car)
     url = f"{SHEETS}/{sheet['id']}/close"
-    await api.post(url, json={"odometer_end_km": 53340}, headers=headers)
+    await api.post(url, json={"odometer_end_km": 53340, "fuel_end_actual_l": "0"}, headers=headers)
 
-    response = await api.post(url, json={"odometer_end_km": 53340}, headers=headers)
+    response = await api.post(
+        url, json={"odometer_end_km": 53340, "fuel_end_actual_l": "0"}, headers=headers
+    )
 
     assert response.status_code == 409
     assert _error(response)["code"] == "SHEET_CLOSED"
@@ -850,7 +879,9 @@ async def test_close_closed_sheet_is_409(
 async def test_reopen(api: AsyncClient, headers: dict[str, str], car: dict) -> None:
     sheet = await _create_sheet(api, headers, car)
     url = f"{SHEETS}/{sheet['id']}"
-    await api.post(f"{url}/close", json={"odometer_end_km": 53340}, headers=headers)
+    await api.post(
+        f"{url}/close", json={"odometer_end_km": 53340, "fuel_end_actual_l": "0"}, headers=headers
+    )
 
     response = await api.post(f"{url}/reopen", headers=headers)
 
@@ -879,7 +910,9 @@ async def test_close_reopen_without_token_is_401(
     sheet = await _create_sheet(api, headers, car)
     url = f"{SHEETS}/{sheet['id']}"
 
-    assert (await api.post(f"{url}/close", json={"odometer_end_km": 1})).status_code == 401
+    assert (
+        await api.post(f"{url}/close", json={"odometer_end_km": 1, "fuel_end_actual_l": "0"})
+    ).status_code == 401
     assert (await api.post(f"{url}/reopen")).status_code == 401
 
 
@@ -889,7 +922,11 @@ async def test_close_reopen_others_sheet_is_404(
     sheet = await _create_sheet(api, headers, car)
     url = f"{SHEETS}/{sheet['id']}"
 
-    close = await api.post(f"{url}/close", json={"odometer_end_km": 53340}, headers=other_headers)
+    close = await api.post(
+        f"{url}/close",
+        json={"odometer_end_km": 53340, "fuel_end_actual_l": "0"},
+        headers=other_headers,
+    )
     reopen = await api.post(f"{url}/reopen", headers=other_headers)
 
     assert (close.status_code, reopen.status_code) == (404, 404)
@@ -926,7 +963,9 @@ async def test_delete_closed_sheet_is_409(
 ) -> None:
     sheet = await _create_sheet(api, headers, car)
     await api.post(
-        f"{SHEETS}/{sheet['id']}/close", json={"odometer_end_km": 53340}, headers=headers
+        f"{SHEETS}/{sheet['id']}/close",
+        json={"odometer_end_km": 53340, "fuel_end_actual_l": "0"},
+        headers=headers,
     )
 
     response = await api.delete(f"{SHEETS}/{sheet['id']}", headers=headers)
