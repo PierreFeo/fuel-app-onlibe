@@ -191,7 +191,7 @@ def _issue_tokens(
         access_token=create_access_token(user.id, now, settings),
         refresh_token=create_refresh_token(user.id, refresh.id, refresh.expires_at, settings),
         expires_in_sec=settings.access_token_ttl_min * 60,
-        user=UserOut(id=user.id, phone=user.phone, name=user.name),
+        user=UserOut.of(user),
     )
 
 
@@ -294,11 +294,7 @@ async def login_with_password(
     # scrypt нарочно медленный — считаем в отдельном потоке, чтобы не тормозить другие запросы.
     ok = await asyncio.to_thread(password_service.verify_password, password, user.password_hash)
     if not ok:
-        user.failed_login_attempts += 1
-        if user.failed_login_attempts >= settings.password_max_attempts:
-            user.failed_login_attempts = 0
-            user.locked_until = now + timedelta(minutes=settings.password_lock_min)
-        await session.commit()
+        await _register_failed_attempt(session, user, now, settings)
         logger.warning("Password login failed (wrong password) phone=%s ip=%s", phone, client_ip)
         raise _invalid_credentials()
 
@@ -307,3 +303,49 @@ async def login_with_password(
     tokens = _issue_tokens(session, user, now, settings)
     await session.commit()
     return VerifyCodeOut(**tokens.model_dump(), is_new_user=user.name is None)
+
+
+async def _register_failed_attempt(
+    session: AsyncSession, user: User, now: datetime, settings: Settings
+) -> None:
+    """Неверный пароль: +1 к счётчику; на пятой ошибке — блокировка входа по паролю."""
+    user.failed_login_attempts += 1
+    if user.failed_login_attempts >= settings.password_max_attempts:
+        user.failed_login_attempts = 0
+        user.locked_until = now + timedelta(minutes=settings.password_lock_min)
+    await session.commit()
+
+
+async def change_password(
+    session: AsyncSession,
+    user: User,
+    *,
+    current_password: str | None,
+    new_password: str,
+    now: datetime,
+    settings: Settings,
+) -> None:
+    """PUT /me/password: первый пароль — без текущего, смена — с ним (docs/04_API_CONTRACT.md).
+
+    Неверный текущий пароль — неудачная попытка входа (общий счётчик и блокировка):
+    иначе с чужого разблокированного телефона можно было бы подбирать пароль без ограничений.
+    """
+    if user.password_hash is not None:
+        if user.locked_until is not None and user.locked_until > now:
+            raise _rate_limited(_seconds_until(user.locked_until, now))
+        ok = current_password is not None and await asyncio.to_thread(
+            password_service.verify_password, current_password, user.password_hash
+        )
+        if not ok:
+            await _register_failed_attempt(session, user, now, settings)
+            logger.warning("Password change failed (wrong current password) user=%s", user.id)
+            raise AppError(
+                ErrorCode.VALIDATION_ERROR,
+                "Неверный текущий пароль",
+                400,
+                {"current_password": "Неверный пароль"},
+            )
+    user.password_hash = await asyncio.to_thread(password_service.hash_password, new_password)
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    await session.commit()

@@ -1,7 +1,10 @@
 import uuid
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from app.models import User
 
 
 class RequestCodeIn(BaseModel):
@@ -22,6 +25,16 @@ class UserOut(BaseModel):
     id: uuid.UUID
     phone: str
     name: str | None
+    has_password: bool  # задан ли пароль для входа без SMS
+
+    @classmethod
+    def of(cls, user: "User") -> "UserOut":
+        return cls(
+            id=user.id,
+            phone=user.phone,
+            name=user.name,
+            has_password=user.password_hash is not None,
+        )
 
 
 class TokensOut(BaseModel):

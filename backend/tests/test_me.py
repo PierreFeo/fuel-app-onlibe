@@ -15,7 +15,12 @@ async def test_get_me(api: AsyncClient, sms: FakeSmsSender) -> None:
     response = await api.get(ME, headers=bearer(tokens))
 
     assert response.status_code == 200
-    assert response.json() == {"id": tokens["user"]["id"], "phone": ALLOWED_PHONE, "name": None}
+    assert response.json() == {
+        "id": tokens["user"]["id"],
+        "phone": ALLOWED_PHONE,
+        "name": None,
+        "has_password": False,
+    }
 
 
 async def test_patch_me_sets_trimmed_name(api: AsyncClient, sms: FakeSmsSender) -> None:

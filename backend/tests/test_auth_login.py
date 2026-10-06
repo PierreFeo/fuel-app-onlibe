@@ -69,7 +69,12 @@ async def test_correct_password_returns_tokens(
         "user",
         "is_new_user",
     }
-    assert body["user"] == {"id": str(user.id), "phone": ALLOWED_PHONE, "name": None}
+    assert body["user"] == {
+        "id": str(user.id),
+        "phone": ALLOWED_PHONE,
+        "name": None,
+        "has_password": True,
+    }
     assert body["is_new_user"] is True  # имя ещё не заполнено → приложение спросит его
     refresh = jwt.decode(
         body["refresh_token"], settings.jwt_secret, algorithms=["HS256"], options=NO_EXP
