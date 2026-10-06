@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
    Резервная копия для Android 6–11 (с Android 12 действует data_extraction_rules.xml).
-   Файл DataStore с токенами (di/StorageModule.kt) не копируется: refresh-токен не должен
-   попасть в облако Google и на другое устройство — там нужно войти заново.
+   Не копируются:
+   - файл DataStore (di/StorageModule.kt): токены, режим гость/аккаунт, курсор синхронизации —
+     refresh-токен не должен попасть в облако Google и на другое устройство;
+   - база Room (data/local/db/AppDatabase.kt): без настроек из DataStore восстановленные данные
+     потеряли бы владельца и курсор синхронизации. Перенос данных — через вход и синхронизацию.
 -->
 <full-backup-content>
     <exclude domain="file" path="datastore/fuel_tracker.preferences_pb" />
+    <exclude domain="database" path="fuel_tracker.db" />
+    <exclude domain="database" path="fuel_tracker.db-wal" />
+    <exclude domain="database" path="fuel_tracker.db-shm" />
 </full-backup-content>

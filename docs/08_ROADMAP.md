@@ -72,7 +72,7 @@
 - [x] 6.3 `PUT /me/password` + `has_password` в `/me` и ответах входа
   - Готово, когда: задал пароль через Swagger → `/auth/login` с ним пускает без SMS
 - **Android**
-- [ ] 6.4 Room: зависимость, таблицы, DAO, служебные поля `is_dirty` / `is_deleted` / `change_seq`; тесты DAO
+- [x] 6.4 Room: зависимость, таблицы, DAO, служебные поля `is_dirty` / `is_deleted` / `change_seq`; тесты DAO
 - [ ] 6.5 `SheetCalculator`, проверки, `next-prefill` на Kotlin; эталонные примеры A–I и предупреждения
   как unit-тесты
 - [ ] 6.6 Репозитории авто, листов и заправок — на Room; экраны на Flow; без пагинации и
