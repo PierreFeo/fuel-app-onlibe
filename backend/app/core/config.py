@@ -39,9 +39,6 @@ class Settings(BaseSettings):
     allowed_phones: str = ""  # через запятую: +79991234567,+79997654321
     default_phone_region: str = "RU"
 
-    # Сезон самого первого листа авто (docs/06_BUSINESS_RULES.md, «Сезон и норма листа»)
-    winter_months: str = "11,12,1,2,3"  # через запятую, номера месяцев 1..12
-
     @property
     def is_dev(self) -> bool:
         return self.env == "dev"
@@ -49,10 +46,6 @@ class Settings(BaseSettings):
     @property
     def allowed_phones_list(self) -> list[str]:
         return [p.strip() for p in self.allowed_phones.split(",") if p.strip()]
-
-    @property
-    def winter_months_set(self) -> frozenset[int]:
-        return frozenset(int(m) for m in self.winter_months.split(",") if m.strip())
 
 
 @lru_cache

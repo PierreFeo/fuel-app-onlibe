@@ -32,9 +32,6 @@ sealed interface ApiError {
         /** 429: через сколько секунд можно повторить. */
         val retryAfterSec: Int? get() = detail("retry_after_sec")?.intOrNull
 
-        /** 422 BUSINESS_RULE: машинный код причины, например `WINTER_NORM_NOT_SET`. */
-        val reason: String? get() = detail("reason")?.contentOrNull
-
         /** 400 VALIDATION_ERROR: текст ошибки по имени поля из API. */
         fun fieldError(field: String): String? = detail(field)?.contentOrNull
 

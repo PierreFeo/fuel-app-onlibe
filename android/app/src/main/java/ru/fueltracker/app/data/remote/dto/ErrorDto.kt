@@ -24,13 +24,7 @@ object ErrorCodes {
     const val REFRESH_INVALID = "REFRESH_INVALID"
     const val PHONE_NOT_ALLOWED = "PHONE_NOT_ALLOWED"
     const val NOT_FOUND = "NOT_FOUND"
-    const val SHEET_EXISTS = "SHEET_EXISTS"
-    const val SHEET_CLOSED = "SHEET_CLOSED"
-    const val BUSINESS_RULE = "BUSINESS_RULE"
     const val RATE_LIMITED = "RATE_LIMITED"
     const val INTERNAL_ERROR = "INTERNAL_ERROR"
     const val SMS_SEND_FAILED = "SMS_SEND_FAILED"
-
-    /** `details.reason` у 422 BUSINESS_RULE: у авто не задана зимняя норма. */
-    const val REASON_WINTER_NORM_NOT_SET = "WINTER_NORM_NOT_SET"
 }

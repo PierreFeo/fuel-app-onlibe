@@ -6,19 +6,26 @@
 
 import uuid
 from datetime import date, datetime
-from typing import Annotated, Any
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import FuelType, PaymentType, Season, SheetStatus
-from app.schemas.car import CarName, Norm, PlateNumber, TankCapacity, WinterNorm
-from app.schemas.refueling import Note, Price, RefuelLiters, Station, TotalCost
-from app.schemas.types import Decimal2, Decimal3, Odometer
+from app.schemas.fields import (
+    CarName,
+    Norm,
+    Note,
+    PlateNumber,
+    Price,
+    RefuelLiters,
+    SheetLiters,
+    Station,
+    TankCapacity,
+    TotalCost,
+)
+from app.schemas.types import Odometer
 
 MAX_RECORDS = 5000  # больше записей в одном запросе — 400, ничего не сохраняется
-
-SheetLiters = Annotated[Decimal2, Field(ge=0, max_digits=8, examples=["12.00"])]
-SheetNorm = Annotated[Decimal3, Field(gt=0, max_digits=6, examples=["10.068"])]
 
 
 class ProfileSync(BaseModel):
@@ -59,7 +66,7 @@ class CarRecord(BaseModel):
     fuel_type: FuelType
     tank_capacity_l: TankCapacity
     norm_l_per_100km: Norm
-    norm_winter_l_per_100km: WinterNorm | None = None
+    norm_winter_l_per_100km: Norm | None = None
     is_archived: bool = False
     created_at: datetime
     deleted: bool = False
@@ -78,7 +85,7 @@ class SheetRecord(BaseModel):
     fuel_start_l: SheetLiters
     fuel_end_actual_l: SheetLiters | None = None
     season: Season
-    norm_l_per_100km: SheetNorm
+    norm_l_per_100km: Norm
     closed_at: datetime | None = None
     created_at: datetime
     deleted: bool = False

@@ -15,10 +15,7 @@ import ru.fueltracker.app.data.remote.ApiJson
 import ru.fueltracker.app.data.remote.AuthInterceptor
 import ru.fueltracker.app.data.remote.TokenAuthenticator
 import ru.fueltracker.app.data.remote.api.AuthApi
-import ru.fueltracker.app.data.remote.api.CarsApi
 import ru.fueltracker.app.data.remote.api.ProfileApi
-import ru.fueltracker.app.data.remote.api.RefuelingsApi
-import ru.fueltracker.app.data.remote.api.SheetsApi
 import ru.fueltracker.app.data.remote.api.SyncApi
 import ru.fueltracker.app.data.remote.api.TokenRefreshApi
 import java.util.concurrent.TimeUnit
@@ -70,19 +67,6 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideProfileApi(retrofit: Retrofit): ProfileApi = retrofit.create(ProfileApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideCarsApi(retrofit: Retrofit): CarsApi = retrofit.create(CarsApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideSheetsApi(retrofit: Retrofit): SheetsApi = retrofit.create(SheetsApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideRefuelingsApi(retrofit: Retrofit): RefuelingsApi =
-        retrofit.create(RefuelingsApi::class.java)
 
     @Provides
     @Singleton

@@ -7,13 +7,12 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import ru.fueltracker.app.data.remote.api.AuthApi
-import ru.fueltracker.app.data.remote.api.CarsApi
-import ru.fueltracker.app.data.remote.api.SheetsApi
-import ru.fueltracker.app.data.remote.dto.CarPatchRequest
+import ru.fueltracker.app.data.remote.api.ProfileApi
+import ru.fueltracker.app.data.remote.api.SyncApi
 import ru.fueltracker.app.data.remote.dto.ErrorCodes
 import ru.fueltracker.app.data.remote.dto.RequestCodeRequest
-import ru.fueltracker.app.data.remote.dto.Season
-import ru.fueltracker.app.data.remote.dto.SheetPatchRequest
+import ru.fueltracker.app.data.remote.dto.SyncRequest
+import ru.fueltracker.app.data.remote.dto.UpdateMeRequest
 
 /** apiCall превращает любые сбои в ApiResult.Failure с понятным ApiError. */
 class ApiErrorsTest {
@@ -30,11 +29,11 @@ class ApiErrorsTest {
 
     @Test
     fun success_isWrapped() = runTest {
-        server.enqueueJson("[${Fixtures.car}]")
+        server.enqueueJson(Fixtures.user)
 
-        val result = apiCall { server.api<CarsApi>().getCars() }
+        val result = apiCall { server.api<ProfileApi>().getMe() }
 
-        assertEquals("Lada Vesta", (result as ApiResult.Success).data.single().name)
+        assertEquals("+79991234567", (result as ApiResult.Success).data.phone)
     }
 
     @Test
@@ -48,35 +47,13 @@ class ApiErrorsTest {
             code = 400,
         )
 
-        val error = apiCall { server.api<CarsApi>().updateCar(Fixtures.CAR_ID, CarPatchRequest(name = "")) }
-            .httpError()
+        val error = apiCall { server.api<ProfileApi>().updateMe(UpdateMeRequest("")) }.httpError()
 
         assertEquals(400, error.status)
         assertEquals(ErrorCodes.VALIDATION_ERROR, error.code)
         assertEquals("Неверные данные запроса", error.message)
         assertEquals("String should have at least 1 character", error.fieldError("name"))
-        assertNull(error.fieldError("plate_number"))
-    }
-
-    @Test
-    fun businessRule_reason() = runTest {
-        server.enqueueJson(
-            Fixtures.error(
-                ErrorCodes.BUSINESS_RULE,
-                "У автомобиля не задана зимняя норма",
-                """{ "reason": "WINTER_NORM_NOT_SET" }""",
-            ),
-            code = 422,
-        )
-
-        val error = apiCall {
-            server.api<SheetsApi>().updateSheet(Fixtures.SHEET_ID, SheetPatchRequest(season = Season.WINTER))
-        }.httpError()
-
-        assertEquals(422, error.status)
-        assertEquals(ErrorCodes.BUSINESS_RULE, error.code)
-        assertEquals(ErrorCodes.REASON_WINTER_NORM_NOT_SET, error.reason)
-        assertNull(error.retryAfterSec)
+        assertNull(error.fieldError("phone"))
     }
 
     @Test
@@ -97,7 +74,7 @@ class ApiErrorsTest {
     fun unauthorized_withoutDetails() = runTest {
         server.enqueueJson("""{ "error": { "code": "UNAUTHORIZED", "message": "Требуется вход" } }""", code = 401)
 
-        val error = apiCall { server.api<CarsApi>().getCars() }.httpError()
+        val error = apiCall { server.api<ProfileApi>().getMe() }.httpError()
 
         assertEquals(401, error.status)
         assertEquals(ErrorCodes.UNAUTHORIZED, error.code)
@@ -115,7 +92,7 @@ class ApiErrorsTest {
                 .build(),
         )
 
-        val error = apiCall { server.api<CarsApi>().getCars() }.httpError()
+        val error = apiCall { server.api<ProfileApi>().getMe() }.httpError()
 
         assertEquals(502, error.status)
         assertNull(error.code)
@@ -124,10 +101,10 @@ class ApiErrorsTest {
 
     @Test
     fun serverUnavailable_isNetworkError() = runTest {
-        val api = server.api<CarsApi>()
+        val api = server.api<ProfileApi>()
         server.close() // сервер выключен — соединение не установится
 
-        val result = apiCall { api.getCars() }
+        val result = apiCall { api.getMe() }
 
         assertTrue("ожидалась ошибка сети, а пришло $result", (result as ApiResult.Failure).error is ApiError.Network)
     }
@@ -136,16 +113,19 @@ class ApiErrorsTest {
     fun malformedJson_isUnexpected() = runTest {
         server.enqueueJson("""{ "id": "only-id" }""")
 
-        val result = apiCall { server.api<CarsApi>().getCar(Fixtures.CAR_ID) }
+        val result = apiCall { server.api<ProfileApi>().getMe() }
 
         assertTrue("ожидалась Unexpected, а пришло $result", (result as ApiResult.Failure).error is ApiError.Unexpected)
     }
 
     @Test
-    fun unknownEnumValue_isUnexpected() = runTest {
-        server.enqueueJson(Fixtures.car.replace("\"AI95\"", "\"HYDROGEN\""))
+    fun syncWithoutCursor_isUnexpected() = runTest {
+        // Ответ синхронизации без обязательного курсора — ошибка, а не «пусто»
+        server.enqueueJson("""{ "cars": [] }""")
 
-        val result = apiCall { server.api<CarsApi>().getCar(Fixtures.CAR_ID) }
+        val result = apiCall {
+            server.api<SyncApi>().sync(SyncRequest(null, null, emptyList(), emptyList(), emptyList()))
+        }
 
         assertTrue((result as ApiResult.Failure).error is ApiError.Unexpected)
     }

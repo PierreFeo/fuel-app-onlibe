@@ -8,7 +8,7 @@ import org.junit.Test
 import ru.fueltracker.app.data.local.AuthTokens
 import ru.fueltracker.app.data.local.FakeTokenStorage
 import ru.fueltracker.app.data.remote.api.AuthApi
-import ru.fueltracker.app.data.remote.api.CarsApi
+import ru.fueltracker.app.data.remote.api.ProfileApi
 import ru.fueltracker.app.data.remote.dto.RequestCodeRequest
 
 class AuthInterceptorTest {
@@ -22,18 +22,18 @@ class AuthInterceptorTest {
     @Test
     fun withToken_addsBearer() = runTest {
         storage.save(AuthTokens("access.jwt", "refresh.jwt"))
-        server.enqueueJson("[]")
+        server.enqueueJson(Fixtures.user)
 
-        server.api<CarsApi>().getCars()
+        server.api<ProfileApi>().getMe()
 
         assertEquals("Bearer access.jwt", server.takeRequest().headers["Authorization"])
     }
 
     @Test
     fun withoutToken_noHeader() = runTest {
-        server.enqueueJson("[]")
+        server.enqueueJson(Fixtures.user)
 
-        server.api<CarsApi>().getCars()
+        server.api<ProfileApi>().getMe()
 
         assertNull(server.takeRequest().headers["Authorization"])
     }

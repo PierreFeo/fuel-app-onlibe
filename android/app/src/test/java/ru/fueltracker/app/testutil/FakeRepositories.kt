@@ -68,11 +68,8 @@ class FakeAuthRepository : AuthRepository {
 
 class FakeProfileRepository : ProfileRepository {
 
-    var getMeResult: ApiResult<User> = ApiResult.Success(User("id-1", "+79991234567", "Иван"))
     var updateNameResult: ApiResult<User> = ApiResult.Success(User("id-1", "+79991234567", "Иван"))
     val updateNameCalls = mutableListOf<String>()
-
-    override suspend fun getMe(): ApiResult<User> = getMeResult
 
     var changePasswordResult: ApiResult<Unit> = ApiResult.Success(Unit)
     val changePasswordCalls = mutableListOf<Pair<String?, String>>()
