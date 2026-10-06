@@ -7,6 +7,8 @@ import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.repository.AuthRepository
 import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.data.repository.ProfileRepository
+import ru.fueltracker.app.data.repository.SheetRepository
+import ru.fueltracker.app.domain.model.SheetPage
 import ru.fueltracker.app.domain.model.Car
 import ru.fueltracker.app.domain.model.CarInput
 import ru.fueltracker.app.domain.model.CodeRequest
@@ -88,6 +90,18 @@ class FakeCarRepository : CarRepository {
 
     private fun CarInput.toCar(id: String) =
         Car(id, name, plateNumber, fuelType, tankCapacityL, normSummer, normWinter, isArchived = false)
+}
+
+/** Страницы ленты по значению `before` (null — первая страница). */
+class FakeSheetRepository : SheetRepository {
+
+    val pages = mutableMapOf<String?, ApiResult<SheetPage>>()
+    val calls = mutableListOf<Pair<String, String?>>()
+
+    override suspend fun getSheets(carId: String, before: String?): ApiResult<SheetPage> {
+        calls += carId to before
+        return pages[before] ?: ApiResult.Success(SheetPage(emptyList(), nextBefore = null))
+    }
 }
 
 fun testCar(

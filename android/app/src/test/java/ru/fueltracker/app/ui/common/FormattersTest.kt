@@ -74,6 +74,18 @@ class FormattersTest {
     }
 
     @Test
+    fun bigDecimalOverloads() {
+        assertEquals("5${nbsp}417,50", Formatters.amount(BigDecimal("5417.5")))
+        assertEquals("10,150", Formatters.consumption(BigDecimal("10.15")))
+    }
+
+    @Test
+    fun dayMonth() {
+        assertEquals("05.07", Formatters.dayMonth(java.time.LocalDate.of(2026, 7, 5)))
+        assertEquals("20.12", Formatters.dayMonth(java.time.LocalDate.of(2026, 12, 20)))
+    }
+
+    @Test
     fun parseDecimalInput_ignoresSpaces() {
         assertEquals(BigDecimal("1000.5"), Formatters.parseDecimalInput(" 1 000,5 "))
         assertEquals(BigDecimal("5417.5"), Formatters.parseDecimalInput("5${nbsp}417,5"))

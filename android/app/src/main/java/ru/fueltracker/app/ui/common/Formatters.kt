@@ -2,6 +2,7 @@ package ru.fueltracker.app.ui.common
 
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 import java.time.Month
 import java.time.format.TextStyle
 import java.util.Locale
@@ -25,6 +26,15 @@ object Formatters {
 
     /** «10.15» → «10,150» (нормы и расход на 100 км, 3 знака). */
     fun consumption(apiValue: String): String = decimal(BigDecimal(apiValue), scale = 3)
+
+    /** Литры и деньги из доменной модели, 2 знака. */
+    fun amount(value: BigDecimal): String = decimal(value, scale = 2)
+
+    /** Нормы и расход на 100 км из доменной модели, 3 знака. */
+    fun consumption(value: BigDecimal): String = decimal(value, scale = 3)
+
+    /** 2026-07-05 → «05.07» (дата заправки внутри месяца листа). */
+    fun dayMonth(date: LocalDate): String = "%02d.%02d".format(date.dayOfMonth, date.monthValue)
 
     /** 52340 → «52 340» (пробег, целые километры). */
     fun km(value: Long): String = decimal(BigDecimal.valueOf(value), scale = 0)

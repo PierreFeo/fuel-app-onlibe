@@ -96,7 +96,34 @@
     <string name="error_max_decimals">Не больше %1$d знаков после запятой</string>
     <string name="error_too_big">Слишком большое число</string>
 
-    <!-- Временная заглушка ленты до 5.3 -->
-    <string name="feed_placeholder">Лента листов учёта появится в задаче 5.3.</string>
+    <!-- Лента ЛУТ -->
     <string name="feed_change_car">Сменить авто</string>
+    <string name="feed_empty">Листов пока нет. Создайте первый — укажите пробег и остаток топлива</string>
+    <string name="feed_load_more_failed">Не удалось загрузить старые листы</string>
+
+    <!-- Карточка ЛУТ -->
+    <string name="sheet_season_summer">☀️ Лето</string>
+    <string name="sheet_season_winter">❄️ Зима</string>
+    <string name="sheet_closed">Месяц закрыт</string>
+    <string name="sheet_norm">Норма %1$s л/100 км</string>
+    <string name="sheet_mileage_open">Пробег: %1$s → —</string>
+    <string name="sheet_mileage">Пробег: %1$s → %2$s = %3$s км</string>
+    <string name="sheet_fuel_start">Остаток на начало: %1$s л</string>
+    <string name="sheet_refueled">Заправлено: %1$s л · %2$s ₽</string>
+    <string name="sheet_refuelings">Заправки (%1$d)</string>
+    <string name="sheet_refueling_line">%1$s л × %2$s = %3$s ₽</string>
+    <string name="sheet_fuel_available">Доступно топлива: %1$s л</string>
+    <string name="sheet_fuel_end">Остаток на конец: %1$s л</string>
+    <string name="sheet_fuel_end_by_norm">Остаток на конец: %1$s л (по норме)</string>
+    <string name="sheet_consumption">Расход</string>
+    <string name="sheet_consumption_value">%1$s л/100 км</string>
+    <string name="sheet_consumption_pending">Расход: появится после ввода пробега на конец месяца</string>
+    <string name="sheet_consumption_no_actual">Расход: укажите фактический остаток в баке</string>
+    <string name="sheet_consumption_normal">В норме</string>
+    <string name="sheet_consumption_over">Перерасход</string>
+    <string name="sheet_overuse">Перерасход %1$s л</string>
+    <string name="sheet_economy">Экономия %1$s л</string>
+    <string name="sheet_exact">Ровно по норме</string>
+    <string name="sheet_cost_per_km">1 км = %1$s ₽</string>
+    <string name="sheet_warning">⚠ %1$s</string>
 </resources>

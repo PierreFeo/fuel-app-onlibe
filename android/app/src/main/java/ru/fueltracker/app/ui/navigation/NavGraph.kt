@@ -18,7 +18,7 @@ import ru.fueltracker.app.ui.auth.PasswordLoginScreen
 import ru.fueltracker.app.ui.auth.PhoneScreen
 import ru.fueltracker.app.ui.cars.CarEditScreen
 import ru.fueltracker.app.ui.cars.CarsScreen
-import ru.fueltracker.app.ui.sheets.SheetsFeedPlaceholderScreen
+import ru.fueltracker.app.ui.sheets.SheetsFeedScreen
 import ru.fueltracker.app.ui.splash.SplashScreen
 
 @Composable
@@ -91,7 +91,11 @@ fun NavGraph(
             CarEditScreen(onDone = { navController.popBackStack() })
         }
         composable<SheetsFeedRoute> {
-            SheetsFeedPlaceholderScreen(onChangeCar = { navController.navigate(CarsRoute) })
+            SheetsFeedScreen(
+                onChangeCar = { navController.navigate(CarsRoute) },
+                // Авто не выбрано или его больше нет — список авто становится корнем
+                onNoCar = { navController.navigateClearingBackStack(CarsRoute) },
+            )
         }
     }
 }

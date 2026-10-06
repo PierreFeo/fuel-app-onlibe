@@ -9,7 +9,9 @@ import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.data.repository.DefaultAuthRepository
 import ru.fueltracker.app.data.repository.DefaultCarRepository
 import ru.fueltracker.app.data.repository.DefaultProfileRepository
+import ru.fueltracker.app.data.repository.DefaultSheetRepository
 import ru.fueltracker.app.data.repository.ProfileRepository
+import ru.fueltracker.app.data.repository.SheetRepository
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -23,4 +25,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindCarRepository(impl: DefaultCarRepository): CarRepository
+
+    @Binds
+    abstract fun bindSheetRepository(impl: DefaultSheetRepository): SheetRepository
 }
