@@ -105,6 +105,8 @@ fun ProfileContent(
         }
     }
 
+    state.passwordForm?.let { PasswordDialog(it, onEvent) }
+
     if (state.rejected.isNotEmpty()) {
         RejectedDialog(state.rejected) { onEvent(ProfileEvent.DismissRejected) }
     }
@@ -168,6 +170,8 @@ private fun ProfileDetails(
             state.phone?.let { InfoRow(label = stringResource(R.string.profile_phone), value = PhoneFormat.display(it)) }
             HorizontalDivider()
             SyncBlock(state, onEvent, onSignIn)
+            HorizontalDivider()
+            PasswordBlock(state, onEvent)
         }
         HorizontalDivider()
         InfoRow(label = stringResource(R.string.profile_version), value = appVersion)
@@ -308,6 +312,11 @@ object ProfileTestTags {
     const val SIGN_IN_AGAIN = "profile_sign_in_again"
     const val LAST_SYNC = "profile_last_sync"
     const val PENDING = "profile_pending"
+    const val PASSWORD = "profile_password"
+    const val PASSWORD_CURRENT = "profile_password_current"
+    const val PASSWORD_NEW = "profile_password_new"
+    const val PASSWORD_REPEAT = "profile_password_repeat"
+    const val PASSWORD_SAVE = "profile_password_save"
 }
 
 @PreviewLightDark

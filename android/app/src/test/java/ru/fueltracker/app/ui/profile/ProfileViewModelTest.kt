@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -20,8 +21,11 @@ import ru.fueltracker.app.data.repository.RejectedRecord
 import ru.fueltracker.app.data.repository.SyncResult
 import ru.fueltracker.app.data.repository.SyncStatus
 import ru.fueltracker.app.testutil.FakeAuthRepository
+import ru.fueltracker.app.testutil.FakeProfileRepository
 import ru.fueltracker.app.testutil.FakeSyncRepository
 import ru.fueltracker.app.testutil.MainDispatcherRule
+import ru.fueltracker.app.testutil.httpError
+import ru.fueltracker.app.data.remote.dto.ErrorCodes
 import ru.fueltracker.app.ui.common.UiText
 import java.io.IOException
 import java.time.Instant
@@ -37,9 +41,10 @@ class ProfileViewModelTest {
     private val auth = FakeAuthRepository()
     private val sync = FakeSyncRepository()
     private val tokens = FakeTokenStorage(initial = AuthTokens("a", "r"))
+    private val profileRepository = FakeProfileRepository()
 
     private fun TestScope.createViewModel(): ProfileViewModel {
-        val viewModel = ProfileViewModel(appState, auth, sync, tokens)
+        val viewModel = ProfileViewModel(appState, auth, sync, profileRepository, tokens)
         advanceUntilIdle()
         return viewModel
     }
@@ -171,6 +176,91 @@ class ProfileViewModelTest {
 
         assertEquals(0, sync.syncCalls)
         assertFalse(viewModel.state.value.isSessionExpired)
+    }
+
+    // --- Пароль ---
+
+    @Test
+    fun `первый пароль — без текущего, после успеха пароль задан`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(ProfileEvent.OpenPassword)
+        assertEquals(PasswordForm(needsCurrent = false), viewModel.state.value.passwordForm)
+
+        viewModel.onEvent(ProfileEvent.PasswordNewChanged("мой-пароль"))
+        viewModel.onEvent(ProfileEvent.PasswordRepeatChanged("мой-пароль"))
+        viewModel.onEvent(ProfileEvent.SavePassword)
+        assertTrue(viewModel.state.value.passwordForm!!.isSaving)
+        advanceUntilIdle()
+
+        assertEquals(listOf<Pair<String?, String>>(null to "мой-пароль"), profileRepository.changePasswordCalls)
+        val state = viewModel.state.value
+        assertNull(state.passwordForm)
+        assertTrue(state.hasPassword)
+        assertEquals(UiText.Resource(R.string.password_saved), state.snackbar)
+    }
+
+    @Test
+    fun `смена — с текущим паролем`() = runTest {
+        appState.setHasPassword(true)
+        val viewModel = createViewModel()
+        viewModel.onEvent(ProfileEvent.OpenPassword)
+        assertTrue(viewModel.state.value.passwordForm!!.needsCurrent)
+
+        viewModel.onEvent(ProfileEvent.PasswordCurrentChanged("старый-пароль"))
+        viewModel.onEvent(ProfileEvent.PasswordNewChanged("новый-пароль"))
+        viewModel.onEvent(ProfileEvent.PasswordRepeatChanged("новый-пароль"))
+        viewModel.onEvent(ProfileEvent.SavePassword)
+        advanceUntilIdle()
+
+        assertEquals(listOf<Pair<String?, String>>("старый-пароль" to "новый-пароль"), profileRepository.changePasswordCalls)
+    }
+
+    @Test
+    fun `ошибки формы — запрос не уходит`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(ProfileEvent.OpenPassword)
+        viewModel.onEvent(ProfileEvent.PasswordNewChanged("короткий"))
+        viewModel.onEvent(ProfileEvent.PasswordRepeatChanged("другой-пароль"))
+        viewModel.onEvent(ProfileEvent.SavePassword)
+        advanceUntilIdle()
+
+        assertTrue(profileRepository.changePasswordCalls.isEmpty())
+        assertEquals(UiText.Resource(R.string.error_password_mismatch), viewModel.state.value.passwordForm?.repeatError)
+    }
+
+    @Test
+    fun `неверный текущий — под полем, диалог открыт`() = runTest {
+        appState.setHasPassword(true)
+        profileRepository.changePasswordResult = httpError(
+            400,
+            ErrorCodes.VALIDATION_ERROR,
+            details = mapOf("current_password" to "Неверный пароль"),
+        )
+        val viewModel = createViewModel()
+        viewModel.onEvent(ProfileEvent.OpenPassword)
+        viewModel.onEvent(ProfileEvent.PasswordCurrentChanged("мимо-мимо"))
+        viewModel.onEvent(ProfileEvent.PasswordNewChanged("новый-пароль"))
+        viewModel.onEvent(ProfileEvent.PasswordRepeatChanged("новый-пароль"))
+        viewModel.onEvent(ProfileEvent.SavePassword)
+        advanceUntilIdle()
+
+        val form = viewModel.state.value.passwordForm!!
+        assertEquals(UiText.Resource(R.string.error_password_wrong), form.currentError)
+        assertFalse(form.isSaving)
+    }
+
+    @Test
+    fun `сессия истекла или гость — пароль не сменить`() = runTest {
+        val viewModel = createViewModel()
+        tokens.clear()
+        advanceUntilIdle()
+        viewModel.onEvent(ProfileEvent.OpenPassword)
+        assertNull(viewModel.state.value.passwordForm)
+
+        appState.clear()
+        appState.startGuest("Иван")
+        advanceUntilIdle()
+        assertFalse(viewModel.state.value.canChangePassword)
     }
 
     @Test

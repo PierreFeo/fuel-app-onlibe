@@ -46,3 +46,10 @@ data class UserDto(
 
 @Serializable
 data class UpdateMeRequest(val name: String)
+
+/** PUT /me/password: [currentPassword] null — пароля ещё нет. Без значений по умолчанию — null тоже уходит. */
+@Serializable
+data class PasswordChangeRequest(
+    @SerialName("current_password") val currentPassword: String?,
+    @SerialName("new_password") val newPassword: String,
+)

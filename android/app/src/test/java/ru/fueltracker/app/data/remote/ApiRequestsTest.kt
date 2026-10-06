@@ -23,6 +23,7 @@ import ru.fueltracker.app.data.remote.dto.Season
 import ru.fueltracker.app.data.remote.dto.SheetCloseRequest
 import ru.fueltracker.app.data.remote.dto.SheetCreateRequest
 import ru.fueltracker.app.data.remote.dto.SheetPatchRequest
+import ru.fueltracker.app.data.remote.dto.PasswordChangeRequest
 import ru.fueltracker.app.data.remote.dto.UpdateMeRequest
 import ru.fueltracker.app.data.remote.dto.VerifyCodeRequest
 
@@ -83,6 +84,10 @@ class ApiRequestsTest {
         server.enqueueJson(Fixtures.user)
         api.updateMe(UpdateMeRequest("Иван Петров"))
         assertRequest("PATCH", "/me", """{ "name": "Иван Петров" }""")
+
+        server.enqueueEmpty(204)
+        api.changePassword(PasswordChangeRequest(currentPassword = null, newPassword = "мой-пароль"))
+        assertRequest("PUT", "/me/password", """{ "current_password": null, "new_password": "мой-пароль" }""")
     }
 
     // --- Автомобили ---

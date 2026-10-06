@@ -74,6 +74,14 @@ class FakeProfileRepository : ProfileRepository {
 
     override suspend fun getMe(): ApiResult<User> = getMeResult
 
+    var changePasswordResult: ApiResult<Unit> = ApiResult.Success(Unit)
+    val changePasswordCalls = mutableListOf<Pair<String?, String>>()
+
+    override suspend fun changePassword(currentPassword: String?, newPassword: String): ApiResult<Unit> {
+        changePasswordCalls += currentPassword to newPassword
+        return changePasswordResult
+    }
+
     override suspend fun updateName(name: String): ApiResult<User> {
         updateNameCalls += name
         return updateNameResult

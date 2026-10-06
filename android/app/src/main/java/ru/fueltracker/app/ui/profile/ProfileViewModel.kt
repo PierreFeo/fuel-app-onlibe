@@ -12,7 +12,9 @@ import ru.fueltracker.app.R
 import ru.fueltracker.app.data.local.AppMode
 import ru.fueltracker.app.data.local.AppStateStorage
 import ru.fueltracker.app.data.local.TokenStorage
+import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.repository.AuthRepository
+import ru.fueltracker.app.data.repository.ProfileRepository
 import ru.fueltracker.app.data.repository.RejectedRecord
 import ru.fueltracker.app.data.repository.SyncRepository
 import ru.fueltracker.app.data.repository.SyncResult
@@ -38,6 +40,10 @@ data class ProfileUiState(
     val isSyncing: Boolean = false,
     /** Не пусто — диалог «Не отправлено». */
     val rejected: List<RejectedRecord> = emptyList(),
+    /** Задан ли пароль для входа без SMS. */
+    val hasPassword: Boolean = false,
+    /** Не null — открыт диалог «Задать / Сменить пароль». */
+    val passwordForm: PasswordForm? = null,
     val confirmLogout: Boolean = false,
     val isLoggingOut: Boolean = false,
     val snackbar: UiText? = null,
@@ -50,6 +56,9 @@ data class ProfileUiState(
         get() = !isLoading && name.isNotBlank() && name.trim() != savedName && !isLoggingOut
 
     val canSync: Boolean get() = !isSyncing && !isLoggingOut && !isSessionExpired
+
+    /** Пароль меняется на сервере — нужна действующая сессия. */
+    val canChangePassword: Boolean get() = !isGuest && !isSessionExpired && !isLoggingOut
 }
 
 sealed interface ProfileEvent {
@@ -57,6 +66,12 @@ sealed interface ProfileEvent {
     data object SaveName : ProfileEvent
     data object Sync : ProfileEvent
     data object DismissRejected : ProfileEvent
+    data object OpenPassword : ProfileEvent
+    data class PasswordCurrentChanged(val value: String) : ProfileEvent
+    data class PasswordNewChanged(val value: String) : ProfileEvent
+    data class PasswordRepeatChanged(val value: String) : ProfileEvent
+    data object SavePassword : ProfileEvent
+    data object DismissPassword : ProfileEvent
     data object RequestLogout : ProfileEvent
     data object ConfirmLogout : ProfileEvent
     data object DismissLogout : ProfileEvent
@@ -73,6 +88,7 @@ class ProfileViewModel @Inject constructor(
     private val appState: AppStateStorage,
     private val authRepository: AuthRepository,
     private val syncRepository: SyncRepository,
+    private val profileRepository: ProfileRepository,
     tokenStorage: TokenStorage,
 ) : ViewModel() {
 
@@ -89,6 +105,7 @@ class ProfileViewModel @Inject constructor(
                         isLoading = false,
                         mode = profile.mode,
                         phone = profile.phone,
+                        hasPassword = profile.hasPassword,
                         savedName = profile.name,
                         name = if (typing) it.name else profile.name.orEmpty(),
                     )
@@ -111,6 +128,14 @@ class ProfileViewModel @Inject constructor(
             ProfileEvent.SaveName -> saveName()
             ProfileEvent.Sync -> sync()
             ProfileEvent.DismissRejected -> _state.update { it.copy(rejected = emptyList()) }
+            ProfileEvent.OpenPassword -> _state.update {
+                if (it.canChangePassword) it.copy(passwordForm = PasswordForm(needsCurrent = it.hasPassword)) else it
+            }
+            is ProfileEvent.PasswordCurrentChanged -> editPassword { copy(current = event.value.take(PASSWORD_MAX), currentError = null, error = null) }
+            is ProfileEvent.PasswordNewChanged -> editPassword { copy(new = event.value.take(PASSWORD_MAX), newError = null, error = null) }
+            is ProfileEvent.PasswordRepeatChanged -> editPassword { copy(repeat = event.value.take(PASSWORD_MAX), repeatError = null, error = null) }
+            ProfileEvent.SavePassword -> savePassword()
+            ProfileEvent.DismissPassword -> _state.update { if (it.passwordForm?.isSaving == true) it else it.copy(passwordForm = null) }
             ProfileEvent.RequestLogout -> _state.update { it.copy(confirmLogout = true) }
             ProfileEvent.DismissLogout -> _state.update { it.copy(confirmLogout = false) }
             ProfileEvent.ConfirmLogout -> logout()
@@ -144,6 +169,32 @@ class ProfileViewModel @Inject constructor(
                     is SyncResult.Failure -> it.copy(isSyncing = false, snackbar = result.error.toSyncText())
                     SyncResult.NotSignedIn -> it.copy(isSyncing = false)
                 }
+            }
+        }
+    }
+
+    private fun editPassword(change: PasswordForm.() -> PasswordForm) {
+        _state.update { s -> s.passwordForm?.takeUnless { it.isSaving }?.let { s.copy(passwordForm = it.change()) } ?: s }
+    }
+
+    /** `PUT /me/password`: проверки на телефоне, потом запрос (нужен интернет). */
+    private fun savePassword() {
+        val form = _state.value.passwordForm ?: return
+        if (!form.canSubmit) return
+        val checked = validatePasswordForm(form)
+        if (checked.hasErrors) {
+            _state.update { it.copy(passwordForm = checked) }
+            return
+        }
+        _state.update { it.copy(passwordForm = checked.copy(isSaving = true)) }
+        viewModelScope.launch {
+            val current = checked.current.takeIf { checked.needsCurrent }
+            when (val result = profileRepository.changePassword(current, checked.new)) {
+                is ApiResult.Success -> {
+                    appState.setHasPassword(true)
+                    _state.update { it.copy(passwordForm = null, snackbar = UiText.Resource(R.string.password_saved)) }
+                }
+                is ApiResult.Failure -> _state.update { s -> s.copy(passwordForm = s.passwordForm?.withServerError(result.error)) }
             }
         }
     }

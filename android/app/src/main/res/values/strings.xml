@@ -42,7 +42,7 @@
     <string name="password_show">Показать пароль</string>
     <string name="password_hide">Скрыть пароль</string>
     <string name="password_login">Войти</string>
-    <string name="password_hint">Пароль выдаёт ответственный сотрудник организации</string>
+    <string name="password_hint">Пароль задаётся в профиле после входа по SMS. Забыли — обратитесь к ответственному сотруднику</string>
     <string name="password_sms_login">Войти по коду из SMS</string>
     <string name="error_invalid_credentials">Неверный номер или пароль</string>
     <string name="error_too_many_attempts">Слишком много попыток. Повторите через %1$d мин</string>
@@ -243,6 +243,22 @@
     <string name="sync_entity_refueling">Заправка</string>
     <string name="sync_entity_unknown">Запись</string>
     <string name="action_ok">Понятно</string>
+
+    <!-- Пароль в профиле (07_UI_SCREENS.md, ProfileScreen) -->
+    <string name="password_block_title">Вход по паролю</string>
+    <string name="password_status_set">Пароль задан — можно входить без SMS</string>
+    <string name="password_status_not_set">Пароль не задан</string>
+    <string name="password_set">Задать пароль</string>
+    <string name="password_change">Сменить пароль</string>
+    <string name="password_current">Текущий пароль</string>
+    <string name="password_new">Новый пароль</string>
+    <string name="password_repeat">Повторите пароль</string>
+    <string name="password_rule">От 8 до 64 символов</string>
+    <string name="password_saved">Пароль сохранён. Теперь можно входить без SMS</string>
+    <string name="error_password_length">Пароль — от 8 до 64 символов</string>
+    <string name="error_password_blank">Пароль не может состоять только из пробелов</string>
+    <string name="error_password_mismatch">Пароли не совпадают</string>
+    <string name="error_password_wrong">Неверный пароль</string>
 
     <string name="error_whole_number">Введите целое число</string>
     <string name="error_non_negative_number">Введите число 0 или больше</string>
