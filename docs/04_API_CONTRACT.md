@@ -1,9 +1,13 @@
 # 04. Контракт REST API (v1)
 
 Базовый URL: `{BASE_URL}/api/v1` · формат: JSON, UTF-8 · имена полей: `snake_case`.
-Числа с дробной частью (литры, деньги, расход) передаются **строками**: `"45.50"` —
+Числа с дробной частью (литры, деньги, нормы) передаются **строками**: `"45.50"` —
 чтобы не терять точность на float. Пробег — целые числа. Даты — `"2026-10-02"`,
 время — ISO 8601 UTC `"2026-10-02T08:15:00Z"`.
+
+Сервер — **хранилище копии данных** (см. `02_ARCHITECTURE.md`): приложение работает с локальной
+базой и обращается к серверу только для входа, синхронизации (`POST /sync`) и профиля.
+Расчётов ЛУТ сервер не делает и вычисляемых полей не отдаёт.
 
 Авторизация: заголовок `Authorization: Bearer <access_token>` для всех эндпоинтов, кроме `/auth/*`
 и `/health`. Пользователь видит только свои данные; чужой ресурс → `404` (не `403`, чтобы не
@@ -26,12 +30,12 @@ FastAPI автоматически публикует интерактивную
 | 401 | `REFRESH_INVALID` | refresh-токен недействителен |
 | 403 | `PHONE_NOT_ALLOWED` | номер не в белом списке |
 | 404 | `NOT_FOUND` | ресурс не найден или чужой; также неизвестный URL или неподдерживаемый HTTP-метод |
-| 409 | `SHEET_EXISTS` | ЛУТ за этот месяц уже есть |
-| 409 | `SHEET_CLOSED` | попытка изменить закрытый ЛУТ |
-| 422 | `BUSINESS_RULE` | нарушено бизнес-правило (details поясняют) |
 | 429 | `RATE_LIMITED` | слишком часто (details: `{ "retry_after_sec": 45 }`) |
 | 500 | `INTERNAL_ERROR` | непредвиденная ошибка сервера (подробности только в логах) |
 | 502 | `SMS_SEND_FAILED` | шлюз не принял SMS |
+
+Отдельные записи, которые сервер не принял при синхронизации, — не HTTP-ошибка, а список
+`rejected` в ответе `POST /sync` (коды — в разделе «Синхронизация»).
 
 ---
 
@@ -57,24 +61,24 @@ FastAPI автоматически публикует интерактивную
 {
   "access_token": "eyJ...", "refresh_token": "eyJ...",
   "token_type": "bearer", "expires_in_sec": 900,
-  "user": { "id": "uuid", "phone": "+79991234567", "name": null },
+  "user": { "id": "uuid", "phone": "+79991234567", "name": null, "has_password": false },
   "is_new_user": true
 }
 ```
 Ошибки: 401 `OTP_INVALID`, 401 `OTP_EXPIRED`.
 
 ### POST /auth/login
-Запасной вход по паролю (если SMS не пришла). Логин — номер телефона, нормализуется так же,
-как в `request-code`. Белый список здесь НЕ проверяется: пароль есть только у тех, кому его
-выдали командой на сервере.
+Вход по паролю (без SMS). Логин — номер телефона, нормализуется так же, как в `request-code`.
+Белый список здесь НЕ проверяется: пароль есть только у тех, кто уже входил по SMS и задал его
+в профиле, или кому его выдали командой на сервере.
 ```json
 // запрос
-{ "phone": "+79991234567", "password": "k7Fm2xQp9a" }
+{ "phone": "+79991234567", "password": "мой-пароль-2026" }
 // 200 — та же структура, что у verify-code
 {
   "access_token": "eyJ...", "refresh_token": "eyJ...",
   "token_type": "bearer", "expires_in_sec": 900,
-  "user": { "id": "uuid", "phone": "+79991234567", "name": null },
+  "user": { "id": "uuid", "phone": "+79991234567", "name": null, "has_password": true },
   "is_new_user": true
 }
 ```
@@ -94,107 +98,114 @@ FastAPI автоматически публикует интерактивную
 
 ## Профиль
 ### GET /me → 200
-`{ "id": "uuid", "phone": "+79991234567", "name": "Иван Петров" }`
+`{ "id": "uuid", "phone": "+79991234567", "name": "Иван Петров", "has_password": true }`
+`has_password` — задан ли пароль для входа без SMS.
+
 ### PATCH /me
-`{ "name": "Иван Петров" }` → 200 (профиль). name: 1..100 символов.
+`{ "name": "Иван Петров" }` → 200 (профиль). name: 1..100 символов. Используется экраном ввода
+имени сразу после первого входа (интернет в этот момент есть). Позже имя меняется в профиле
+офлайн и уходит на сервер через `POST /sync`.
 
-## Автомобили
-Объект **Car**:
+### PUT /me/password
+Задать или сменить пароль для входа без SMS. Нужен интернет.
 ```json
+// запрос
+{ "current_password": null, "new_password": "мой-пароль-2026" }
+```
+→ 204.
+- `new_password`: 8..64 символа, не только пробелы.
+- Пароля ещё нет (`has_password = false`) — `current_password` не нужен (игнорируется).
+- Пароль уже есть — `current_password` обязателен; неверный → 400 `VALIDATION_ERROR`
+  с `details: { "current_password": "Неверный пароль" }`. Неверный текущий пароль считается
+  неудачной попыткой входа (общий счётчик и блокировка, `05_AUTH_SMS.md`); во время блокировки → 429.
+- Успех сбрасывает счётчик неудачных попыток. Выданные токены продолжают работать.
+
+Ошибки: 400, 401 `UNAUTHORIZED`, 429.
+
+## Синхронизация
+### POST /sync
+Один запрос делает всё: принимает изменения телефона, затем отдаёт изменения с сервера.
+
+```json
+// запрос
 {
-  "id": "uuid", "name": "Lada Vesta", "plate_number": "А123ВС77",
-  "fuel_type": "AI95", "tank_capacity_l": "50.00",
-  "norm_l_per_100km": "10.068", "norm_winter_l_per_100km": "11.684",
-  "is_archived": false, "created_at": "2026-10-02T08:15:00Z"
+  "cursor": 1520,
+  "profile": { "name": "Иван Петров" },
+  "cars": [ CarRecord ],
+  "sheets": [ SheetRecord ],
+  "refuelings": [ RefuelingRecord ]
+}
+// 200
+{
+  "cursor": 1544,
+  "profile": { "name": "Иван Петров" },
+  "cars": [ CarRecord ],
+  "sheets": [ SheetRecord ],
+  "refuelings": [ RefuelingRecord ],
+  "rejected": [
+    { "entity": "sheet", "id": "uuid", "code": "SHEET_EXISTS",
+      "message": "Лист за октябрь 2026 по этому авто уже есть" }
+  ]
 }
 ```
-`norm_l_per_100km` — летняя (основная) норма, обязательна. `norm_winter_l_per_100km` — зимняя,
-необязательна (`null` — не задана). Как они попадают в листы — `06_BUSINESS_RULES.md`,
-«Сезон и норма листа».
-| Метод | Путь | Тело | Ответ |
-|---|---|---|---|
-| GET | `/cars?include_archived=false` | — | 200 `[Car]` |
-| POST | `/cars` | Car без id/is_archived/created_at | 201 `Car` |
-| GET | `/cars/{car_id}` | — | 200 `Car` |
-| PATCH | `/cars/{car_id}` | любые поля Car (частично) | 200 `Car` |
-| DELETE | `/cars/{car_id}` | — | 204 (мягкое удаление: `is_archived=true`) |
 
-Уточнения:
-- `GET /cars` — по дате добавления, старые сверху.
-- `plate_number`: пробелы по краям обрезаются, буквы — в верхний регистр; пустая строка = `null`.
-- `PATCH` принимает и `is_archived`: `false` возвращает авто из архива. `null` допустим только
-  для `plate_number` (удалить номер) и `norm_winter_l_per_100km` (убрать зимнюю норму),
-  для остальных полей — 400.
-- Дробные поля на вход принимают строку или число (`"50"`, `"8.5"`, `8.5`). Литры и деньги —
-  не больше 2 знаков после точки, в ответе строка с 2 знаками (`"50.00"`). Нормы и расход на
-  100 км — не больше 3 знаков, в ответе строка с 3 знаками (`"10.068"`, `"8.500"`).
-- Неверный формат id в пути (не UUID) — 400 `VALIDATION_ERROR`.
+**Запрос:**
+- `cursor` — курсор из ответа прошлой синхронизации; `null` — первая синхронизация на этом
+  телефоне (сервер отдаст все неудалённые записи пользователя).
+- `profile` — `null`, если имя на телефоне не менялось.
+- `cars`, `sheets`, `refuelings` — только записи, изменённые на телефоне после прошлой синхронизации
+  (`is_dirty`), включая удалённые (`"deleted": true`). Могут быть пустыми.
 
-## Листы учёта топлива (ЛУТ)
-Объект **FuelSheet** (в ответах всегда с вычисляемыми полями `calc`):
+**Записи** (одинаковы в запросе и ответе):
 ```json
-{
-  "id": "uuid", "car_id": "uuid", "year": 2026, "month": 10,
-  "status": "OPEN",
-  "odometer_start_km": 52340, "odometer_end_km": null,
-  "fuel_start_l": "12.00", "fuel_end_actual_l": null,
-  "season": "SUMMER",
-  "norm_l_per_100km": "10.068",
-  "refuelings": [ /* Refueling[], по дате по возрастанию */ ],
-  "calc": {
-    "refueled_l": "80.00",
-    "refueled_cost": "4400.00",
-    "fuel_available_l": "92.00",
-    "mileage_km": null,
-    "norm_consumption_l": null,
-    "fuel_end_calc_l": null,
-    "fuel_end_l": null,
-    "actual_consumption_l": null,
-    "actual_l_per_100km": null,
-    "consumption_status": null,
-    "deviation_l": null,
-    "cost_per_km": null,
-    "warnings": []
-  },
-  "closed_at": null, "created_at": "...", "updated_at": "..."
-}
-```
-Смысл каждого поля `calc` и формулы — `06_BUSINESS_RULES.md`.
-`season` — `SUMMER` (☀️) или `WINTER` (❄️); `norm_l_per_100km` — норма авто для этого сезона,
-скопированная в лист. `calc.consumption_status` — `NORMAL` (зелёный), `OVER` (красный) или `null`.
-
-| Метод | Путь | Тело | Ответ |
-|---|---|---|---|
-| GET | `/cars/{car_id}/sheets?limit=12&before=2026-10` | — | 200 `{ "items": [FuelSheet], "next_before": "2025-10" \| null }` — новые сверху |
-| GET | `/cars/{car_id}/sheets/next-prefill` | — | 200 `{ "year", "month", "odometer_start_km", "fuel_start_l", "season" }` — подсказка для нового листа |
-| POST | `/cars/{car_id}/sheets` | `{ year, month, odometer_start_km, fuel_start_l, season? }` (без `season` — как в `next-prefill`) | 201 `FuelSheet` · 409 `SHEET_EXISTS` · 422 `WINTER_NORM_NOT_SET` |
-| GET | `/sheets/{sheet_id}` | — | 200 `FuelSheet` |
-| PATCH | `/sheets/{sheet_id}` | `{ odometer_start_km?, odometer_end_km?, fuel_start_l?, fuel_end_actual_l?, season? }` | 200 · 409 `SHEET_CLOSED` · 422 `WINTER_NORM_NOT_SET` |
-| POST | `/sheets/{sheet_id}/close` | `{ odometer_end_km, fuel_end_actual_l }` (оба обязательны; пустой бак — `"0.00"`) | 200 `FuelSheet` (status `CLOSED`) · 400 `VALIDATION_ERROR`, если нет любого из полей |
-| POST | `/sheets/{sheet_id}/reopen` | — | 200 `FuelSheet` (status `OPEN`) |
-| DELETE | `/sheets/{sheet_id}` | — | 204 (только если нет заправок, иначе 422) |
-
-Переключение сезона (иконка ☀️/❄️) — `PATCH /sheets/{id}` с `{ "season": "WINTER" }`: норма
-листа заново копируется из авто, в ответе лист с пересчитанным `calc`.
-`422 WINTER_NORM_NOT_SET` — это `BUSINESS_RULE` с `details: { "reason": "WINTER_NORM_NOT_SET" }`:
-у авто не задана зимняя норма.
-
-## Заправки
-Объект **Refueling**:
-```json
-{
-  "id": "uuid", "sheet_id": "uuid", "refueled_at": "2026-10-05",
+// CarRecord
+{ "id": "uuid", "name": "Lada Vesta", "plate_number": "А123ВС77", "fuel_type": "AI95",
+  "tank_capacity_l": "50.00", "norm_l_per_100km": "10.068", "norm_winter_l_per_100km": "11.684",
+  "is_archived": false, "created_at": "2026-10-02T08:15:00Z", "deleted": false }
+// SheetRecord
+{ "id": "uuid", "car_id": "uuid", "year": 2026, "month": 10, "status": "CLOSED",
+  "odometer_start_km": 52340, "odometer_end_km": 53340,
+  "fuel_start_l": "12.00", "fuel_end_actual_l": "10.00",
+  "season": "SUMMER", "norm_l_per_100km": "10.068",
+  "closed_at": "2026-10-31T18:00:00Z", "created_at": "2026-10-01T07:00:00Z", "deleted": false }
+// RefuelingRecord
+{ "id": "uuid", "sheet_id": "uuid", "refueled_at": "2026-10-05",
   "liters": "40.00", "price_per_liter": "55.00", "total_cost": "2200.00",
   "odometer_km": 52610, "station": "Лукойл, Ленина 1",
-  "payment_type": "PERSONAL", "note": null
-}
+  "payment_type": "PERSONAL", "note": null, "deleted": false }
 ```
-| Метод | Путь | Тело | Ответ |
-|---|---|---|---|
-| POST | `/sheets/{sheet_id}/refuelings` | Refueling без id/sheet_id (`total_cost` необязателен) | 201 `FuelSheet` (весь лист с пересчитанным `calc`) |
-| PATCH | `/refuelings/{refueling_id}` | частично | 200 `FuelSheet` |
-| DELETE | `/refuelings/{refueling_id}` | — | 200 `FuelSheet` |
+Для `"deleted": true` сервер смотрит только `id` (и связь с пользователем); остальные поля
+передаются как есть.
 
-Изменение заправок закрытого листа → 409 `SHEET_CLOSED`.
-Почему заправки возвращают весь лист: карточке в приложении нужно сразу обновить итоги,
-без второго запроса.
+**Как сервер принимает изменения** (одна транзакция; порядок: авто → листы → заправки):
+1. Каждая запись — «вставить или заменить» по `id`. Побеждает последняя синхронизация: сервер не
+   сравнивает время изменения (сотрудник работает с одного телефона за раз).
+2. `"deleted": true` → `deleted_at = now()`; удаление листа помечает удалёнными и его заправки.
+   Удаление записи, которой на сервере нет, — просто пропускается (не ошибка).
+3. Каждая принятая запись получает новый `version` (`03_DATA_MODEL.md`).
+4. Сервер проверяет только: формат и диапазоны полей (как в `03_DATA_MODEL.md`), что `id` не
+   принадлежит другому пользователю, что родитель существует и принадлежит пользователю,
+   уникальность листа на месяц. Бизнес-правила ЛУТ (пробег на конец ≥ начала и т. п.) проверяет
+   телефон.
+5. Запись, не прошедшую проверку, сервер пропускает и добавляет в `rejected`; остальные
+   принимаются. Коды:
+
+| code | Когда |
+|---|---|
+| `VALIDATION_ERROR` | неверный формат/диапазон поля (`message` называет поле) |
+| `NOT_FOUND` | `id` уже занят записью другого пользователя |
+| `PARENT_NOT_FOUND` | нет авто листа / листа заправки (или они чужие, удалены, отклонены в этом же запросе) |
+| `SHEET_EXISTS` | у этого авто уже есть неудалённый лист за этот месяц с другим `id` |
+
+**Ответ:**
+- `cars`, `sheets`, `refuelings` — все записи пользователя с `version` > `cursor` из запроса
+  (включая только что принятые и удалённые — с `"deleted": true`). При `cursor = null` —
+  все неудалённые записи.
+- `profile` — имя с сервера, если оно менялось после `cursor` (или `cursor = null`), иначе `null`.
+- `cursor` — новый курсор: наибольший `version` среди записей пользователя (если записей нет —
+  тот, что пришёл, или `0`). Телефон сохраняет его только после успешной обработки ответа.
+
+Ошибки всего запроса: 400 `VALIDATION_ERROR` (неверная структура JSON, больше 5000 записей в одном
+запросе), 401 `UNAUTHORIZED`. Тогда сервер ничего не сохраняет.
+
+**Что делает телефон с ответом** — `06_BUSINESS_RULES.md`, «Синхронизация».

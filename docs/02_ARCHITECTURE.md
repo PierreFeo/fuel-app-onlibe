@@ -1,6 +1,24 @@
 # 02. Архитектура
 
-## Общая схема
+## Принцип: офлайн прежде всего
+```
+┌──────────── Android-app ────────────┐                 ┌──────── сервер ────────┐
+│ экраны → ViewModel → Repository     │                 │ FastAPI → PostgreSQL   │
+│                        │            │  по кнопке      │ (только хранит данные, │
+│              Room (основная копия)  │ ◀── /sync ────▶ │  ничего не считает)    │
+│              расчёты ЛУТ (domain)   │  при входе,     │                        │
+└─────────────────────────────────────┘  смене пароля   └────────────────────────┘
+```
+- **Источник правды — база Room на телефоне.** Все экраны читают и пишут только её; приложение
+  полностью работает без интернета.
+- **Расчёты ЛУТ и все бизнес-проверки — на телефоне** (`06_BUSINESS_RULES.md`).
+- **Сервер — хранилище копии.** Принимает изменения и отдаёт их при `POST /sync`; проверяет
+  только формат, владельца и целостность ссылок (`04_API_CONTRACT.md`).
+- **Синхронизация — по кнопке.** Отправляются только изменённые записи; затем приходят
+  изменения с сервера (нужно при смене телефона). Подробно — `04_API_CONTRACT.md`, «Синхронизация».
+- **Гостевой режим** — то же приложение без входа: Room есть, синхронизации нет.
+
+## Схема развёртывания
 ```
 ┌─────────────────┐   HTTPS/JSON    ┌──────────────────────── VDS ─────────────────────────┐
 │ Android-app     │ ──────────────▶ │  Caddy (HTTPS, домен) ─▶ FastAPI (api) ─▶ PostgreSQL │
@@ -46,8 +64,8 @@ backend/
 │   ├── db/              engine, session, Base
 │   ├── models/          SQLAlchemy-модели (таблицы)
 │   ├── schemas/         Pydantic-схемы запросов/ответов (= контракт API)
-│   ├── services/        auth_service.py, password_service.py, sheet_calc.py, sheet_service.py, sms/
-│   ├── api/v1/          роутеры: auth, me, cars, sheets, refuelings
+│   ├── services/        auth_service.py, password_service.py, sync_service.py, sms/
+│   ├── api/v1/          роутеры: auth, me, sync
 │   └── cli.py           консольные команды для сервера (выдача паролей): python -m app.cli
 ├── alembic/             миграции
 ├── tests/
@@ -58,18 +76,20 @@ backend/
 ├── pyproject.toml
 └── .env.example
 ```
-Правило: роутеры тонкие, логика — в `services/`. Расчёты ЛУТ — чистые функции в
-`services/sheet_calc.py` без обращения к БД (их легко тестировать).
+Правило: роутеры тонкие, логика — в `services/`. Расчётов ЛУТ на сервере нет — их делает
+приложение; сервер хранит только введённые пользователем данные.
 
 ## Android
 | Что | Выбор |
 |---|---|
 | Язык | Kotlin |
 | UI | Jetpack Compose + Material 3 |
-| Архитектура | MVVM: Screen (Compose) → ViewModel (StateFlow) → Repository → API |
+| Архитектура | MVVM: Screen (Compose) → ViewModel (StateFlow) → Repository → Room; синхронизация: SyncRepository → API |
 | DI | Hilt |
-| Сеть | Retrofit + OkHttp + kotlinx.serialization |
-| Хранение токенов/настроек | DataStore (Preferences) |
+| Локальная БД | Room (основная копия данных) |
+| Расчёты ЛУТ | чистые функции Kotlin в `domain/calc/` (BigDecimal) |
+| Сеть (вход, синхронизация, пароль) | Retrofit + OkHttp + kotlinx.serialization |
+| Хранение токенов/настроек | DataStore (Preferences): токены, режим (гость/аккаунт), курсор и время синхронизации, `selected_car_id` |
 | Навигация | Navigation Compose |
 | Асинхронность | Coroutines + Flow |
 | Тесты | JUnit, kotlinx-coroutines-test, MockWebServer, Compose UI tests |
