@@ -6,16 +6,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -39,10 +41,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import ru.fueltracker.app.R
@@ -98,15 +100,17 @@ fun SheetCard(
     }
 }
 
+/** Месяц — своей строкой, целиком; ниже — сезон, 🔒, «≡ N» и меню. */
 @Composable
 private fun SheetHeader(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardActions) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(top = 4.dp, end = 8.dp),
+    ) {
         Text(
             text = Formatters.month(sheet.year, sheet.month),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineSmall,
             color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false),
         )
         if (sheet.calc.warnings.isNotEmpty()) {
@@ -119,12 +123,17 @@ private fun SheetHeader(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardAct
                     .semantics { contentDescription = warnings },
             )
         }
-        Spacer(Modifier.weight(1f))
-        // Нажатие переключает сезон; у закрытого листа иконка бледная, нажатие объясняет почему нельзя
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        // Нажатие переключает сезон; у закрытого листа иконка бледная, нажатие объясняет почему нельзя.
+        // Сдвиг влево — чтобы текст сезона стоял ровно под месяцем
         TextButton(
             onClick = actions.onSeasonClick,
             enabled = !isBusy,
-            modifier = Modifier.testTag(SheetsFeedTestTags.season(sheet.id)),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            modifier = Modifier
+                .offset(x = (-8).dp)
+                .testTag(SheetsFeedTestTags.season(sheet.id)),
         ) {
             val season = stringResource(
                 if (sheet.season == Season.WINTER) R.string.sheet_season_winter else R.string.sheet_season_summer,
@@ -141,25 +150,38 @@ private fun SheetHeader(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardAct
             val closed = stringResource(R.string.sheet_closed)
             Text(text = "🔒", modifier = Modifier.semantics { contentDescription = closed })
         }
+        Spacer(Modifier.weight(1f))
         RefuelingsButton(sheet, actions.onOpenRefuelings)
         SheetMenu(sheet, isBusy, actions)
     }
 }
 
-/** [≡] со счётчиком заправок — открывает шторку со списком. */
+/**
+ * «≡ N» — открывает шторку со списком заправок. Спокойный серый цвет и число текстом,
+ * а не бейджем: бейдж выглядел как важное уведомление.
+ */
 @Composable
 private fun RefuelingsButton(sheet: FuelSheet, onClick: () -> Unit) {
     val count = sheet.refuelings.size
-    IconButton(onClick = onClick, modifier = Modifier.testTag(SheetsFeedTestTags.refuelingsButton(sheet.id))) {
-        BadgedBox(
-            badge = {
-                if (count > 0) Badge { Text(count.toString()) }
-            },
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_list),
-                contentDescription = stringResource(R.string.sheet_refuelings, count),
-                tint = MaterialTheme.colorScheme.primary,
+    TextButton(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 8.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant),
+        modifier = Modifier.testTag(SheetsFeedTestTags.refuelingsButton(sheet.id)),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_list),
+            contentDescription = stringResource(R.string.sheet_refuelings, count),
+            modifier = Modifier.size(20.dp),
+        )
+        if (count > 0) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelLarge,
+                // Число уже есть в описании значка — TalkBack не повторяет его
+                modifier = Modifier
+                    .padding(start = 4.dp)
+                    .clearAndSetSemantics {},
             )
         }
     }
@@ -405,7 +427,8 @@ private fun SheetCardClosedPreview() {
     FuelTrackerTheme {
         Surface {
             SheetCard(
-                sheet = previewClosedSheet(),
+                // Самый длинный месяц — проверка, что заголовок не обрезается
+                sheet = previewClosedSheet().copy(month = 9),
                 isExpanded = false,
                 isBusy = false,
                 actions = SheetCardActions(),
