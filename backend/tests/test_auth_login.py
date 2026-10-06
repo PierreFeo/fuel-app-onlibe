@@ -206,7 +206,6 @@ async def test_ip_limit_20_attempts_per_hour(
         {"password": PASSWORD},
         {"phone": ALLOWED_PHONE, "password": ""},
         {"phone": "12345", "password": PASSWORD},
-        {"phone": "+70000000000", "password": PASSWORD},  # тестового аккаунта для пароля нет
     ],
 )
 async def test_invalid_payload_is_400(api: AsyncClient, payload: dict[str, str]) -> None:
@@ -233,3 +232,33 @@ async def test_no_refresh_tokens_issued_on_failure(
     await _login(api, password="wrong-password")
 
     assert (await db.scalars(select(RefreshToken))).all() == []
+
+
+# --- тестовый номер (dev) ---
+
+
+@pytest.fixture
+async def dev_user(db: AsyncSession) -> User:
+    user = User(phone="+70000000000", password_hash=hash_password(PASSWORD))
+    db.add(user)
+    await db.commit()
+    return user
+
+
+async def test_dev_test_phone_logs_in_with_password(api: AsyncClient, dev_user: User) -> None:
+    """Номер разбирается так же, как в request-code: тестовый номер в dev разрешён."""
+    response = await _login(api, phone="+7 000 000-00-00")
+
+    assert response.status_code == 200
+    assert response.json()["user"]["phone"] == "+70000000000"
+
+
+async def test_dev_test_phone_rejected_in_prod(
+    api: AsyncClient, dev_user: User, settings: Settings
+) -> None:
+    settings.env = "prod"
+
+    response = await _login(api, phone="+70000000000")
+
+    assert response.status_code == 400
+    assert response.json()["error"]["details"] == {"phone": "Неверный номер телефона"}

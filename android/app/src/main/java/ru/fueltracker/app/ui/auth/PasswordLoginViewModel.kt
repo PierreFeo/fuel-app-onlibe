@@ -110,7 +110,8 @@ private fun loginErrorText(error: ApiError): UiText? {
             val minutes = ((seconds + 59) / 60).coerceAtLeast(1)
             UiText.Resource(R.string.error_too_many_attempts, listOf(minutes))
         }
-        400 -> error.message?.let { UiText.Raw(it) }
+        // Сервер называет поле (например, «Неверный номер телефона») — это понятнее общего «Неверные данные»
+        400 -> (error.fieldError("phone") ?: error.fieldError("password") ?: error.message)?.let { UiText.Raw(it) }
         else -> null
     }
 }

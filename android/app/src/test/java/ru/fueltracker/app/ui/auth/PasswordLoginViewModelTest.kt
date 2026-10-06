@@ -99,6 +99,22 @@ class PasswordLoginViewModelTest {
     }
 
     @Test
+    fun `400 — причина по полю, а не общее «Неверные данные»`() = runTest {
+        repository.loginResult = httpError(
+            400,
+            ErrorCodes.VALIDATION_ERROR,
+            message = "Неверные данные запроса",
+            details = mapOf("phone" to "Неверный номер телефона"),
+        )
+        val viewModel = createViewModel()
+        viewModel.fill()
+        viewModel.onEvent(PasswordLoginEvent.Submit)
+        advanceUntilIdle()
+
+        assertEquals(UiText.Raw("Неверный номер телефона"), viewModel.state.value.error)
+    }
+
+    @Test
     fun `429 — минуты округляются вверх`() = runTest {
         repository.loginResult = httpError(429, ErrorCodes.RATE_LIMITED, details = mapOf("retry_after_sec" to 840))
         val viewModel = createViewModel()

@@ -32,7 +32,9 @@ async def run(
     """Выполнить команду. Возвращает код завершения: 0 — успех, 1 — ошибка."""
     args = _parser().parse_args(argv)
     try:
-        phone = normalize_phone(args.phone, settings.default_phone_region)
+        phone = normalize_phone(
+            args.phone, settings.default_phone_region, allow_dev_test_phone=settings.is_dev
+        )
     except AppError:
         print(f"Ошибка: неверный номер телефона {args.phone!r}", file=sys.stderr)
         return 1

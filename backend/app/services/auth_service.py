@@ -276,7 +276,7 @@ async def login_with_password(
     ip_limiter: SlidingWindowLimiter,
 ) -> VerifyCodeOut:
     """Запасной вход по паролю. Порядок проверок — docs/05_AUTH_SMS.md."""
-    phone = normalize_phone(raw_phone, settings.default_phone_region)
+    phone = _normalize(raw_phone, settings)  # как в request-code: тестовый номер в dev разрешён
 
     retry_after = ip_limiter.hit(client_ip, now)
     if retry_after is not None:
