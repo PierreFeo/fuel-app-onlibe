@@ -207,10 +207,10 @@ private fun SheetList(
         items(state.sheets, key = { it.id }) { sheet ->
             SheetCard(
                 sheet = sheet,
-                isRefuelingsExpanded = sheet.id in state.expandedSheetIds,
+                isExpanded = sheet.id in state.expandedSheetIds,
                 isBusy = sheet.id in state.busySheetIds,
                 actions = SheetCardActions(
-                    onToggleRefuelings = { onEvent(SheetsFeedEvent.ToggleRefuelings(sheet.id)) },
+                    onToggleExpanded = { onEvent(SheetsFeedEvent.ToggleExpanded(sheet.id)) },
                     onSeasonClick = { onEvent(SheetsFeedEvent.ToggleSeason(sheet)) },
                     onClose = { onEvent(SheetsFeedEvent.Close(sheet)) },
                     onReopen = { onEvent(SheetsFeedEvent.Reopen(sheet)) },
@@ -288,8 +288,9 @@ object SheetsFeedTestTags {
     const val CHANGE_CAR = "feed_change_car"
     const val NEW_SHEET = "feed_new_sheet"
     const val PROFILE = "feed_profile"
-    const val REFUELINGS_TOGGLE = "sheet_refuelings_toggle"
     fun card(sheetId: String) = "sheet_card_$sheetId"
+    fun details(sheetId: String) = "sheet_details_$sheetId"
+    fun consumption(sheetId: String) = "sheet_consumption_$sheetId"
     fun season(sheetId: String) = "sheet_season_$sheetId"
     fun menu(sheetId: String) = "sheet_menu_$sheetId"
     fun closeButton(sheetId: String) = "sheet_close_$sheetId"

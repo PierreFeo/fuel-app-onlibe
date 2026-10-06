@@ -174,11 +174,11 @@ class SheetsFeedViewModelTest {
     }
 
     @Test
-    fun `раскрыть и свернуть заправки`() = runTest {
+    fun `раскрыть и свернуть карточку`() = runTest {
         val viewModel = createViewModel()
-        viewModel.onEvent(SheetsFeedEvent.ToggleRefuelings("s-09"))
+        viewModel.onEvent(SheetsFeedEvent.ToggleExpanded("s-09"))
         assertEquals(setOf("s-09"), viewModel.state.value.expandedSheetIds)
-        viewModel.onEvent(SheetsFeedEvent.ToggleRefuelings("s-09"))
+        viewModel.onEvent(SheetsFeedEvent.ToggleExpanded("s-09"))
         assertTrue(viewModel.state.value.expandedSheetIds.isEmpty())
     }
 }

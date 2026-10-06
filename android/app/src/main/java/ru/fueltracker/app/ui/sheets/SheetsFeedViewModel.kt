@@ -52,7 +52,7 @@ data class SheetsFeedUiState(
     val isLoadingMore: Boolean = false,
     /** Подгрузка старых листов не удалась — внизу «Повторить». */
     val loadMoreFailed: Boolean = false,
-    /** Листы, у которых раскрыт список заправок. */
+    /** Листы, у которых карточка раскрыта (подробности). */
     val expandedSheetIds: Set<String> = emptySet(),
     /** Листы, по которым идёт запрос (сезон, переоткрытие, удаление) — их кнопки неактивны. */
     val busySheetIds: Set<String> = emptySet(),
@@ -80,7 +80,7 @@ sealed interface SheetsFeedEvent {
 
     /** Экран снова виден (например, после CarEditScreen) — обновить шапку авто. */
     data object Resume : SheetsFeedEvent
-    data class ToggleRefuelings(val sheetId: String) : SheetsFeedEvent
+    data class ToggleExpanded(val sheetId: String) : SheetsFeedEvent
     data class ToggleSeason(val sheet: FuelSheet) : SheetsFeedEvent
     data class Reopen(val sheet: FuelSheet) : SheetsFeedEvent
     data class RequestDelete(val sheet: FuelSheet) : SheetsFeedEvent
@@ -154,7 +154,7 @@ class SheetsFeedViewModel @Inject constructor(
             }
             SheetsFeedEvent.LoadMore -> loadMore()
             SheetsFeedEvent.Resume -> refreshCar()
-            is SheetsFeedEvent.ToggleRefuelings -> _state.update {
+            is SheetsFeedEvent.ToggleExpanded -> _state.update {
                 val ids = it.expandedSheetIds
                 it.copy(expandedSheetIds = if (event.sheetId in ids) ids - event.sheetId else ids + event.sheetId)
             }
@@ -197,7 +197,7 @@ class SheetsFeedViewModel @Inject constructor(
             SheetsFeedEvent.DismissRefueling -> _state.update { it.copy(refuelingTarget = null) }
             is SheetsFeedEvent.RefuelingSaved -> {
                 replaceSheet(event.sheet)
-                // Раскрываем список, чтобы новая заправка была видна
+                // Раскрываем карточку, чтобы новая заправка была видна
                 _state.update { it.copy(refuelingTarget = null, expandedSheetIds = it.expandedSheetIds + event.sheet.id) }
             }
 

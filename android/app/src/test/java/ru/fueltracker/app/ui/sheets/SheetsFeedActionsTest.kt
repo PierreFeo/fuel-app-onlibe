@@ -282,7 +282,7 @@ class SheetsFeedActionsTest {
     }
 
     @Test
-    fun `сохранённая заправка — карточка обновлена, список раскрыт, шторка закрыта`() = runTest {
+    fun `сохранённая заправка — карточка обновлена и раскрыта, шторка закрыта`() = runTest {
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
         val updated = october.copy(refuelings = previewOpenSheet().refuelings)

@@ -106,21 +106,28 @@
     <string name="sheet_season_winter">❄️ Зима</string>
     <string name="sheet_closed">Месяц закрыт</string>
     <string name="sheet_norm">Норма %1$s л/100 км</string>
-    <string name="sheet_mileage_open">Пробег: %1$s → —</string>
-    <string name="sheet_mileage">Пробег: %1$s → %2$s = %3$s км</string>
+    <string name="sheet_month_start">Начало месяца:</string>
+    <string name="sheet_month_end">Конец месяца:</string>
+    <string name="sheet_mileage_label">Пробег</string>
+    <string name="sheet_fuel_left_label">Остаток в баке</string>
+    <string name="sheet_fuel_available_label">Доступно</string>
+    <string name="sheet_refueled_label">Заправлено</string>
+    <string name="sheet_value_km">%1$s км</string>
+    <string name="sheet_value_l">%1$s л</string>
+    <string name="sheet_no_value">—</string>
+    <string name="sheet_expand">Подробнее</string>
+    <string name="sheet_collapse">Свернуть</string>
+    <string name="sheet_has_warnings">Есть предупреждения</string>
     <string name="sheet_fuel_start">Остаток на начало: %1$s л</string>
     <string name="sheet_refueled">Заправлено: %1$s л · %2$s ₽</string>
     <string name="sheet_refuelings">Заправки (%1$d)</string>
     <string name="sheet_refueling_line">%1$s л × %2$s = %3$s ₽</string>
-    <string name="sheet_fuel_available">Доступно топлива: %1$s л</string>
     <string name="sheet_fuel_end">Остаток на конец: %1$s л</string>
     <string name="sheet_fuel_end_by_norm">Остаток на конец: %1$s л (по норме)</string>
     <string name="sheet_consumption">Расход</string>
-    <string name="sheet_consumption_value">%1$s л/100 км</string>
-    <string name="sheet_consumption_pending">Расход: появится после ввода пробега на конец месяца</string>
-    <string name="sheet_consumption_no_actual">Расход: укажите фактический остаток в баке</string>
-    <string name="sheet_consumption_normal">В норме</string>
-    <string name="sheet_consumption_over">Перерасход</string>
+    <string name="sheet_consumption_unit">л/100 км</string>
+    <string name="sheet_consumption_pending">Расход появится после закрытия месяца</string>
+    <string name="sheet_consumption_no_actual">Расход не посчитан: не указан фактический остаток</string>
     <string name="sheet_overuse">Перерасход %1$s л</string>
     <string name="sheet_economy">Экономия %1$s л</string>
     <string name="sheet_exact">Ровно по норме</string>

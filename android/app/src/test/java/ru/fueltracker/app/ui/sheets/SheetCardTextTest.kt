@@ -29,8 +29,12 @@ class SheetCardTextTest {
         val open = previewOpenSheet()
         assertEquals(UiText.Resource(R.string.sheet_consumption_pending), consumptionHint(open))
 
-        // Пример C: закрыт без фактического остатка
+        // Пример C у открытого листа: пробег на конец есть, остатка нет — расход будет после закрытия
         val closed = previewClosedSheet()
+        val openWithMileage = open.copy(odometerEndKm = 54_340, calc = open.calc.copy(mileageKm = 1000))
+        assertEquals(UiText.Resource(R.string.sheet_consumption_pending), consumptionHint(openWithMileage))
+
+        // Пример C у старого листа, закрытого до того, как остаток стал обязательным
         val noActual = closed.copy(fuelEndActualL = null, calc = closed.calc.copy(actualLPer100km = null))
         assertEquals(UiText.Resource(R.string.sheet_consumption_no_actual), consumptionHint(noActual))
 

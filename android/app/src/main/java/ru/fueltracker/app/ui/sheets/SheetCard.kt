@@ -1,14 +1,19 @@
 package ru.fueltracker.app.ui.sheets
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -21,20 +26,23 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import ru.fueltracker.app.R
@@ -51,7 +59,7 @@ import java.math.BigDecimal
 
 /** Что можно сделать с листом из карточки. */
 class SheetCardActions(
-    val onToggleRefuelings: () -> Unit = {},
+    val onToggleExpanded: () -> Unit = {},
     val onSeasonClick: () -> Unit = {},
     val onClose: () -> Unit = {},
     val onReopen: () -> Unit = {},
@@ -61,78 +69,32 @@ class SheetCardActions(
 )
 
 /**
- * Карточка ЛУТ: все итоги берутся из `calc` сервера.
- * [isBusy] — по листу идёт запрос, кнопки неактивны.
+ * Карточка ЛУТ: компактная сводка, нажатие раскрывает подробности.
+ * Все итоги берутся из `calc` сервера. [isBusy] — по листу идёт запрос, кнопки неактивны.
  */
 @Composable
 fun SheetCard(
     sheet: FuelSheet,
-    isRefuelingsExpanded: Boolean,
+    isExpanded: Boolean,
     isBusy: Boolean,
     actions: SheetCardActions,
     modifier: Modifier = Modifier,
 ) {
-    val calc = sheet.calc
-    Card(modifier = modifier.fillMaxWidth().testTag(SheetsFeedTestTags.card(sheet.id))) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
+    Card(
+        onClick = actions.onToggleExpanded,
+        modifier = modifier.fillMaxWidth().testTag(SheetsFeedTestTags.card(sheet.id)),
+    ) {
+        Column(modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
             SheetHeader(sheet, isBusy, actions)
-            Text(
-                text = stringResource(R.string.sheet_norm, Formatters.consumption(sheet.normLPer100km)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-            Text(mileageText(sheet), style = MaterialTheme.typography.bodyMedium)
-            Text(
-                stringResource(R.string.sheet_fuel_start, Formatters.amount(sheet.fuelStartL)),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Text(
-                stringResource(
-                    R.string.sheet_refueled,
-                    Formatters.amount(calc.refueledL),
-                    Formatters.amount(calc.refueledCost),
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            if (sheet.refuelings.isNotEmpty() || !sheet.isClosed) {
-                RefuelingsSection(sheet, isRefuelingsExpanded, isBusy, actions)
+            Column(modifier = Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OdometerAndConsumption(sheet)
+                HorizontalDivider()
+                SummaryRow(sheet)
             }
-
-            if (sheet.isClosed) {
-                ClosedTotals(sheet)
-            } else {
-                Text(
-                    text = stringResource(R.string.sheet_fuel_available, Formatters.amount(calc.fuelAvailableL)),
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                )
+            AnimatedVisibility(visible = isExpanded) {
+                SheetDetails(sheet, isBusy, actions, modifier = Modifier.padding(top = 8.dp, end = 8.dp))
             }
-
-            calc.warnings.forEach { warning ->
-                Text(
-                    text = stringResource(R.string.sheet_warning, warning.message),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            }
-
-            if (!sheet.isClosed) {
-                Button(
-                    onClick = actions.onClose,
-                    enabled = !isBusy,
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .padding(top = 4.dp)
-                        .testTag(SheetsFeedTestTags.closeButton(sheet.id)),
-                ) {
-                    Text(stringResource(R.string.sheet_close_month))
-                }
-            }
+            ExpandChevron(isExpanded)
         }
     }
 }
@@ -143,8 +105,21 @@ private fun SheetHeader(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardAct
         Text(
             text = Formatters.month(sheet.year, sheet.month),
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            modifier = Modifier.weight(1f, fill = false),
         )
+        if (sheet.calc.warnings.isNotEmpty()) {
+            val warnings = stringResource(R.string.sheet_has_warnings)
+            Text(
+                text = "⚠",
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .semantics { contentDescription = warnings },
+            )
+        }
+        Spacer(Modifier.weight(1f))
         // Нажатие переключает сезон; у закрытого листа иконка бледная, нажатие объясняет почему нельзя
         TextButton(
             onClick = actions.onSeasonClick,
@@ -207,40 +182,191 @@ private fun SheetMenu(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardActio
     }
 }
 
+/** «Начало / Конец месяца» слева, «Расход» справа — как в старом приложении. */
 @Composable
-private fun mileageText(sheet: FuelSheet): String {
-    val start = Formatters.km(sheet.odometerStartKm)
-    val end = sheet.odometerEndKm
-    val mileage = sheet.calc.mileageKm
-    return if (end == null || mileage == null) {
-        stringResource(R.string.sheet_mileage_open, start)
-    } else {
-        stringResource(R.string.sheet_mileage, start, Formatters.km(end), Formatters.km(mileage))
+private fun OdometerAndConsumption(sheet: FuelSheet) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.height(IntrinsicSize.Min),
+    ) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            LabeledValue(stringResource(R.string.sheet_month_start), Formatters.km(sheet.odometerStartKm))
+            LabeledValue(
+                stringResource(R.string.sheet_month_end),
+                sheet.odometerEndKm?.let { Formatters.km(it) } ?: stringResource(R.string.sheet_no_value),
+            )
+        }
+        VerticalDivider(
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(horizontal = 12.dp),
+        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.widthIn(min = 96.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.sheet_consumption),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            val perHundred = sheet.calc.actualLPer100km
+            Text(
+                text = perHundred?.let { Formatters.consumption(it) } ?: stringResource(R.string.sheet_no_value),
+                style = MaterialTheme.typography.headlineSmall,
+                color = consumptionColor(sheet.calc.consumptionStatus),
+                modifier = Modifier.testTag(SheetsFeedTestTags.consumption(sheet.id)),
+            )
+            if (perHundred != null) {
+                Text(
+                    text = stringResource(R.string.sheet_consumption_unit),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
+@Composable
+private fun LabeledValue(label: String, value: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Bottom) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+/** «Пробег · Остаток в баке (у открытого — Доступно) · Заправлено». */
+@Composable
+private fun SummaryRow(sheet: FuelSheet) {
+    val calc = sheet.calc
+    val noValue = stringResource(R.string.sheet_no_value)
+    val (fuelLabel, fuelValue) = if (sheet.isClosed) {
+        R.string.sheet_fuel_left_label to calc.fuelEndL
+    } else {
+        R.string.sheet_fuel_available_label to calc.fuelAvailableL
+    }
+    Row {
+        SummaryCell(
+            label = stringResource(R.string.sheet_mileage_label),
+            value = calc.mileageKm?.let { stringResource(R.string.sheet_value_km, Formatters.km(it)) } ?: noValue,
+            alignment = Alignment.Start,
+            modifier = Modifier.weight(1f),
+        )
+        SummaryCell(
+            label = stringResource(fuelLabel),
+            value = fuelValue?.let { stringResource(R.string.sheet_value_l, Formatters.amount(it)) } ?: noValue,
+            alignment = Alignment.CenterHorizontally,
+            modifier = Modifier.weight(1f),
+        )
+        SummaryCell(
+            label = stringResource(R.string.sheet_refueled_label),
+            value = stringResource(R.string.sheet_value_l, Formatters.amount(calc.refueledL)),
+            alignment = Alignment.End,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun SummaryCell(label: String, value: String, alignment: Alignment.Horizontal, modifier: Modifier) {
+    Column(horizontalAlignment = alignment, modifier = modifier) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+        Text(text = value, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+    }
+}
+
+/** Стрелка внизу карточки: подсказка, что карточку можно раскрыть. */
+@Composable
+private fun ExpandChevron(isExpanded: Boolean) {
+    val rotation by animateFloatAsState(if (isExpanded) 180f else 0f, label = "chevron")
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Icon(
+            painter = painterResource(R.drawable.ic_expand_more),
+            contentDescription = stringResource(if (isExpanded) R.string.sheet_collapse else R.string.sheet_expand),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.rotate(rotation),
+        )
+    }
+}
+
+/** Раскрытая часть: норма, деньги, экономия/перерасход, предупреждения, «Закрыть месяц». */
+@Composable
+private fun SheetDetails(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardActions, modifier: Modifier = Modifier) {
+    val calc = sheet.calc
+    Column(
+        modifier = modifier.testTag(SheetsFeedTestTags.details(sheet.id)),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        HorizontalDivider()
+        DetailText(stringResource(R.string.sheet_norm, Formatters.consumption(sheet.normLPer100km)))
+        DetailText(stringResource(R.string.sheet_fuel_start, Formatters.amount(sheet.fuelStartL)))
+        DetailText(
+            stringResource(R.string.sheet_refueled, Formatters.amount(calc.refueledL), Formatters.amount(calc.refueledCost)),
+        )
+        if (sheet.refuelings.isNotEmpty() || !sheet.isClosed) {
+            RefuelingsSection(sheet, isBusy, actions)
+        }
+        if (sheet.isClosed) {
+            calc.fuelEndL?.let { fuelEnd ->
+                val res = if (sheet.fuelEndActualL == null) R.string.sheet_fuel_end_by_norm else R.string.sheet_fuel_end
+                DetailText(stringResource(res, Formatters.amount(fuelEnd)))
+            }
+        }
+        val deviation = calc.deviationL
+        if (calc.actualLPer100km != null && deviation != null) {
+            DetailText(deviationText(deviation).asString(), color = consumptionColor(calc.consumptionStatus))
+        } else {
+            consumptionHint(sheet)?.let { DetailText(it.asString(), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        calc.costPerKm?.let { DetailText(stringResource(R.string.sheet_cost_per_km, Formatters.amount(it))) }
+
+        calc.warnings.forEach { warning ->
+            Text(
+                text = stringResource(R.string.sheet_warning, warning.message),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+
+        if (!sheet.isClosed) {
+            Button(
+                onClick = actions.onClose,
+                enabled = !isBusy,
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .testTag(SheetsFeedTestTags.closeButton(sheet.id)),
+            ) {
+                Text(stringResource(R.string.sheet_close_month))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailText(text: String, color: Color = Color.Unspecified) {
+    Text(text = text, style = MaterialTheme.typography.bodyMedium, color = color)
+}
+
 /**
- * «▸ Заправки (N)» и «+ Заправка». У открытого листа заправку можно нажать — откроется её форма;
+ * «Заправки (N)» и «+ Заправка». У открытого листа заправку можно нажать — откроется её форма;
  * у закрытого кнопки нет и строки не нажимаются.
  */
 @Composable
-private fun RefuelingsSection(
-    sheet: FuelSheet,
-    expanded: Boolean,
-    isBusy: Boolean,
-    actions: SheetCardActions,
-) {
+private fun RefuelingsSection(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardActions) {
     val refuelings = sheet.refuelings
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (refuelings.isNotEmpty()) {
             Text(
-                text = (if (expanded) "▾ " else "▸ ") + stringResource(R.string.sheet_refuelings, refuelings.size),
+                text = stringResource(R.string.sheet_refuelings, refuelings.size),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .clickable(onClick = actions.onToggleRefuelings)
-                    .padding(vertical = 4.dp)
-                    .testTag(SheetsFeedTestTags.REFUELINGS_TOGGLE),
             )
         }
         Spacer(Modifier.weight(1f))
@@ -254,12 +380,10 @@ private fun RefuelingsSection(
             }
         }
     }
-    AnimatedVisibility(visible = expanded && refuelings.isNotEmpty()) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(start = 12.dp)) {
-            refuelings.forEach { refueling ->
-                val onClick = if (sheet.isClosed || isBusy) null else ({ actions.onRefuelingClick(refueling) })
-                RefuelingRow(refueling, onClick)
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(start = 12.dp)) {
+        refuelings.forEach { refueling ->
+            val onClick = if (sheet.isClosed || isBusy) null else ({ actions.onRefuelingClick(refueling) })
+            RefuelingRow(refueling, onClick)
         }
     }
 }
@@ -290,50 +414,8 @@ private fun RefuelingRow(refueling: Refueling, onClick: (() -> Unit)?) {
                 Formatters.amount(refueling.totalCost),
             ),
             style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.End,
         )
-    }
-}
-
-@Composable
-private fun ClosedTotals(sheet: FuelSheet) {
-    val calc = sheet.calc
-    calc.fuelEndL?.let { fuelEnd ->
-        val res = if (sheet.fuelEndActualL == null) R.string.sheet_fuel_end_by_norm else R.string.sheet_fuel_end
-        Text(stringResource(res, Formatters.amount(fuelEnd)), style = MaterialTheme.typography.bodyMedium)
-    }
-    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-
-    val perHundred = calc.actualLPer100km
-    if (perHundred == null) {
-        consumptionHint(sheet)?.let {
-            Text(it.asString(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    } else {
-        val color = consumptionColor(calc.consumptionStatus)
-        Text(stringResource(R.string.sheet_consumption), style = MaterialTheme.typography.labelLarge)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = stringResource(R.string.sheet_consumption_value, Formatters.consumption(perHundred)),
-                style = MaterialTheme.typography.headlineSmall,
-                color = color,
-                modifier = Modifier.weight(1f),
-            )
-            calc.consumptionStatus?.let { status ->
-                Text(
-                    text = stringResource(
-                        if (status == ConsumptionStatus.OVER) R.string.sheet_consumption_over else R.string.sheet_consumption_normal,
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = color,
-                )
-            }
-        }
-        calc.deviationL?.let {
-            Text(deviationText(it).asString(), style = MaterialTheme.typography.bodyMedium, color = color)
-        }
-    }
-    calc.costPerKm?.let {
-        Text(stringResource(R.string.sheet_cost_per_km, Formatters.amount(it)), style = MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -352,10 +434,16 @@ internal fun deviationText(deviation: BigDecimal): UiText = when (deviation.sign
     else -> UiText.Resource(R.string.sheet_exact)
 }
 
-/** Почему расход ещё не посчитан; null — объяснять нечего (например, пробег 0 км). */
+/**
+ * Почему расход не посчитан; null — объяснять нечего (например, пробег 0 км).
+ * Открытый лист — «появится после закрытия»; закрытый без фактического остатка (старые листы,
+ * до того как остаток стал обязательным) — «не указан фактический остаток».
+ */
 internal fun consumptionHint(sheet: FuelSheet): UiText? = when {
     sheet.calc.mileageKm == null -> UiText.Resource(R.string.sheet_consumption_pending)
-    sheet.fuelEndActualL == null -> UiText.Resource(R.string.sheet_consumption_no_actual)
+    sheet.fuelEndActualL == null -> UiText.Resource(
+        if (sheet.isClosed) R.string.sheet_consumption_no_actual else R.string.sheet_consumption_pending,
+    )
     else -> null
 }
 
@@ -366,7 +454,23 @@ private fun SheetCardClosedPreview() {
         Surface {
             SheetCard(
                 sheet = previewClosedSheet(),
-                isRefuelingsExpanded = true,
+                isExpanded = false,
+                isBusy = false,
+                actions = SheetCardActions(),
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+    }
+}
+
+@PreviewLightDark
+@Composable
+private fun SheetCardClosedExpandedPreview() {
+    FuelTrackerTheme {
+        Surface {
+            SheetCard(
+                sheet = previewClosedSheet(),
+                isExpanded = true,
                 isBusy = false,
                 actions = SheetCardActions(),
                 modifier = Modifier.padding(16.dp),
@@ -382,7 +486,7 @@ private fun SheetCardOpenPreview() {
         Surface {
             SheetCard(
                 sheet = previewOpenSheet(),
-                isRefuelingsExpanded = false,
+                isExpanded = true,
                 isBusy = false,
                 actions = SheetCardActions(),
                 modifier = Modifier.padding(16.dp),
