@@ -64,6 +64,8 @@ fun CarsScreen(
     onAddCar: () -> Unit,
     onEditCar: (carId: String) -> Unit,
     onBack: (() -> Unit)?,
+    /** Только когда список авто — первый экран (из ленты профиль открывается в её шапке). */
+    onOpenProfile: (() -> Unit)? = null,
     viewModel: CarsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -80,6 +82,7 @@ fun CarsScreen(
         onAddCar = onAddCar,
         onEditCar = onEditCar,
         onBack = onBack,
+        onOpenProfile = onOpenProfile,
     )
 }
 
@@ -91,6 +94,8 @@ fun CarsContent(
     onAddCar: () -> Unit,
     onEditCar: (carId: String) -> Unit,
     onBack: (() -> Unit)?,
+    /** Только когда список авто — первый экран (из ленты профиль открывается в её шапке). */
+    onOpenProfile: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -109,6 +114,14 @@ fun CarsContent(
                                 painterResource(R.drawable.ic_arrow_back),
                                 contentDescription = stringResource(R.string.action_back),
                             )
+                        }
+                    }
+                },
+                actions = {
+                    // Без авто нет ленты, а значит и её шапки — иначе из приложения было бы не выйти
+                    if (onOpenProfile != null) {
+                        IconButton(onClick = onOpenProfile) {
+                            Icon(painterResource(R.drawable.ic_person), contentDescription = stringResource(R.string.profile_open))
                         }
                     }
                 },

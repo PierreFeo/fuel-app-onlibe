@@ -18,6 +18,7 @@ import ru.fueltracker.app.ui.auth.PasswordLoginScreen
 import ru.fueltracker.app.ui.auth.PhoneScreen
 import ru.fueltracker.app.ui.cars.CarEditScreen
 import ru.fueltracker.app.ui.cars.CarsScreen
+import ru.fueltracker.app.ui.profile.ProfileScreen
 import ru.fueltracker.app.ui.sheets.SheetsFeedScreen
 import ru.fueltracker.app.ui.splash.SplashScreen
 
@@ -85,7 +86,12 @@ fun NavGraph(
                 onAddCar = { navController.navigate(CarEditRoute()) },
                 onEditCar = { navController.navigate(CarEditRoute(it)) },
                 onBack = if (canGoBack) ({ navController.popBackStack() }) else null,
+                onOpenProfile = if (canGoBack) null else ({ navController.navigate(ProfileRoute) }),
             )
+        }
+        composable<ProfileRoute> {
+            // После «Выйти» переход на вход делает LaunchedEffect выше: токены стёрты → PhoneRoute
+            ProfileScreen(onBack = { navController.popBackStack() })
         }
         composable<CarEditRoute> {
             CarEditScreen(onDone = { navController.popBackStack() })
@@ -93,6 +99,7 @@ fun NavGraph(
         composable<SheetsFeedRoute> {
             SheetsFeedScreen(
                 onChangeCar = { navController.navigate(CarsRoute) },
+                onOpenProfile = { navController.navigate(ProfileRoute) },
                 onEditCar = { navController.navigate(CarEditRoute(it)) },
                 // Авто не выбрано или его больше нет — список авто становится корнем
                 onNoCar = { navController.navigateClearingBackStack(CarsRoute) },

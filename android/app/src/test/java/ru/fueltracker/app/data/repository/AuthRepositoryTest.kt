@@ -1,18 +1,23 @@
 package ru.fueltracker.app.data.repository
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import ru.fueltracker.app.data.local.AuthTokens
+import ru.fueltracker.app.data.local.FakeSelectedCarStorage
 import ru.fueltracker.app.data.local.FakeTokenStorage
 import ru.fueltracker.app.data.remote.ApiError
 import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.remote.ApiTestServer
 import ru.fueltracker.app.data.remote.api.AuthApi
 import ru.fueltracker.app.data.remote.apiPath
+import ru.fueltracker.app.data.remote.assertJsonEquals
+import ru.fueltracker.app.data.remote.bodyText
 import ru.fueltracker.app.domain.model.CodeRequest
 import ru.fueltracker.app.domain.model.LoginResult
 
@@ -21,7 +26,46 @@ class AuthRepositoryTest {
 
     private val server = ApiTestServer()
     private val tokenStorage = FakeTokenStorage()
-    private val repository = DefaultAuthRepository(server.api<AuthApi>(), tokenStorage)
+    private val selectedCar = FakeSelectedCarStorage(initial = "car-1")
+    private val repository = DefaultAuthRepository(server.api<AuthApi>(), tokenStorage, selectedCar)
+
+    // В runTest время виртуальное: таймаут выхода (5 с) сработал бы раньше настоящего запроса
+    private suspend fun logoutInRealTime() = withContext(Dispatchers.IO) { repository.logout() }
+
+    @Test
+    fun `выход — refresh-токен отзывается на сервере, токены и авто стёрты`() = runTest {
+        tokenStorage.save(AuthTokens("acc-1", "ref-1"))
+        server.enqueueEmpty(204)
+
+        logoutInRealTime()
+
+        val request = server.takeRequest()
+        assertEquals("/auth/logout", request.apiPath)
+        assertJsonEquals("""{ "refresh_token": "ref-1" }""", request.bodyText)
+        assertNull(tokenStorage.current)
+        assertNull(selectedCar.current)
+    }
+
+    @Test
+    fun `выход без связи — всё равно стёрто`() = runTest {
+        tokenStorage.save(AuthTokens("acc-1", "ref-1"))
+        server.close() // сервер недоступен
+
+        logoutInRealTime()
+
+        assertNull(tokenStorage.current)
+        assertNull(selectedCar.current)
+    }
+
+    @Test
+    fun `выход с ошибкой сервера — всё равно стёрто`() = runTest {
+        tokenStorage.save(AuthTokens("acc-1", "ref-1"))
+        server.enqueueJson("""{ "error": { "code": "INTERNAL_ERROR", "message": "Ошибка", "details": {} } }""", code = 500)
+
+        logoutInRealTime()
+
+        assertNull(tokenStorage.current)
+    }
 
     @After
     fun tearDown() = server.close()

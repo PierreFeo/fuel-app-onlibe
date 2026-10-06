@@ -12,6 +12,8 @@ import javax.inject.Singleton
 
 interface ProfileRepository {
 
+    suspend fun getMe(): ApiResult<User>
+
     /** PATCH /me; [name] — 1..100 символов. */
     suspend fun updateName(name: String): ApiResult<User>
 }
@@ -20,6 +22,8 @@ interface ProfileRepository {
 class DefaultProfileRepository @Inject constructor(
     private val api: ProfileApi,
 ) : ProfileRepository {
+
+    override suspend fun getMe(): ApiResult<User> = apiCall { api.getMe() }.map { it.toDomain() }
 
     override suspend fun updateName(name: String): ApiResult<User> =
         apiCall { api.updateMe(UpdateMeRequest(name)) }.map { it.toDomain() }

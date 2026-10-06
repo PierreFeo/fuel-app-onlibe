@@ -48,12 +48,21 @@ class FakeAuthRepository : AuthRepository {
         loginCalls += phone to password
         return loginResult
     }
+
+    var logoutCalls = 0
+
+    override suspend fun logout() {
+        logoutCalls++
+    }
 }
 
 class FakeProfileRepository : ProfileRepository {
 
+    var getMeResult: ApiResult<User> = ApiResult.Success(User("id-1", "+79991234567", "Иван"))
     var updateNameResult: ApiResult<User> = ApiResult.Success(User("id-1", "+79991234567", "Иван"))
     val updateNameCalls = mutableListOf<String>()
+
+    override suspend fun getMe(): ApiResult<User> = getMeResult
 
     override suspend fun updateName(name: String): ApiResult<User> {
         updateNameCalls += name

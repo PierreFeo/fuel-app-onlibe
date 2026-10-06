@@ -60,6 +60,7 @@ import java.math.BigDecimal
 @Composable
 fun SheetsFeedScreen(
     onChangeCar: () -> Unit,
+    onOpenProfile: () -> Unit,
     onEditCar: (carId: String) -> Unit,
     onNoCar: () -> Unit,
     viewModel: SheetsFeedViewModel = hiltViewModel(),
@@ -73,6 +74,7 @@ fun SheetsFeedScreen(
         state = state,
         onEvent = viewModel::onEvent,
         onChangeCar = onChangeCar,
+        onOpenProfile = onOpenProfile,
         onEditCar = { state.car?.let { onEditCar(it.id) } },
     )
     // У шторки свой ViewModel, поэтому она здесь, а не в stateless SheetsFeedContent
@@ -91,6 +93,7 @@ fun SheetsFeedContent(
     state: SheetsFeedUiState,
     onEvent: (SheetsFeedEvent) -> Unit,
     onChangeCar: () -> Unit,
+    onOpenProfile: () -> Unit,
     onEditCar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -117,6 +120,9 @@ fun SheetsFeedContent(
                             painterResource(R.drawable.ic_directions_car),
                             contentDescription = stringResource(R.string.feed_change_car),
                         )
+                    }
+                    IconButton(onClick = onOpenProfile, modifier = Modifier.testTag(SheetsFeedTestTags.PROFILE)) {
+                        Icon(painterResource(R.drawable.ic_person), contentDescription = stringResource(R.string.profile_open))
                     }
                 },
             )
@@ -281,6 +287,7 @@ object SheetsFeedTestTags {
     const val LIST = "feed_list"
     const val CHANGE_CAR = "feed_change_car"
     const val NEW_SHEET = "feed_new_sheet"
+    const val PROFILE = "feed_profile"
     const val REFUELINGS_TOGGLE = "sheet_refuelings_toggle"
     fun card(sheetId: String) = "sheet_card_$sheetId"
     fun season(sheetId: String) = "sheet_season_$sheetId"
@@ -306,6 +313,7 @@ private fun SheetsFeedContentPreview() {
             ),
             onEvent = {},
             onChangeCar = {},
+            onOpenProfile = {},
             onEditCar = {},
         )
     }
@@ -319,6 +327,7 @@ private fun SheetsFeedContentEmptyPreview() {
             state = SheetsFeedUiState(car = previewCar, isLoading = false),
             onEvent = {},
             onChangeCar = {},
+            onOpenProfile = {},
             onEditCar = {},
         )
     }
@@ -332,6 +341,7 @@ private fun SheetsFeedContentErrorPreview() {
             state = SheetsFeedUiState(isLoading = false, loadError = UiText.Resource(R.string.error_no_connection)),
             onEvent = {},
             onChangeCar = {},
+            onOpenProfile = {},
             onEditCar = {},
         )
     }
