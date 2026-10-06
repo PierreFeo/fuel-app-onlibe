@@ -62,6 +62,11 @@ data class SheetsFeedUiState(
     val closeSheet: CloseSheetForm? = null,
     /** Лист, для которого открыт диалог «Удалить лист?». */
     val deleteCandidate: FuelSheet? = null,
+    /**
+     * Лист, у которого открыт список заправок. Храним id, а не лист: после сохранения заправки
+     * список показывает свежие данные. Пока открыта форма заправки, список скрыт.
+     */
+    val refuelingsSheetId: String? = null,
     /** Открыта шторка заправки (новой или существующей). */
     val refuelingTarget: RefuelingTarget? = null,
     val snackbar: UiText? = null,
@@ -71,6 +76,10 @@ data class SheetsFeedUiState(
 ) {
     val hasContent: Boolean get() = car != null && loadError == null && !isLoading
     val canLoadMore: Boolean get() = nextBefore != null && !isLoadingMore && !loadMoreFailed
+
+    /** Лист для шторки «Заправки»; null — шторка не видна. */
+    val refuelingsSheet: FuelSheet?
+        get() = if (refuelingTarget != null) null else sheets.firstOrNull { it.id == refuelingsSheetId }
 }
 
 sealed interface SheetsFeedEvent {
@@ -100,6 +109,10 @@ sealed interface SheetsFeedEvent {
     data class CloseFuel(val value: String) : SheetsFeedEvent
     data object ConfirmClose : SheetsFeedEvent
     data object DismissClose : SheetsFeedEvent
+
+    /** [≡] в карточке — список заправок листа. */
+    data class OpenRefuelings(val sheetId: String) : SheetsFeedEvent
+    data object DismissRefuelings : SheetsFeedEvent
 
     /** «+ Заправка» ([refueling] null) или нажатие на заправку открытого листа. */
     data class OpenRefueling(val sheet: FuelSheet, val refueling: Refueling? = null) : SheetsFeedEvent
@@ -186,6 +199,8 @@ class SheetsFeedViewModel @Inject constructor(
                 if (it.closeSheet?.isSaving == true) it else it.copy(closeSheet = null)
             }
 
+            is SheetsFeedEvent.OpenRefuelings -> _state.update { it.copy(refuelingsSheetId = event.sheetId) }
+            SheetsFeedEvent.DismissRefuelings -> _state.update { it.copy(refuelingsSheetId = null) }
             is SheetsFeedEvent.OpenRefueling -> {
                 // Заправки закрытого листа не меняются (409 SHEET_CLOSED) — сначала переоткрыть
                 if (event.sheet.isClosed) {
@@ -194,11 +209,11 @@ class SheetsFeedViewModel @Inject constructor(
                     _state.update { it.copy(refuelingTarget = event.sheet.refuelingTarget(event.refueling)) }
                 }
             }
+            // Форма закрылась — если она открывалась из списка заправок, список появится снова
             SheetsFeedEvent.DismissRefueling -> _state.update { it.copy(refuelingTarget = null) }
             is SheetsFeedEvent.RefuelingSaved -> {
                 replaceSheet(event.sheet)
-                // Раскрываем карточку, чтобы новая заправка была видна
-                _state.update { it.copy(refuelingTarget = null, expandedSheetIds = it.expandedSheetIds + event.sheet.id) }
+                _state.update { it.copy(refuelingTarget = null) }
             }
 
             SheetsFeedEvent.SnackbarShown -> _state.update { it.copy(snackbar = null, snackbarAction = null) }

@@ -282,7 +282,7 @@ class SheetsFeedActionsTest {
     }
 
     @Test
-    fun `сохранённая заправка — карточка обновлена и раскрыта, шторка закрыта`() = runTest {
+    fun `сохранённая заправка — карточка обновлена, шторка закрыта`() = runTest {
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
         val updated = october.copy(refuelings = previewOpenSheet().refuelings)
@@ -292,7 +292,42 @@ class SheetsFeedActionsTest {
         val state = viewModel.state.value
         assertNull(state.refuelingTarget)
         assertEquals(updated, state.sheets.first { it.id == "s-10" })
-        assertTrue("s-10" in state.expandedSheetIds)
+        assertNull(state.refuelingsSheet)
+    }
+
+    // --- Список заправок (шторка по кнопке [≡]) ---
+
+    @Test
+    fun `список заправок открывается и закрывается`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-09"))
+        assertEquals(september, viewModel.state.value.refuelingsSheet)
+
+        viewModel.onEvent(SheetsFeedEvent.DismissRefuelings)
+        assertNull(viewModel.state.value.refuelingsSheet)
+    }
+
+    @Test
+    fun `пока открыта форма заправки, список скрыт, после отмены — снова виден`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
+        viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
+        assertNull(viewModel.state.value.refuelingsSheet)
+
+        viewModel.onEvent(SheetsFeedEvent.DismissRefueling)
+        assertEquals(october, viewModel.state.value.refuelingsSheet)
+    }
+
+    @Test
+    fun `после сохранения заправки список снова виден с новыми данными`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
+        viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
+        val updated = october.copy(refuelings = previewOpenSheet().refuelings)
+
+        viewModel.onEvent(SheetsFeedEvent.RefuelingSaved(updated))
+
+        assertEquals(updated, viewModel.state.value.refuelingsSheet)
     }
 
     @Test

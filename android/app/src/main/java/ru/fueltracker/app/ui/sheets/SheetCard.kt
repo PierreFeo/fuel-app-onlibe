@@ -2,7 +2,6 @@ package ru.fueltracker.app.ui.sheets
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -22,7 +23,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,13 +42,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import ru.fueltracker.app.R
 import ru.fueltracker.app.domain.model.ConsumptionStatus
 import ru.fueltracker.app.domain.model.FuelSheet
-import ru.fueltracker.app.domain.model.Refueling
 import ru.fueltracker.app.domain.model.Season
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.UiText
@@ -64,8 +63,8 @@ class SheetCardActions(
     val onClose: () -> Unit = {},
     val onReopen: () -> Unit = {},
     val onDelete: () -> Unit = {},
-    val onAddRefueling: () -> Unit = {},
-    val onRefuelingClick: (Refueling) -> Unit = {},
+    /** [≡] — открыть шторку со списком заправок. */
+    val onOpenRefuelings: () -> Unit = {},
 )
 
 /**
@@ -107,6 +106,7 @@ private fun SheetHeader(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardAct
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.primary,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = false),
         )
         if (sheet.calc.warnings.isNotEmpty()) {
@@ -141,7 +141,27 @@ private fun SheetHeader(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardAct
             val closed = stringResource(R.string.sheet_closed)
             Text(text = "🔒", modifier = Modifier.semantics { contentDescription = closed })
         }
+        RefuelingsButton(sheet, actions.onOpenRefuelings)
         SheetMenu(sheet, isBusy, actions)
+    }
+}
+
+/** [≡] со счётчиком заправок — открывает шторку со списком. */
+@Composable
+private fun RefuelingsButton(sheet: FuelSheet, onClick: () -> Unit) {
+    val count = sheet.refuelings.size
+    IconButton(onClick = onClick, modifier = Modifier.testTag(SheetsFeedTestTags.refuelingsButton(sheet.id))) {
+        BadgedBox(
+            badge = {
+                if (count > 0) Badge { Text(count.toString()) }
+            },
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_list),
+                contentDescription = stringResource(R.string.sheet_refuelings, count),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 
@@ -310,9 +330,6 @@ private fun SheetDetails(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardAc
         DetailText(
             stringResource(R.string.sheet_refueled, Formatters.amount(calc.refueledL), Formatters.amount(calc.refueledCost)),
         )
-        if (sheet.refuelings.isNotEmpty() || !sheet.isClosed) {
-            RefuelingsSection(sheet, isBusy, actions)
-        }
         if (sheet.isClosed) {
             calc.fuelEndL?.let { fuelEnd ->
                 val res = if (sheet.fuelEndActualL == null) R.string.sheet_fuel_end_by_norm else R.string.sheet_fuel_end
@@ -352,71 +369,6 @@ private fun SheetDetails(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardAc
 @Composable
 private fun DetailText(text: String, color: Color = Color.Unspecified) {
     Text(text = text, style = MaterialTheme.typography.bodyMedium, color = color)
-}
-
-/**
- * «Заправки (N)» и «+ Заправка». У открытого листа заправку можно нажать — откроется её форма;
- * у закрытого кнопки нет и строки не нажимаются.
- */
-@Composable
-private fun RefuelingsSection(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardActions) {
-    val refuelings = sheet.refuelings
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        if (refuelings.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.sheet_refuelings, refuelings.size),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary,
-            )
-        }
-        Spacer(Modifier.weight(1f))
-        if (!sheet.isClosed) {
-            OutlinedButton(
-                onClick = actions.onAddRefueling,
-                enabled = !isBusy,
-                modifier = Modifier.testTag(SheetsFeedTestTags.addRefueling(sheet.id)),
-            ) {
-                Text(stringResource(R.string.sheet_add_refueling))
-            }
-        }
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(start = 12.dp)) {
-        refuelings.forEach { refueling ->
-            val onClick = if (sheet.isClosed || isBusy) null else ({ actions.onRefuelingClick(refueling) })
-            RefuelingRow(refueling, onClick)
-        }
-    }
-}
-
-@Composable
-private fun RefuelingRow(refueling: Refueling, onClick: (() -> Unit)?) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(vertical = 6.dp)
-            .testTag(SheetsFeedTestTags.refueling(refueling.id)),
-    ) {
-        Text(Formatters.dayMonth(refueling.date), style = MaterialTheme.typography.bodySmall)
-        Text(
-            text = refueling.station.orEmpty(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = stringResource(
-                R.string.sheet_refueling_line,
-                Formatters.amount(refueling.liters),
-                Formatters.amount(refueling.pricePerLiter),
-                Formatters.amount(refueling.totalCost),
-            ),
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.End,
-        )
-    }
 }
 
 /** Цвет по `consumption_status` сервера: NORMAL — зелёный, OVER — красный, null — обычный. */

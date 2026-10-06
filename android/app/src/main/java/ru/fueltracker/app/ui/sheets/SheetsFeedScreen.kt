@@ -108,6 +108,15 @@ fun SheetsFeedContent(
     state.newSheet?.let { NewSheetDialog(form = it, hasWinterNorm = state.car?.normWinter != null, onEvent = onEvent) }
     state.closeSheet?.let { CloseSheetDialog(form = it, onEvent = onEvent) }
     state.deleteCandidate?.let { DeleteSheetDialog(it, onEvent) }
+    state.refuelingsSheet?.let { sheet ->
+        RefuelingsListSheet(
+            sheet = sheet,
+            isBusy = sheet.id in state.busySheetIds,
+            onAdd = { onEvent(SheetsFeedEvent.OpenRefueling(sheet)) },
+            onRefuelingClick = { onEvent(SheetsFeedEvent.OpenRefueling(sheet, it)) },
+            onDismiss = { onEvent(SheetsFeedEvent.DismissRefuelings) },
+        )
+    }
 
     Scaffold(
         modifier = modifier,
@@ -215,8 +224,7 @@ private fun SheetList(
                     onClose = { onEvent(SheetsFeedEvent.Close(sheet)) },
                     onReopen = { onEvent(SheetsFeedEvent.Reopen(sheet)) },
                     onDelete = { onEvent(SheetsFeedEvent.RequestDelete(sheet)) },
-                    onAddRefueling = { onEvent(SheetsFeedEvent.OpenRefueling(sheet)) },
-                    onRefuelingClick = { onEvent(SheetsFeedEvent.OpenRefueling(sheet, it)) },
+                    onOpenRefuelings = { onEvent(SheetsFeedEvent.OpenRefuelings(sheet.id)) },
                 ),
             )
         }
@@ -288,11 +296,13 @@ object SheetsFeedTestTags {
     const val CHANGE_CAR = "feed_change_car"
     const val NEW_SHEET = "feed_new_sheet"
     const val PROFILE = "feed_profile"
+    const val REFUELINGS_LIST = "refuelings_list"
     fun card(sheetId: String) = "sheet_card_$sheetId"
     fun details(sheetId: String) = "sheet_details_$sheetId"
     fun consumption(sheetId: String) = "sheet_consumption_$sheetId"
     fun season(sheetId: String) = "sheet_season_$sheetId"
     fun menu(sheetId: String) = "sheet_menu_$sheetId"
+    fun refuelingsButton(sheetId: String) = "sheet_refuelings_$sheetId"
     fun closeButton(sheetId: String) = "sheet_close_$sheetId"
     fun addRefueling(sheetId: String) = "sheet_add_refueling_$sheetId"
     fun refueling(refuelingId: String) = "refueling_row_$refuelingId"

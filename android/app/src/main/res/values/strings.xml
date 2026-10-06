@@ -170,6 +170,9 @@
 
     <!-- Заправка (5.5) -->
     <string name="sheet_add_refueling">+ Заправка</string>
+    <string name="refuelings_title">Заправки · %1$s</string>
+    <string name="refuelings_empty">Заправок пока нет</string>
+    <string name="refuelings_total">Итого: %1$s л · %2$s ₽</string>
     <string name="refueling_title_new">Новая заправка</string>
     <string name="refueling_title_edit">Заправка</string>
     <string name="refueling_date">Дата *</string>
