@@ -11,42 +11,33 @@ import org.junit.Rule
 import org.junit.Test
 import ru.fueltracker.app.R
 import ru.fueltracker.app.data.local.FakeSelectedCarStorage
-import ru.fueltracker.app.data.remote.ApiResult
-import ru.fueltracker.app.data.remote.dto.ErrorCodes
+import ru.fueltracker.app.data.repository.LocalResult
+import ru.fueltracker.app.domain.calc.SheetRuleViolation
 import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.Season
-import ru.fueltracker.app.domain.model.SheetPage
 import ru.fueltracker.app.domain.model.SheetStatus
 import ru.fueltracker.app.testutil.FakeCarRepository
 import ru.fueltracker.app.testutil.FakeRefuelingRepository
 import ru.fueltracker.app.testutil.FakeSheetRepository
 import ru.fueltracker.app.testutil.MainDispatcherRule
-import ru.fueltracker.app.testutil.httpError
-import ru.fueltracker.app.testutil.networkError
 import ru.fueltracker.app.testutil.testCar
 import ru.fueltracker.app.ui.common.UiText
+import ru.fueltracker.app.ui.refueling.RefuelingTarget
 import java.math.BigDecimal
 
-/** Действия в ленте (5.4): новый лист, закрытие, переоткрытие, удаление, сезон. */
+/** Действия в ленте: новый лист, закрытие, переоткрытие, удаление, сезон, заправки. */
 class SheetsFeedActionsTest {
 
     @get:Rule
     val mainDispatcher = MainDispatcherRule()
 
-    private val cars = FakeCarRepository().apply { cars = mutableListOf(testCar(id = "car-1")) }
+    private val cars = FakeCarRepository().apply { cars = listOf(testCar(id = "car-1")) }
     private val sheets = FakeSheetRepository()
     private val refuelings = FakeRefuelingRepository()
     private val selected = FakeSelectedCarStorage(initial = "car-1")
 
     private val october = previewOpenSheet().copy(id = "s-10", month = 10, refuelings = emptyList())
     private val september = previewClosedSheet().copy(id = "s-09", month = 9)
-
-    private val winterNormError = httpError(
-        422,
-        ErrorCodes.BUSINESS_RULE,
-        message = "Зимняя норма не указана",
-        details = mapOf("reason" to ErrorCodes.REASON_WINTER_NORM_NOT_SET),
-    )
 
     /** Открытый октябрь с одной заправкой — для удаления из списка. */
     private val octoberWithRefueling = october.copy(refuelings = previewOpenSheet().refuelings)
@@ -55,16 +46,18 @@ class SheetsFeedActionsTest {
     private fun TestScope.createViewModel(
         feed: List<FuelSheet> = listOf(october, september),
     ): SheetsFeedViewModel {
-        sheets.pages[null] = ApiResult.Success(SheetPage(feed, nextBefore = null))
+        sheets.sheets = feed
         val viewModel = SheetsFeedViewModel(cars, sheets, refuelings, selected)
         advanceUntilIdle()
         return viewModel
     }
 
+    private fun SheetsFeedViewModel.sheet(id: String) = state.value.sheets.first { it.id == id }
+
     // --- Новый лист ---
 
     @Test
-    fun `Новый лист — форма из next-prefill`() = runTest {
+    fun `Новый лист — форма из подсказки next-prefill`() = runTest {
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.NewSheet)
         assertTrue(viewModel.state.value.isPreparingNewSheet)
@@ -75,16 +68,6 @@ class SheetsFeedActionsTest {
         assertEquals(2026 to 11, form.year to form.month)
         assertEquals("53340", form.odometerStart)
         assertEquals("10", form.fuelStart)
-    }
-
-    @Test
-    fun `next-prefill не загрузился — Snackbar, диалога нет`() = runTest {
-        sheets.prefillResult = networkError
-        val viewModel = createViewModel()
-        viewModel.onEvent(SheetsFeedEvent.NewSheet)
-        advanceUntilIdle()
-        assertNull(viewModel.state.value.newSheet)
-        assertEquals(UiText.Resource(R.string.error_no_connection), viewModel.state.value.snackbar)
     }
 
     @Test
@@ -107,7 +90,7 @@ class SheetsFeedActionsTest {
     }
 
     @Test
-    fun `создание — ошибки полей не отправляют запрос`() = runTest {
+    fun `создание — ошибки полей не создают лист`() = runTest {
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.NewSheet)
         advanceUntilIdle()
@@ -120,8 +103,8 @@ class SheetsFeedActionsTest {
     }
 
     @Test
-    fun `создание — лист уже есть (409), текст сервера в диалоге`() = runTest {
-        sheets.createResult = httpError(409, ErrorCodes.SHEET_EXISTS, message = "Лист за этот месяц уже есть")
+    fun `создание — лист уже есть, текст в диалоге`() = runTest {
+        sheets.violation = SheetRuleViolation.SHEET_EXISTS
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.NewSheet)
         advanceUntilIdle()
@@ -129,7 +112,7 @@ class SheetsFeedActionsTest {
         advanceUntilIdle()
 
         val form = viewModel.state.value.newSheet!!
-        assertEquals(UiText.Raw("Лист за этот месяц уже есть"), form.error)
+        assertEquals(UiText.Resource(R.string.rule_sheet_exists), form.error)
         assertFalse(form.isSaving)
     }
 
@@ -154,19 +137,13 @@ class SheetsFeedActionsTest {
         advanceUntilIdle()
 
         assertEquals(listOf(Triple("s-10", 54_340L, BigDecimal("7.5"))), sheets.closeCalls)
-        val state = viewModel.state.value
-        assertNull(state.closeSheet)
-        assertEquals(SheetStatus.CLOSED, state.sheets.first { it.id == "s-10" }.status)
+        assertNull(viewModel.state.value.closeSheet)
+        assertEquals(SheetStatus.CLOSED, viewModel.sheet("s-10").status)
     }
 
     @Test
-    fun `закрыть месяц — ошибка сервера в диалоге`() = runTest {
-        sheets.actionResult = httpError(
-            422,
-            ErrorCodes.BUSINESS_RULE,
-            message = "Остаток на конец больше, чем было топлива (на начало + заправки)",
-            details = mapOf("reason" to "FUEL_END_OVER_AVAILABLE"),
-        )
+    fun `закрыть месяц — нарушено правило, текст в диалоге`() = runTest {
+        sheets.violation = SheetRuleViolation.FUEL_END_OVER_AVAILABLE
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.Close(october))
         viewModel.onEvent(SheetsFeedEvent.CloseOdometer("54340"))
@@ -174,11 +151,10 @@ class SheetsFeedActionsTest {
         viewModel.onEvent(SheetsFeedEvent.ConfirmClose)
         advanceUntilIdle()
 
-        assertEquals(
-            UiText.Raw("Остаток на конец больше, чем было топлива (на начало + заправки)"),
-            viewModel.state.value.closeSheet?.error,
-        )
-        assertEquals(SheetStatus.OPEN, viewModel.state.value.sheets.first { it.id == "s-10" }.status)
+        val form = viewModel.state.value.closeSheet!!
+        assertEquals(UiText.Resource(R.string.rule_fuel_end_over_available), form.error)
+        assertFalse(form.isSaving)
+        assertEquals(SheetStatus.OPEN, viewModel.sheet("s-10").status)
     }
 
     @Test
@@ -200,7 +176,7 @@ class SheetsFeedActionsTest {
 
         assertEquals(listOf("s-09"), sheets.reopenCalls)
         val state = viewModel.state.value
-        assertEquals(SheetStatus.OPEN, state.sheets.first { it.id == "s-09" }.status)
+        assertEquals(SheetStatus.OPEN, viewModel.sheet("s-09").status)
         assertTrue(state.busySheetIds.isEmpty())
         assertEquals(UiText.Resource(R.string.sheet_reopened), state.snackbar)
     }
@@ -219,15 +195,15 @@ class SheetsFeedActionsTest {
     }
 
     @Test
-    fun `удаление не удалось — лист остаётся, текст сервера`() = runTest {
-        sheets.deleteResult = httpError(422, ErrorCodes.BUSINESS_RULE, message = "В листе есть заправки — сначала удалите их")
+    fun `лист с заправками не удалить — подсказка, лист остаётся`() = runTest {
+        sheets.violation = SheetRuleViolation.SHEET_HAS_REFUELINGS
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.RequestDelete(october))
         viewModel.onEvent(SheetsFeedEvent.ConfirmDelete)
         advanceUntilIdle()
 
         assertEquals(2, viewModel.state.value.sheets.size)
-        assertEquals(UiText.Raw("В листе есть заправки — сначала удалите их"), viewModel.state.value.snackbar)
+        assertEquals(UiText.Resource(R.string.rule_sheet_has_refuelings), viewModel.state.value.snackbar)
     }
 
     // --- Сезон ---
@@ -240,20 +216,20 @@ class SheetsFeedActionsTest {
 
         assertEquals(listOf("s-10" to Season.WINTER), sheets.seasonCalls)
         val state = viewModel.state.value
-        assertEquals(Season.WINTER, state.sheets.first { it.id == "s-10" }.season)
+        assertEquals(Season.WINTER, viewModel.sheet("s-10").season)
         assertEquals(UiText.Resource(R.string.sheet_season_switched_winter, listOf("11,684")), state.snackbar)
         assertNull(state.snackbarAction)
     }
 
     @Test
     fun `нет зимней нормы — Snackbar с кнопкой Указать, сезон не меняется`() = runTest {
-        sheets.actionResult = winterNormError
+        sheets.violation = SheetRuleViolation.WINTER_NORM_NOT_SET
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.ToggleSeason(october))
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(Season.SUMMER, state.sheets.first { it.id == "s-10" }.season)
+        assertEquals(Season.SUMMER, viewModel.sheet("s-10").season)
         assertEquals(UiText.Resource(R.string.winter_norm_not_set), state.snackbar)
         assertEquals(FeedSnackbarAction.SET_WINTER_NORM, state.snackbarAction)
 
@@ -262,7 +238,7 @@ class SheetsFeedActionsTest {
     }
 
     @Test
-    fun `сезон закрытого листа — подсказка, без запроса`() = runTest {
+    fun `сезон закрытого листа — подсказка, без изменений`() = runTest {
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.ToggleSeason(september))
         advanceUntilIdle()
@@ -270,13 +246,13 @@ class SheetsFeedActionsTest {
         assertEquals(UiText.Resource(R.string.sheet_closed_cannot_edit), viewModel.state.value.snackbar)
     }
 
-    // --- Заправки (5.5) ---
+    // --- Заправки ---
 
     @Test
     fun `+ Заправка открывает шторку для листа`() = runTest {
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
-        assertEquals(ru.fueltracker.app.ui.refueling.RefuelingTarget("s-10", 2026, 10), viewModel.state.value.refuelingTarget)
+        assertEquals(RefuelingTarget("s-10", 2026, 10), viewModel.state.value.refuelingTarget)
 
         viewModel.onEvent(SheetsFeedEvent.DismissRefueling)
         assertNull(viewModel.state.value.refuelingTarget)
@@ -291,16 +267,17 @@ class SheetsFeedActionsTest {
     }
 
     @Test
-    fun `сохранённая заправка — карточка обновлена, шторка закрыта`() = runTest {
+    fun `сохранённая заправка — шторка закрыта, карточка обновится из базы`() = runTest {
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
-        val updated = october.copy(refuelings = previewOpenSheet().refuelings)
 
-        viewModel.onEvent(SheetsFeedEvent.RefuelingSaved(updated))
+        viewModel.onEvent(SheetsFeedEvent.RefuelingSaved)
+        sheets.sheets = listOf(octoberWithRefueling, september) // так база сообщает о новой заправке
+        advanceUntilIdle()
 
         val state = viewModel.state.value
         assertNull(state.refuelingTarget)
-        assertEquals(updated, state.sheets.first { it.id == "s-10" })
+        assertEquals(octoberWithRefueling, viewModel.sheet("s-10"))
         assertNull(state.refuelingsSheet)
     }
 
@@ -317,34 +294,23 @@ class SheetsFeedActionsTest {
     }
 
     @Test
-    fun `пока открыта форма заправки, список скрыт, после отмены — снова виден`() = runTest {
+    fun `пока открыта форма заправки, список скрыт, после — снова виден со свежими данными`() = runTest {
         val viewModel = createViewModel()
         viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
         viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
         assertNull(viewModel.state.value.refuelingsSheet)
 
-        viewModel.onEvent(SheetsFeedEvent.DismissRefueling)
-        assertEquals(october, viewModel.state.value.refuelingsSheet)
-    }
+        viewModel.onEvent(SheetsFeedEvent.RefuelingSaved)
+        sheets.sheets = listOf(octoberWithRefueling, september)
+        advanceUntilIdle()
 
-    @Test
-    fun `после сохранения заправки список снова виден с новыми данными`() = runTest {
-        val viewModel = createViewModel()
-        viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
-        viewModel.onEvent(SheetsFeedEvent.OpenRefueling(october))
-        val updated = october.copy(refuelings = previewOpenSheet().refuelings)
-
-        viewModel.onEvent(SheetsFeedEvent.RefuelingSaved(updated))
-
-        assertEquals(updated, viewModel.state.value.refuelingsSheet)
+        assertEquals(octoberWithRefueling, viewModel.state.value.refuelingsSheet)
     }
 
     // --- Удаление заправки из списка ---
 
     @Test
-    fun `удаление заправки из списка — с подтверждением, список обновлён`() = runTest {
-        val afterDelete = october // сервер вернул лист без заправки
-        refuelings.deleteResult = ApiResult.Success(afterDelete)
+    fun `удаление заправки из списка — с подтверждением`() = runTest {
         val viewModel = createViewModel(feed = listOf(octoberWithRefueling, september))
         viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
 
@@ -360,12 +326,11 @@ class SheetsFeedActionsTest {
         assertEquals(listOf(refueling.id), refuelings.deleteCalls)
         assertNull(state.refuelingToDelete)
         assertTrue(state.busySheetIds.isEmpty())
-        assertEquals(afterDelete, state.refuelingsSheet) // шторка открыта, данные свежие
-        assertEquals(afterDelete, state.sheets.first { it.id == "s-10" }) // и карточка тоже
+        assertEquals("s-10", state.refuelingsSheet?.id) // шторка остаётся открытой
     }
 
     @Test
-    fun `отмена удаления заправки — запроса нет`() = runTest {
+    fun `отмена удаления заправки — ничего не удалено`() = runTest {
         val viewModel = createViewModel(feed = listOf(octoberWithRefueling, september))
         viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
         viewModel.onEvent(SheetsFeedEvent.RequestDeleteRefueling(refueling))
@@ -375,12 +340,11 @@ class SheetsFeedActionsTest {
 
         assertNull(viewModel.state.value.refuelingToDelete)
         assertTrue(refuelings.deleteCalls.isEmpty())
-        assertEquals(octoberWithRefueling, viewModel.state.value.refuelingsSheet)
     }
 
     @Test
-    fun `удаление заправки не удалось — текст ошибки в шторке, заправка осталась`() = runTest {
-        refuelings.deleteResult = networkError
+    fun `удаление заправки не удалось — текст в шторке, при повторном открытии его нет`() = runTest {
+        refuelings.result = LocalResult.Rejected(SheetRuleViolation.SHEET_CLOSED)
         val viewModel = createViewModel(feed = listOf(octoberWithRefueling, september))
         viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
         viewModel.onEvent(SheetsFeedEvent.RequestDeleteRefueling(refueling))
@@ -389,21 +353,18 @@ class SheetsFeedActionsTest {
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(UiText.Resource(R.string.error_no_connection), state.refuelingsError)
+        assertEquals(UiText.Resource(R.string.sheet_closed_cannot_edit), state.refuelingsError)
         assertNull(state.snackbar) // Snackbar под шторкой не виден
-        assertEquals(octoberWithRefueling, state.refuelingsSheet)
 
-        // Шторку закрыли и открыли снова — старой ошибки нет
         viewModel.onEvent(SheetsFeedEvent.DismissRefuelings)
         viewModel.onEvent(SheetsFeedEvent.OpenRefuelings("s-10"))
         assertNull(viewModel.state.value.refuelingsError)
     }
 
     @Test
-    fun `возврат на экран обновляет шапку авто`() = runTest {
+    fun `шапка авто обновляется сама — после CarEditScreen`() = runTest {
         val viewModel = createViewModel()
-        cars.cars = mutableListOf(testCar(id = "car-1", normWinter = null))
-        viewModel.onEvent(SheetsFeedEvent.Resume)
+        cars.cars = listOf(testCar(id = "car-1", normWinter = null))
         advanceUntilIdle()
         assertNull(viewModel.state.value.car?.normWinter)
     }

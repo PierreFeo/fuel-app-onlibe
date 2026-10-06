@@ -9,33 +9,27 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
-import ru.fueltracker.app.R
 import ru.fueltracker.app.data.local.FakeSelectedCarStorage
-import ru.fueltracker.app.data.remote.ApiResult
-import ru.fueltracker.app.data.remote.dto.ErrorCodes
-import ru.fueltracker.app.domain.model.SheetPage
 import ru.fueltracker.app.testutil.FakeCarRepository
 import ru.fueltracker.app.testutil.FakeRefuelingRepository
 import ru.fueltracker.app.testutil.FakeSheetRepository
 import ru.fueltracker.app.testutil.MainDispatcherRule
-import ru.fueltracker.app.testutil.httpError
-import ru.fueltracker.app.testutil.networkError
 import ru.fueltracker.app.testutil.testCar
-import ru.fueltracker.app.ui.common.UiText
 
+/** Лента ЛУТ следит за базой: авто и листы приходят и обновляются сами. */
 class SheetsFeedViewModelTest {
 
     @get:Rule
     val mainDispatcher = MainDispatcherRule()
 
-    private val cars = FakeCarRepository().apply { cars = mutableListOf(testCar(id = "car-1"), testCar(id = "car-2", name = "Kia Rio")) }
+    private val cars = FakeCarRepository().apply { cars = listOf(testCar(id = "car-1"), testCar(id = "car-2", name = "Kia Rio")) }
     private val sheets = FakeSheetRepository()
     private val refuelings = FakeRefuelingRepository()
     private val selected = FakeSelectedCarStorage(initial = "car-1")
 
     private val october = previewOpenSheet().copy(id = "s-10", month = 10)
     private val september = previewClosedSheet().copy(id = "s-09", month = 9)
-    private val august = previewClosedSheet().copy(id = "s-08", month = 8)
+    private val kiaSheet = previewOpenSheet().copy(id = "kia-10", carId = "car-2", month = 10)
 
     private fun TestScope.createViewModel(): SheetsFeedViewModel {
         val viewModel = SheetsFeedViewModel(cars, sheets, refuelings, selected)
@@ -44,17 +38,15 @@ class SheetsFeedViewModelTest {
     }
 
     @Test
-    fun `загружает шапку авто и первую страницу`() = runTest {
-        sheets.pages[null] = ApiResult.Success(SheetPage(listOf(october, september), nextBefore = "2026-09"))
+    fun `шапка авто и все листы из базы`() = runTest {
+        sheets.sheets = listOf(october, september, kiaSheet)
 
         val state = createViewModel().state.value
 
         assertFalse(state.isLoading)
+        assertTrue(state.hasContent)
         assertEquals("Lada Vesta", state.car?.name)
-        assertEquals(listOf(october, september), state.sheets)
-        assertEquals("2026-09", state.nextBefore)
-        assertTrue(state.canLoadMore)
-        assertEquals(listOf("car-1" to null), sheets.calls)
+        assertEquals(listOf(october, september), state.sheets) // листы только выбранного авто
     }
 
     @Test
@@ -62,97 +54,38 @@ class SheetsFeedViewModelTest {
         val state = createViewModel().state.value
         assertTrue(state.hasContent)
         assertTrue(state.sheets.isEmpty())
-        assertFalse(state.canLoadMore)
     }
 
     @Test
-    fun `подгрузка старых листов по next_before`() = runTest {
-        sheets.pages[null] = ApiResult.Success(SheetPage(listOf(october), nextBefore = "2026-10"))
-        sheets.pages["2026-10"] = ApiResult.Success(SheetPage(listOf(september, august), nextBefore = null))
+    fun `изменения в базе приходят в ленту сами`() = runTest {
+        sheets.sheets = listOf(september)
         val viewModel = createViewModel()
 
-        viewModel.onEvent(SheetsFeedEvent.LoadMore)
-        assertTrue(viewModel.state.value.isLoadingMore)
+        sheets.sheets = listOf(october, september) // например, после синхронизации
+        cars.cars = cars.cars.map { if (it.id == "car-1") it.copy(name = "Lada Granta") else it }
         advanceUntilIdle()
 
-        val state = viewModel.state.value
-        assertEquals(listOf(october, september, august), state.sheets)
-        assertNull(state.nextBefore)
-        assertFalse(state.isLoadingMore)
-
-        // Больше страниц нет — запрос не уходит
-        viewModel.onEvent(SheetsFeedEvent.LoadMore)
-        advanceUntilIdle()
-        assertEquals(2, sheets.calls.size)
-    }
-
-    @Test
-    fun `ошибка подгрузки — внизу Повторить, повтор догружает`() = runTest {
-        sheets.pages[null] = ApiResult.Success(SheetPage(listOf(october), nextBefore = "2026-10"))
-        sheets.pages["2026-10"] = networkError
-        val viewModel = createViewModel()
-
-        viewModel.onEvent(SheetsFeedEvent.LoadMore)
-        advanceUntilIdle()
-        assertTrue(viewModel.state.value.loadMoreFailed)
-        // Автоподгрузка при прокрутке не долбит сервер после ошибки
-        assertFalse(viewModel.state.value.canLoadMore)
-
-        sheets.pages["2026-10"] = ApiResult.Success(SheetPage(listOf(september), nextBefore = null))
-        viewModel.onEvent(SheetsFeedEvent.LoadMore)
-        advanceUntilIdle()
-        assertFalse(viewModel.state.value.loadMoreFailed)
         assertEquals(listOf(october, september), viewModel.state.value.sheets)
+        assertEquals("Lada Granta", viewModel.state.value.car?.name)
     }
 
     @Test
-    fun `pull-to-refresh перезагружает первую страницу`() = runTest {
-        sheets.pages[null] = ApiResult.Success(SheetPage(listOf(september), nextBefore = null))
+    fun `авто удалили — выбор сброшен, переход к списку авто`() = runTest {
         val viewModel = createViewModel()
 
-        sheets.pages[null] = ApiResult.Success(SheetPage(listOf(october, september), nextBefore = null))
-        viewModel.onEvent(SheetsFeedEvent.Refresh)
-        assertTrue(viewModel.state.value.isRefreshing)
+        cars.cars = cars.cars.filterNot { it.id == "car-1" }
         advanceUntilIdle()
 
-        assertFalse(viewModel.state.value.isRefreshing)
-        assertEquals(listOf(october, september), viewModel.state.value.sheets)
+        assertNull(selected.current)
+        assertTrue(viewModel.state.value.noCar)
     }
 
     @Test
-    fun `ошибка обновления при показанной ленте — Snackbar, лента остаётся`() = runTest {
-        sheets.pages[null] = ApiResult.Success(SheetPage(listOf(september), nextBefore = null))
+    fun `авто отправили в архив — тоже к списку авто`() = runTest {
         val viewModel = createViewModel()
 
-        sheets.pages[null] = networkError
-        viewModel.onEvent(SheetsFeedEvent.Refresh)
+        cars.archiveCar("car-1")
         advanceUntilIdle()
-
-        val state = viewModel.state.value
-        assertEquals(listOf(september), state.sheets)
-        assertNull(state.loadError)
-        assertFalse(state.isRefreshing)
-        assertEquals(UiText.Resource(R.string.error_no_connection), state.snackbar)
-    }
-
-    @Test
-    fun `ошибка первой загрузки — экран ошибки, Повторить загружает`() = runTest {
-        cars.getCarResult = networkError
-        val viewModel = createViewModel()
-        assertEquals(UiText.Resource(R.string.error_no_connection), viewModel.state.value.loadError)
-
-        cars.getCarResult = null
-        viewModel.onEvent(SheetsFeedEvent.Retry)
-        assertTrue(viewModel.state.value.isLoading)
-        advanceUntilIdle()
-        assertNull(viewModel.state.value.loadError)
-        assertEquals("Lada Vesta", viewModel.state.value.car?.name)
-    }
-
-    @Test
-    fun `авто не найдено (404) — выбор сброшен, переход к списку авто`() = runTest {
-        cars.getCarResult = httpError(404, ErrorCodes.NOT_FOUND)
-        val viewModel = createViewModel()
 
         assertNull(selected.current)
         assertTrue(viewModel.state.value.noCar)
@@ -163,16 +96,21 @@ class SheetsFeedViewModelTest {
         selected.clear()
         val viewModel = createViewModel()
         assertTrue(viewModel.state.value.noCar)
-        assertTrue(sheets.calls.isEmpty())
     }
 
     @Test
-    fun `смена авто перезагружает ленту`() = runTest {
+    fun `смена авто — лента другого авто, раскрытые карточки сброшены`() = runTest {
+        sheets.sheets = listOf(october, kiaSheet)
         val viewModel = createViewModel()
+        viewModel.onEvent(SheetsFeedEvent.ToggleExpanded("s-10"))
+
         selected.select("car-2")
         advanceUntilIdle()
-        assertEquals("Kia Rio", viewModel.state.value.car?.name)
-        assertEquals(listOf("car-1" to null, "car-2" to null), sheets.calls)
+
+        val state = viewModel.state.value
+        assertEquals("Kia Rio", state.car?.name)
+        assertEquals(listOf(kiaSheet), state.sheets)
+        assertTrue(state.expandedSheetIds.isEmpty())
     }
 
     @Test

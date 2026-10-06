@@ -99,7 +99,6 @@
     <!-- Лента ЛУТ -->
     <string name="feed_change_car">Сменить авто</string>
     <string name="feed_empty">Листов пока нет. Создайте первый — укажите пробег и остаток топлива</string>
-    <string name="feed_load_more_failed">Не удалось загрузить старые листы</string>
 
     <!-- Карточка ЛУТ -->
     <string name="sheet_season_summer">☀️ Лето</string>
@@ -152,6 +151,15 @@
     <string name="sheet_season_switched_winter">Сезон: зима. Норма %1$s л/100 км</string>
     <string name="sheet_closed_cannot_edit">Месяц закрыт. Сначала переоткройте его</string>
     <string name="winter_norm_not_set">Зимняя норма не указана</string>
+
+    <!-- Нарушенные правила ЛУТ (06_BUSINESS_RULES.md, «Валидации») -->
+    <string name="rule_odometer_end_before_start">Пробег на конец меньше пробега на начало</string>
+    <string name="rule_fuel_end_over_available">Остаток на конец больше, чем было топлива (на начало + заправки)</string>
+    <string name="rule_refueling_date_outside_month">Дата заправки не входит в месяц листа</string>
+    <string name="rule_sheet_exists">Лист за этот месяц уже есть</string>
+    <string name="rule_month_too_far">Нельзя создать лист позже следующего месяца</string>
+    <string name="rule_sheet_has_refuelings">Сначала удалите заправки этого месяца</string>
+    <string name="rule_not_found">Запись не найдена — возможно, её уже удалили</string>
     <string name="winter_norm_set_action">Указать</string>
 
     <!-- NewSheetDialog -->

@@ -13,7 +13,12 @@ import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.NewSheetInput
 import ru.fueltracker.app.domain.model.RefuelingInput
 import ru.fueltracker.app.domain.model.Season
-import ru.fueltracker.app.domain.model.SheetPage
+import ru.fueltracker.app.domain.calc.SheetRuleViolation
+import ru.fueltracker.app.data.repository.LocalResult
+import ru.fueltracker.app.ui.sheets.previewOpenSheet
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import ru.fueltracker.app.domain.model.SheetPrefill
 import ru.fueltracker.app.domain.model.SheetStatus
 import ru.fueltracker.app.domain.model.Car
@@ -72,36 +77,42 @@ class FakeProfileRepository : ProfileRepository {
     }
 }
 
+/** Авто «в базе»: список в памяти, изменения сразу приходят подписчикам — как у Room. */
 class FakeCarRepository : CarRepository {
 
-    var cars: MutableList<Car> = mutableListOf()
-    var getCarsResult: ApiResult<List<Car>>? = null
-    var getCarResult: ApiResult<Car>? = null
-    var saveResult: ApiResult<Car>? = null
-    var archiveResult: ApiResult<Unit> = ApiResult.Success(Unit)
+    private val carsFlow = MutableStateFlow<List<Car>>(emptyList())
+
+    /** Все авто, включая архивные. */
+    var cars: List<Car>
+        get() = carsFlow.value
+        set(value) {
+            carsFlow.value = value
+        }
 
     val created = mutableListOf<CarInput>()
     val updated = mutableListOf<Pair<String, CarInput>>()
     val archived = mutableListOf<String>()
 
-    override suspend fun getCars(): ApiResult<List<Car>> = getCarsResult ?: ApiResult.Success(cars.toList())
+    override fun observeCars(): Flow<List<Car>> = carsFlow.map { list -> list.filterNot { it.isArchived } }
 
-    override suspend fun getCar(carId: String): ApiResult<Car> =
-        getCarResult ?: ApiResult.Success(cars.first { it.id == carId })
+    override fun observeCar(carId: String): Flow<Car?> = carsFlow.map { list -> list.firstOrNull { it.id == carId } }
 
-    override suspend fun createCar(input: CarInput): ApiResult<Car> {
+    override suspend fun getCar(carId: String): Car? = cars.firstOrNull { it.id == carId }
+
+    override suspend fun createCar(input: CarInput): Car {
         created += input
-        return saveResult ?: ApiResult.Success(input.toCar("new"))
+        return input.toCar("new-${created.size}").also { cars = cars + it }
     }
 
-    override suspend fun updateCar(carId: String, input: CarInput): ApiResult<Car> {
+    override suspend fun updateCar(carId: String, input: CarInput): Car? {
         updated += carId to input
-        return saveResult ?: ApiResult.Success(input.toCar(carId))
+        if (cars.none { it.id == carId }) return null
+        return input.toCar(carId).also { car -> cars = cars.map { if (it.id == carId) car else it } }
     }
 
-    override suspend fun archiveCar(carId: String): ApiResult<Unit> {
+    override suspend fun archiveCar(carId: String) {
         archived += carId
-        return archiveResult
+        cars = cars.map { if (it.id == carId) it.copy(isArchived = true) else it }
     }
 
     private fun CarInput.toCar(id: String) =
@@ -109,24 +120,24 @@ class FakeCarRepository : CarRepository {
 }
 
 /**
- * Страницы ленты по значению `before` (null — первая страница).
- * Действия с листом по умолчанию «как на сервере»: возвращают изменённую копию листа.
+ * Листы «в базе». Действия по умолчанию меняют список, как настоящий репозиторий;
+ * [violation] — заставить следующее действие отказать (нарушено правило).
  */
 class FakeSheetRepository : SheetRepository {
 
-    val pages = mutableMapOf<String?, ApiResult<SheetPage>>()
-    val calls = mutableListOf<Pair<String, String?>>()
+    private val sheetsFlow = MutableStateFlow<List<FuelSheet>>(emptyList())
 
-    var prefillResult: ApiResult<SheetPrefill> =
-        ApiResult.Success(SheetPrefill(2026, 11, 53_340, BigDecimal("10.00"), Season.SUMMER))
+    /** Все листы всех авто, новые сверху. */
+    var sheets: List<FuelSheet>
+        get() = sheetsFlow.value
+        set(value) {
+            sheetsFlow.value = value
+        }
 
-    /** Ответ на создание; null — копия известного листа с полями из черновика. */
-    var createResult: ApiResult<FuelSheet>? = null
-    var actionResult: ApiResult<FuelSheet>? = null
-    var deleteResult: ApiResult<Unit> = ApiResult.Success(Unit)
+    var prefill = SheetPrefill(2026, 11, 53_340, BigDecimal("10.00"), Season.SUMMER)
 
-    /** Последний известный лист по id — от него строятся ответы на действия. */
-    val known = mutableMapOf<String, FuelSheet>()
+    /** Если задано — любое действие отказывает с этим нарушением. */
+    var violation: SheetRuleViolation? = null
 
     val created = mutableListOf<Pair<String, NewSheetInput>>()
     val seasonCalls = mutableListOf<Pair<String, Season>>()
@@ -134,53 +145,82 @@ class FakeSheetRepository : SheetRepository {
     val reopenCalls = mutableListOf<String>()
     val deleteCalls = mutableListOf<String>()
 
-    override suspend fun getSheets(carId: String, before: String?): ApiResult<SheetPage> {
-        calls += carId to before
-        val result = pages[before] ?: ApiResult.Success(SheetPage(emptyList(), nextBefore = null))
-        if (result is ApiResult.Success) result.data.items.forEach { known[it.id] = it }
-        return result
-    }
+    override fun observeSheets(carId: String): Flow<List<FuelSheet>> =
+        sheetsFlow.map { list -> list.filter { it.carId == carId } }
 
-    override suspend fun getNextPrefill(carId: String): ApiResult<SheetPrefill> = prefillResult
+    override suspend fun getNextPrefill(carId: String): SheetPrefill = prefill
 
-    override suspend fun createSheet(carId: String, input: NewSheetInput): ApiResult<FuelSheet> {
+    override suspend fun createSheet(carId: String, input: NewSheetInput): LocalResult<Unit> {
         created += carId to input
-        return createResult ?: ApiResult.Success(
-            known.values.first().copy(
+        return act {
+            val sheet = previewOpenSheet().copy(
                 id = "new-${input.year}-${input.month}",
+                carId = carId,
                 year = input.year,
                 month = input.month,
                 season = input.season,
-                status = SheetStatus.OPEN,
-            ),
-        )
+                refuelings = emptyList(),
+            )
+            sheets = (sheets + sheet).sortedWith(compareByDescending<FuelSheet> { it.year }.thenByDescending { it.month })
+        }
     }
 
-    override suspend fun setSeason(sheetId: String, season: Season): ApiResult<FuelSheet> {
+    override suspend fun setSeason(sheetId: String, season: Season): LocalResult<BigDecimal> {
         seasonCalls += sheetId to season
-        return actionResult ?: ApiResult.Success(
-            known.getValue(sheetId).copy(
-                season = season,
-                normLPer100km = if (season == Season.WINTER) BigDecimal("11.684") else BigDecimal("10.068"),
-            ),
-        )
+        val norm = if (season == Season.WINTER) BigDecimal("11.684") else BigDecimal("10.068")
+        return violation?.let { LocalResult.Rejected(it) } ?: run {
+            change(sheetId) { copy(season = season, normLPer100km = norm) }
+            LocalResult.Ok(norm)
+        }
     }
 
-    override suspend fun closeSheet(sheetId: String, odometerEndKm: Long, fuelEndActualL: BigDecimal): ApiResult<FuelSheet> {
+    override suspend fun closeSheet(sheetId: String, odometerEndKm: Long, fuelEndActualL: BigDecimal): LocalResult<Unit> {
         closeCalls += Triple(sheetId, odometerEndKm, fuelEndActualL)
-        return actionResult ?: ApiResult.Success(
-            known.getValue(sheetId).copy(status = SheetStatus.CLOSED, odometerEndKm = odometerEndKm, fuelEndActualL = fuelEndActualL),
-        )
+        return act {
+            change(sheetId) { copy(status = SheetStatus.CLOSED, odometerEndKm = odometerEndKm, fuelEndActualL = fuelEndActualL) }
+        }
     }
 
-    override suspend fun reopenSheet(sheetId: String): ApiResult<FuelSheet> {
+    override suspend fun reopenSheet(sheetId: String): LocalResult<Unit> {
         reopenCalls += sheetId
-        return actionResult ?: ApiResult.Success(known.getValue(sheetId).copy(status = SheetStatus.OPEN))
+        return act { change(sheetId) { copy(status = SheetStatus.OPEN) } }
     }
 
-    override suspend fun deleteSheet(sheetId: String): ApiResult<Unit> {
+    override suspend fun deleteSheet(sheetId: String): LocalResult<Unit> {
         deleteCalls += sheetId
-        return deleteResult
+        return act { sheets = sheets.filterNot { it.id == sheetId } }
+    }
+
+    private fun act(change: () -> Unit): LocalResult<Unit> =
+        violation?.let { LocalResult.Rejected(it) } ?: LocalResult.Ok(change())
+
+    private fun change(sheetId: String, update: FuelSheet.() -> FuelSheet) {
+        sheets = sheets.map { if (it.id == sheetId) it.update() else it }
+    }
+}
+
+/** Заправки: запоминает вызовы и отвечает [result]. */
+class FakeRefuelingRepository : RefuelingRepository {
+
+    var result: LocalResult<Unit> = LocalResult.Ok(Unit)
+
+    val created = mutableListOf<Pair<String, RefuelingInput>>()
+    val updated = mutableListOf<Pair<String, RefuelingInput>>()
+    val deleteCalls = mutableListOf<String>()
+
+    override suspend fun create(sheetId: String, input: RefuelingInput): LocalResult<Unit> {
+        created += sheetId to input
+        return result
+    }
+
+    override suspend fun update(refuelingId: String, input: RefuelingInput): LocalResult<Unit> {
+        updated += refuelingId to input
+        return result
+    }
+
+    override suspend fun delete(refuelingId: String): LocalResult<Unit> {
+        deleteCalls += refuelingId
+        return result
     }
 }
 
@@ -217,20 +257,3 @@ fun httpError(
 )
 
 val networkError: ApiResult.Failure = ApiResult.Failure(ApiError.Network(IOException("no route")))
-
-/** Удаление заправки из списка в ленте; создание и правку проверяет RefuelingEditViewModelTest. */
-class FakeRefuelingRepository : RefuelingRepository {
-
-    /** Ответ на удаление — весь лист; null — тест не ожидает удаления. */
-    var deleteResult: ApiResult<FuelSheet>? = null
-    val deleteCalls = mutableListOf<String>()
-
-    override suspend fun create(sheetId: String, input: RefuelingInput): ApiResult<FuelSheet> = error("не используется")
-
-    override suspend fun update(refuelingId: String, input: RefuelingInput): ApiResult<FuelSheet> = error("не используется")
-
-    override suspend fun delete(refuelingId: String): ApiResult<FuelSheet> {
-        deleteCalls += refuelingId
-        return checkNotNull(deleteResult) { "deleteResult не задан" }
-    }
-}

@@ -9,10 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ru.fueltracker.app.data.remote.ApiError
-import ru.fueltracker.app.data.remote.ApiResult
+import ru.fueltracker.app.data.repository.LocalResult
 import ru.fueltracker.app.data.repository.RefuelingRepository
-import ru.fueltracker.app.domain.model.FuelSheet
+import ru.fueltracker.app.domain.calc.SheetRuleViolation
 import ru.fueltracker.app.domain.model.PaymentType
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.filterDecimalInput
@@ -28,10 +27,10 @@ data class RefuelingEditUiState(
     val isSaving: Boolean = false,
     val isDeleting: Boolean = false,
     val confirmDelete: Boolean = false,
-    /** Ошибка сервера или сети — показывается в самой шторке (Snackbar под ней не виден). */
+    /** Нарушено правило ЛУТ — показывается в самой шторке (Snackbar под ней не виден). */
     val error: UiText? = null,
-    /** Готово: лист с пересчитанным `calc` — карточка обновится, шторка закроется. */
-    val savedSheet: FuelSheet? = null,
+    /** Готово: заправка записана в базу — карточка обновится сама, шторка закроется. */
+    val saved: Boolean = false,
 ) {
     val isNew: Boolean get() = target?.refueling == null
     val isBusy: Boolean get() = isSaving || isDeleting
@@ -50,7 +49,6 @@ sealed interface RefuelingEditEvent {
     data object RequestDelete : RefuelingEditEvent
     data object ConfirmDelete : RefuelingEditEvent
     data object DismissDelete : RefuelingEditEvent
-    /** Шторка закрыта (сохранили или отменили) — следующее открытие начнётся с чистой формы. */
     /** Шторка закрыта (сохранили или отменили) — следующее открытие начнётся с чистой формы. */
     data object Reset : RefuelingEditEvent
 }
@@ -71,7 +69,7 @@ class RefuelingEditViewModel @Inject constructor(
 
     fun start(target: RefuelingTarget, today: LocalDate = LocalDate.now()) {
         // Та же заправка уже открыта — это поворот экрана, введённое не теряем
-        if (_state.value.target == target && _state.value.savedSheet == null) return
+        if (_state.value.target == target && !_state.value.saved) return
         job?.cancel()
         val form = target.refueling?.toForm() ?: target.newForm(today)
         _state.value = RefuelingEditUiState(target = target, form = form)
@@ -135,11 +133,22 @@ class RefuelingEditViewModel @Inject constructor(
         job = viewModelScope.launch { handleResult(repository.delete(refueling.id)) }
     }
 
-    private fun handleResult(result: ApiResult<FuelSheet>) {
+    private fun handleResult(result: LocalResult<Unit>) {
         when (result) {
-            is ApiResult.Success -> _state.update { it.copy(isSaving = false, isDeleting = false, savedSheet = result.data) }
-            is ApiResult.Failure -> _state.update {
-                it.copy(isSaving = false, isDeleting = false, error = result.error.toUiText(), errors = it.errors.merge(result.error))
+            is LocalResult.Ok -> _state.update { it.copy(isSaving = false, isDeleting = false, saved = true) }
+            is LocalResult.Rejected -> _state.update {
+                val text = result.violation.toUiText()
+                it.copy(
+                    isSaving = false,
+                    isDeleting = false,
+                    // Дата вне месяца — ошибка под полем даты, остальное — общим текстом
+                    errors = if (result.violation == SheetRuleViolation.REFUELING_DATE_OUTSIDE_MONTH) {
+                        it.errors.copy(date = text)
+                    } else {
+                        it.errors
+                    },
+                    error = text.takeUnless { result.violation == SheetRuleViolation.REFUELING_DATE_OUTSIDE_MONTH },
+                )
             }
         }
     }
@@ -151,19 +160,4 @@ class RefuelingEditViewModel @Inject constructor(
 private fun RefuelingForm.changeTotal(value: String): RefuelingForm {
     val text = filterDecimalInput(value)
     return if (text.isBlank()) copy(isTotalManual = false).withAutoTotal() else copy(totalCost = text, isTotalManual = true)
-}
-
-/** 400 с причинами по полям API → текст под соответствующим полем. */
-private fun RefuelingErrors.merge(error: ApiError): RefuelingErrors {
-    if (error !is ApiError.Http || error.status != 400) return this
-    fun field(name: String) = error.fieldError(name)?.let { UiText.Raw(it) }
-    return copy(
-        date = field("refueled_at") ?: date,
-        liters = field("liters") ?: liters,
-        pricePerLiter = field("price_per_liter") ?: pricePerLiter,
-        totalCost = field("total_cost") ?: totalCost,
-        odometer = field("odometer_km") ?: odometer,
-        station = field("station") ?: station,
-        note = field("note") ?: note,
-    )
 }

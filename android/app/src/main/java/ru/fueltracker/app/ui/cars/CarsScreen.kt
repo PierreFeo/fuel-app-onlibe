@@ -42,19 +42,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.fueltracker.app.R
 import ru.fueltracker.app.domain.model.Car
 import ru.fueltracker.app.domain.model.FuelType
 import ru.fueltracker.app.ui.common.EmptyView
-import ru.fueltracker.app.ui.common.ErrorView
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.LoadingView
 import ru.fueltracker.app.ui.common.SnackbarEffect
-import ru.fueltracker.app.ui.common.UiText
-import ru.fueltracker.app.ui.common.asString
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 import java.math.BigDecimal
 
@@ -69,7 +64,6 @@ fun CarsScreen(
     viewModel: CarsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onEvent(CarsEvent.Refresh) }
     LaunchedEffect(state.openFeed) {
         if (state.openFeed) {
             viewModel.onEvent(CarsEvent.FeedOpened)
@@ -149,10 +143,6 @@ fun CarsContent(
                     onArchive = { onEvent(CarsEvent.RequestArchive(it)) },
                 )
                 state.isLoading -> LoadingView()
-                state.loadError != null -> ErrorView(
-                    message = state.loadError.asString(),
-                    onRetry = { onEvent(CarsEvent.Refresh) },
-                )
                 else -> EmptyView(
                     message = stringResource(R.string.cars_empty),
                     actionLabel = stringResource(R.string.cars_add),
@@ -316,16 +306,3 @@ private fun CarsContentEmptyPreview() {
     }
 }
 
-@PreviewLightDark
-@Composable
-private fun CarsContentErrorPreview() {
-    FuelTrackerTheme {
-        CarsContent(
-            state = CarsUiState(isLoading = false, loadError = UiText.Resource(R.string.error_no_connection)),
-            onEvent = {},
-            onAddCar = {},
-            onEditCar = {},
-            onBack = null,
-        )
-    }
-}

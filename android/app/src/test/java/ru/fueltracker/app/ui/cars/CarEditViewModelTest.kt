@@ -10,12 +10,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import ru.fueltracker.app.R
-import ru.fueltracker.app.data.remote.dto.ErrorCodes
 import ru.fueltracker.app.domain.model.FuelType
 import ru.fueltracker.app.testutil.FakeCarRepository
 import ru.fueltracker.app.testutil.MainDispatcherRule
-import ru.fueltracker.app.testutil.httpError
-import ru.fueltracker.app.testutil.networkError
 import ru.fueltracker.app.testutil.testCar
 import ru.fueltracker.app.ui.common.UiText
 import java.math.BigDecimal
@@ -93,8 +90,8 @@ class CarEditViewModelTest {
     }
 
     @Test
-    fun `редактирование — форма заполняется из API и отправляется PATCH`() = runTest {
-        repository.cars = mutableListOf(testCar(id = "car-1"))
+    fun `редактирование — форма заполняется из базы, сохраняются все поля`() = runTest {
+        repository.cars = listOf(testCar(id = "car-1"))
         val viewModel = createViewModel("car-1")
         assertTrue(viewModel.state.value.isLoading)
         advanceUntilIdle()
@@ -117,14 +114,12 @@ class CarEditViewModelTest {
     }
 
     @Test
-    fun `ошибка загрузки авто — экран ошибки и повтор`() = runTest {
-        repository.getCarResult = networkError
+    fun `авто нет в базе — экран «не найдено», повтор находит`() = runTest {
         val viewModel = createViewModel("car-1")
         advanceUntilIdle()
-        assertEquals(UiText.Resource(R.string.error_no_connection), viewModel.state.value.loadError)
+        assertEquals(UiText.Resource(R.string.rule_not_found), viewModel.state.value.loadError)
 
-        repository.getCarResult = null
-        repository.cars = mutableListOf(testCar(id = "car-1"))
+        repository.cars = listOf(testCar(id = "car-1"))
         viewModel.onEvent(CarEditEvent.Retry)
         advanceUntilIdle()
         assertNull(viewModel.state.value.loadError)
@@ -132,34 +127,17 @@ class CarEditViewModelTest {
     }
 
     @Test
-    fun `400 от сервера — текст под нужным полем`() = runTest {
-        repository.saveResult = httpError(
-            400,
-            ErrorCodes.VALIDATION_ERROR,
-            message = "Неверные данные запроса",
-            details = mapOf("tank_capacity_l" to "Слишком большое значение"),
-        )
-        val viewModel = createViewModel()
-        viewModel.fillValid()
+    fun `авто удалили, пока форма была открыта — Snackbar, не сохранено`() = runTest {
+        repository.cars = listOf(testCar(id = "car-1"))
+        val viewModel = createViewModel("car-1")
+        advanceUntilIdle()
+        repository.cars = emptyList()
+
         viewModel.onEvent(CarEditEvent.Save)
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(UiText.Raw("Слишком большое значение"), state.errors.tankCapacity)
-        assertNull(state.snackbar)
-        assertFalse(state.saved)
-    }
-
-    @Test
-    fun `нет сети при сохранении — Snackbar`() = runTest {
-        repository.saveResult = networkError
-        val viewModel = createViewModel()
-        viewModel.fillValid()
-        viewModel.onEvent(CarEditEvent.Save)
-        advanceUntilIdle()
-
-        val state = viewModel.state.value
-        assertEquals(UiText.Resource(R.string.error_no_connection), state.snackbar)
+        assertEquals(UiText.Resource(R.string.rule_not_found), state.snackbar)
         assertFalse(state.isSaving)
         assertFalse(state.saved)
     }

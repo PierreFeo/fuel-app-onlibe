@@ -52,7 +52,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.fueltracker.app.R
-import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.PaymentType
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.UiText
@@ -65,21 +64,21 @@ import java.time.ZoneOffset
 
 /**
  * Шторка «Заправка» поверх ленты: добавить, изменить или удалить.
- * [onSaved] получает лист с пересчитанным `calc` — карточка обновляется сразу.
+ * Заправка пишется в базу на телефоне — карточка листа обновится сама; [onSaved] только закрывает шторку.
  */
 @Composable
 fun RefuelingEditSheet(
     target: RefuelingTarget,
-    onSaved: (FuelSheet) -> Unit,
+    onSaved: () -> Unit,
     onDismiss: () -> Unit,
     viewModel: RefuelingEditViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(target) { viewModel.start(target) }
     val state by viewModel.state.collectAsStateWithLifecycle()
-    LaunchedEffect(state.savedSheet) {
-        state.savedSheet?.let {
+    LaunchedEffect(state.saved) {
+        if (state.saved) {
             viewModel.onEvent(RefuelingEditEvent.Reset)
-            onSaved(it)
+            onSaved()
         }
     }
     // Пока state не получил target (первый кадр), рисовать нечего

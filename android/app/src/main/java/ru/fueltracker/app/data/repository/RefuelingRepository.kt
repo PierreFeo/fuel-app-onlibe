@@ -1,72 +1,103 @@
 package ru.fueltracker.app.data.repository
 
-import ru.fueltracker.app.data.remote.ApiResult
-import ru.fueltracker.app.data.remote.PatchField
-import ru.fueltracker.app.data.remote.api.RefuelingsApi
-import ru.fueltracker.app.data.remote.apiCall
-import ru.fueltracker.app.data.remote.dto.RefuelingCreateRequest
-import ru.fueltracker.app.data.remote.dto.RefuelingPatchRequest
-import ru.fueltracker.app.data.remote.map
-import ru.fueltracker.app.domain.model.FuelSheet
-import ru.fueltracker.app.domain.model.PaymentType
+import androidx.room.withTransaction
+import ru.fueltracker.app.data.local.db.AppDatabase
+import ru.fueltracker.app.data.local.db.RefuelingEntity
+import ru.fueltracker.app.data.local.db.SheetEntity
+import ru.fueltracker.app.data.local.db.toDbAmount
+import ru.fueltracker.app.data.local.db.touched
+import ru.fueltracker.app.domain.calc.SheetCalculator
+import ru.fueltracker.app.domain.calc.SheetRuleViolation
+import ru.fueltracker.app.domain.calc.SheetRules
 import ru.fueltracker.app.domain.model.RefuelingInput
+import ru.fueltracker.app.domain.model.SheetStatus
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import ru.fueltracker.app.data.remote.dto.PaymentType as PaymentTypeDto
 
-/** Заправки. Каждый ответ — весь лист с пересчитанным `calc`: карточка обновляется без второго запроса. */
+/** Заправки — в Room. Карточка листа обновляется сама: лента подписана на Room. */
 interface RefuelingRepository {
 
-    suspend fun create(sheetId: String, input: RefuelingInput): ApiResult<FuelSheet>
+    suspend fun create(sheetId: String, input: RefuelingInput): LocalResult<Unit>
 
-    suspend fun update(refuelingId: String, input: RefuelingInput): ApiResult<FuelSheet>
+    suspend fun update(refuelingId: String, input: RefuelingInput): LocalResult<Unit>
 
-    suspend fun delete(refuelingId: String): ApiResult<FuelSheet>
+    suspend fun delete(refuelingId: String): LocalResult<Unit>
 }
 
 @Singleton
 class DefaultRefuelingRepository @Inject constructor(
-    private val api: RefuelingsApi,
+    private val db: AppDatabase,
 ) : RefuelingRepository {
 
-    override suspend fun create(sheetId: String, input: RefuelingInput): ApiResult<FuelSheet> =
-        apiCall {
-            api.createRefueling(
-                sheetId,
-                RefuelingCreateRequest(
-                    refueledAt = input.date.toString(),
-                    liters = input.liters.toPlainString(),
-                    pricePerLiter = input.pricePerLiter.toPlainString(),
-                    totalCost = input.totalCost?.toPlainString(),
-                    odometerKm = input.odometerKm,
-                    station = input.station,
-                    paymentType = input.paymentType.toDto(),
-                    note = input.note,
-                ),
-            )
-        }.map { it.toDomain() }
+    private val sheets = db.sheetDao()
+    private val refuelings = db.refuelingDao()
 
-    // Форма редактирует все поля — отправляем все; null стирает пробег/АЗС/комментарий,
-    // а у суммы означает «пересчитать литры × цена»
-    override suspend fun update(refuelingId: String, input: RefuelingInput): ApiResult<FuelSheet> =
-        apiCall {
-            api.updateRefueling(
-                refuelingId,
-                RefuelingPatchRequest(
-                    refueledAt = input.date.toString(),
-                    liters = input.liters.toPlainString(),
-                    pricePerLiter = input.pricePerLiter.toPlainString(),
-                    totalCost = PatchField.Present(input.totalCost?.toPlainString()),
-                    odometerKm = PatchField.Present(input.odometerKm),
-                    station = PatchField.Present(input.station),
-                    paymentType = input.paymentType.toDto(),
-                    note = PatchField.Present(input.note),
-                ),
-            )
-        }.map { it.toDomain() }
+    override suspend fun create(sheetId: String, input: RefuelingInput): LocalResult<Unit> = db.withTransaction {
+        val sheet = editableSheet(sheetId) ?: return@withTransaction violation(sheetId)
+        checkDate(sheet, input)?.let { return@withTransaction it.rejected() }
+        refuelings.upsert(
+            RefuelingEntity(
+                id = UUID.randomUUID().toString(),
+                sheetId = sheetId,
+                refueledAt = "",
+                liters = "",
+                pricePerLiter = "",
+                totalCost = "",
+                odometerKm = null,
+                station = null,
+                paymentType = input.paymentType.name,
+                note = null,
+            ).with(input),
+        )
+        Unit.ok()
+    }
 
-    override suspend fun delete(refuelingId: String): ApiResult<FuelSheet> =
-        apiCall { api.deleteRefueling(refuelingId) }.map { it.toDomain() }
+    override suspend fun update(refuelingId: String, input: RefuelingInput): LocalResult<Unit> = db.withTransaction {
+        val current = refuelings.get(refuelingId)?.takeUnless { it.isDeleted }
+            ?: return@withTransaction SheetRuleViolation.NOT_FOUND.rejected()
+        val sheet = editableSheet(current.sheetId) ?: return@withTransaction violation(current.sheetId)
+        checkDate(sheet, input)?.let { return@withTransaction it.rejected() }
+        refuelings.upsert(current.with(input).touched())
+        Unit.ok()
+    }
+
+    override suspend fun delete(refuelingId: String): LocalResult<Unit> = db.withTransaction {
+        val current = refuelings.get(refuelingId)?.takeUnless { it.isDeleted }
+            ?: return@withTransaction SheetRuleViolation.NOT_FOUND.rejected()
+        editableSheet(current.sheetId) ?: return@withTransaction violation(current.sheetId)
+        // Строка остаётся до синхронизации: сервер должен узнать об удалении.
+        refuelings.upsert(current.copy(isDeleted = true).touched())
+        Unit.ok()
+    }
+
+    /** Открытый неудалённый лист; заправки закрытого не меняются (правило 8). */
+    private suspend fun editableSheet(sheetId: String): SheetEntity? =
+        sheets.get(sheetId)?.takeIf { !it.isDeleted && it.status == SheetStatus.OPEN.name }
+
+    private suspend fun violation(sheetId: String): LocalResult<Nothing> {
+        val sheet = sheets.get(sheetId)
+        return if (sheet == null || sheet.isDeleted) {
+            SheetRuleViolation.NOT_FOUND.rejected()
+        } else {
+            SheetRuleViolation.SHEET_CLOSED.rejected()
+        }
+    }
+
+    private fun checkDate(sheet: SheetEntity, input: RefuelingInput): SheetRuleViolation? =
+        SheetRuleViolation.REFUELING_DATE_OUTSIDE_MONTH.takeUnless {
+            SheetRules.isDateInMonth(input.date, sheet.year, sheet.month)
+        }
 }
 
-private fun PaymentType.toDto() = PaymentTypeDto.valueOf(name)
+/** Поля формы → строка Room. Сумма не введена вручную — литры × цена (правило 9). */
+private fun RefuelingEntity.with(input: RefuelingInput) = copy(
+    refueledAt = input.date.toString(),
+    liters = input.liters.toDbAmount(),
+    pricePerLiter = input.pricePerLiter.toDbAmount(),
+    totalCost = (input.totalCost ?: SheetCalculator.totalCost(input.liters, input.pricePerLiter)).toDbAmount(),
+    odometerKm = input.odometerKm,
+    station = input.station,
+    paymentType = input.paymentType.name,
+    note = input.note,
+)

@@ -9,15 +9,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import ru.fueltracker.app.R
-import ru.fueltracker.app.data.remote.ApiResult
-import ru.fueltracker.app.data.remote.dto.ErrorCodes
-import ru.fueltracker.app.data.repository.RefuelingRepository
-import ru.fueltracker.app.domain.model.FuelSheet
+import ru.fueltracker.app.data.repository.LocalResult
+import ru.fueltracker.app.domain.calc.SheetRuleViolation
 import ru.fueltracker.app.domain.model.PaymentType
-import ru.fueltracker.app.domain.model.RefuelingInput
 import ru.fueltracker.app.testutil.MainDispatcherRule
-import ru.fueltracker.app.testutil.httpError
-import ru.fueltracker.app.testutil.networkError
+import ru.fueltracker.app.testutil.FakeRefuelingRepository
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.sheets.previewOpenSheet
 import java.math.BigDecimal
@@ -29,29 +25,8 @@ class RefuelingEditViewModelTest {
     val mainDispatcher = MainDispatcherRule()
 
     private val sheet = previewOpenSheet() // август 2026, одна заправка r3
-    private val savedSheet = sheet.copy(id = sheet.id)
 
-    private val repository = object : RefuelingRepository {
-        var result: ApiResult<FuelSheet> = ApiResult.Success(savedSheet)
-        val created = mutableListOf<Pair<String, RefuelingInput>>()
-        val updated = mutableListOf<Pair<String, RefuelingInput>>()
-        val deleted = mutableListOf<String>()
-
-        override suspend fun create(sheetId: String, input: RefuelingInput): ApiResult<FuelSheet> {
-            created += sheetId to input
-            return result
-        }
-
-        override suspend fun update(refuelingId: String, input: RefuelingInput): ApiResult<FuelSheet> {
-            updated += refuelingId to input
-            return result
-        }
-
-        override suspend fun delete(refuelingId: String): ApiResult<FuelSheet> {
-            deleted += refuelingId
-            return result
-        }
-    }
+    private val repository = FakeRefuelingRepository()
 
     private val viewModel = RefuelingEditViewModel(repository)
     private val today = LocalDate.of(2026, 8, 10)
@@ -95,7 +70,7 @@ class RefuelingEditViewModelTest {
     }
 
     @Test
-    fun `сохранение новой заправки — ответ лист`() = runTest {
+    fun `сохранение новой заправки — в базу, шторка закроется`() = runTest {
         startNew()
         viewModel.onEvent(RefuelingEditEvent.LitersChanged("40"))
         viewModel.onEvent(RefuelingEditEvent.PriceChanged("55"))
@@ -111,7 +86,7 @@ class RefuelingEditViewModelTest {
         assertNull(input.totalCost)
         assertEquals("Лукойл", input.station)
         assertEquals(PaymentType.COMPANY, input.paymentType)
-        assertEquals(savedSheet, viewModel.state.value.savedSheet)
+        assertTrue(viewModel.state.value.saved)
     }
 
     @Test
@@ -124,7 +99,7 @@ class RefuelingEditViewModelTest {
     }
 
     @Test
-    fun `изменение существующей заправки — PATCH по её id`() = runTest {
+    fun `изменение существующей заправки — по её id`() = runTest {
         startEdit()
         val state = viewModel.state.value
         assertFalse(state.isNew)
@@ -145,23 +120,18 @@ class RefuelingEditViewModelTest {
         startEdit()
         viewModel.onEvent(RefuelingEditEvent.RequestDelete)
         assertTrue(viewModel.state.value.confirmDelete)
-        assertTrue(repository.deleted.isEmpty())
+        assertTrue(repository.deleteCalls.isEmpty())
 
         viewModel.onEvent(RefuelingEditEvent.ConfirmDelete)
         advanceUntilIdle()
 
-        assertEquals(listOf("r3"), repository.deleted)
-        assertEquals(savedSheet, viewModel.state.value.savedSheet)
+        assertEquals(listOf("r3"), repository.deleteCalls)
+        assertTrue(viewModel.state.value.saved)
     }
 
     @Test
-    fun `ошибка сервера — текст в шторке, поле подсвечено`() = runTest {
-        repository.result = httpError(
-            400,
-            ErrorCodes.VALIDATION_ERROR,
-            message = "Неверные данные запроса",
-            details = mapOf("price_per_liter" to "Не больше 2 знаков после точки"),
-        )
+    fun `лист закрыли, пока форма была открыта — текст в шторке, не сохранено`() = runTest {
+        repository.result = LocalResult.Rejected(SheetRuleViolation.SHEET_CLOSED)
         startNew()
         viewModel.onEvent(RefuelingEditEvent.LitersChanged("40"))
         viewModel.onEvent(RefuelingEditEvent.PriceChanged("55"))
@@ -170,18 +140,21 @@ class RefuelingEditViewModelTest {
 
         val state = viewModel.state.value
         assertFalse(state.isSaving)
-        assertNull(state.savedSheet)
-        assertEquals(UiText.Raw("Неверные данные запроса"), state.error)
-        assertEquals(UiText.Raw("Не больше 2 знаков после точки"), state.errors.pricePerLiter)
+        assertFalse(state.saved)
+        assertEquals(UiText.Resource(R.string.sheet_closed_cannot_edit), state.error)
     }
 
     @Test
-    fun `нет сети — Нет связи с сервером`() = runTest {
-        repository.result = networkError
+    fun `дата вне месяца листа — ошибка под полем даты`() = runTest {
+        repository.result = LocalResult.Rejected(SheetRuleViolation.REFUELING_DATE_OUTSIDE_MONTH)
         startEdit()
         viewModel.onEvent(RefuelingEditEvent.Save)
         advanceUntilIdle()
-        assertEquals(UiText.Resource(R.string.error_no_connection), viewModel.state.value.error)
+
+        val state = viewModel.state.value
+        assertEquals(UiText.Resource(R.string.rule_refueling_date_outside_month), state.errors.date)
+        assertNull(state.error)
+        assertFalse(state.saved)
     }
 
     @Test

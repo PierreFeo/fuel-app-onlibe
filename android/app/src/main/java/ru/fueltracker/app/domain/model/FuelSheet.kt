@@ -13,7 +13,7 @@ enum class ConsumptionStatus { NORMAL, OVER }
 
 enum class PaymentType { PERSONAL, FUEL_CARD, COMPANY }
 
-/** ЛУТ — лист учёта топлива за месяц. [calc] считает сервер, приложение только показывает. */
+/** ЛУТ — лист учёта топлива за месяц. [calc] считает SheetCalculator (domain/calc). */
 data class FuelSheet(
     val id: String,
     val carId: String,
@@ -66,11 +66,6 @@ data class SheetCalc(
 /** Предупреждение листа (06_BUSINESS_RULES.md, «Предупреждения»): не блокирует сохранение. Текст — в strings.xml. */
 enum class SheetWarning { FUEL_END_NEGATIVE, FUEL_END_OVER_TANK, ODOMETER_GAP, REFUELING_ODOMETER_OUT_OF_RANGE }
 
-/** Страница ленты; [nextBefore] — для следующей страницы, null — листов больше нет. */
-data class SheetPage(
-    val items: List<FuelSheet>,
-    val nextBefore: String?,
-)
 
 /** Подсказка для нового листа (`next-prefill`): следующий месяц, пробег и остаток с прошлого листа. */
 data class SheetPrefill(
@@ -90,7 +85,7 @@ data class NewSheetInput(
     val season: Season,
 )
 
-/** Поля заправки из формы. [totalCost] null — сумму посчитает сервер (литры × цена). */
+/** Поля заправки из формы. [totalCost] null — сумму посчитает приложение (литры × цена). */
 data class RefuelingInput(
     val date: LocalDate,
     val liters: BigDecimal,

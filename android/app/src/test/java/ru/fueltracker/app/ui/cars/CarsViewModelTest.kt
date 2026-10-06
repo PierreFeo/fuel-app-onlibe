@@ -10,11 +10,8 @@ import org.junit.Rule
 import org.junit.Test
 import ru.fueltracker.app.R
 import ru.fueltracker.app.data.local.FakeSelectedCarStorage
-import ru.fueltracker.app.data.remote.dto.ErrorCodes
 import ru.fueltracker.app.testutil.FakeCarRepository
 import ru.fueltracker.app.testutil.MainDispatcherRule
-import ru.fueltracker.app.testutil.httpError
-import ru.fueltracker.app.testutil.networkError
 import ru.fueltracker.app.testutil.testCar
 import ru.fueltracker.app.ui.common.UiText
 
@@ -31,11 +28,10 @@ class CarsViewModelTest {
     private val kia = testCar(id = "car-2", name = "Kia Rio")
 
     @Test
-    fun `сначала загрузка, потом список`() = runTest {
-        repository.cars = mutableListOf(lada, kia)
+    fun `сначала загрузка, потом список из базы`() = runTest {
+        repository.cars = listOf(lada, kia)
         assertTrue(viewModel.state.value.isLoading)
 
-        viewModel.onEvent(CarsEvent.Refresh)
         advanceUntilIdle()
 
         val state = viewModel.state.value
@@ -45,57 +41,36 @@ class CarsViewModelTest {
 
     @Test
     fun `пустой список`() = runTest {
-        viewModel.onEvent(CarsEvent.Refresh)
+        viewModel
         advanceUntilIdle()
-        val state = viewModel.state.value
-        assertFalse(state.isLoading)
-        assertTrue(state.cars.isEmpty())
-        assertNull(state.loadError)
+
+        assertFalse(viewModel.state.value.isLoading)
+        assertTrue(viewModel.state.value.cars.isEmpty())
     }
 
     @Test
-    fun `ошибка первой загрузки — экран ошибки, повтор загружает`() = runTest {
-        repository.getCarsResult = networkError
-        viewModel.onEvent(CarsEvent.Refresh)
-        advanceUntilIdle()
-        assertEquals(UiText.Resource(R.string.error_no_connection), viewModel.state.value.loadError)
-
-        repository.getCarsResult = null
-        repository.cars = mutableListOf(lada)
-        viewModel.onEvent(CarsEvent.Refresh)
-        advanceUntilIdle()
-        assertNull(viewModel.state.value.loadError)
-        assertEquals(listOf(lada), viewModel.state.value.cars)
-    }
-
-    @Test
-    fun `ошибка обновления при показанном списке — Snackbar, список остаётся`() = runTest {
-        repository.cars = mutableListOf(lada)
-        viewModel.onEvent(CarsEvent.Refresh)
+    fun `список обновляется сам — например, после CarEditScreen`() = runTest {
+        repository.cars = listOf(lada)
+        viewModel
         advanceUntilIdle()
 
-        repository.getCarsResult = networkError
-        viewModel.onEvent(CarsEvent.Refresh)
+        repository.cars = listOf(lada, kia)
         advanceUntilIdle()
 
-        val state = viewModel.state.value
-        assertEquals(listOf(lada), state.cars)
-        assertNull(state.loadError)
-        assertEquals(UiText.Resource(R.string.error_no_connection), state.snackbar)
+        assertEquals(listOf(lada, kia), viewModel.state.value.cars)
     }
 
     @Test
     fun `выбранное авто отмечено`() = runTest {
         selected.select("car-2")
-        viewModel.onEvent(CarsEvent.Refresh)
+        viewModel
         advanceUntilIdle()
         assertEquals("car-2", viewModel.state.value.selectedCarId)
     }
 
     @Test
     fun `выбор авто сохраняется и открывает ленту`() = runTest {
-        repository.cars = mutableListOf(lada, kia)
-        viewModel.onEvent(CarsEvent.Refresh)
+        repository.cars = listOf(lada, kia)
         advanceUntilIdle()
 
         viewModel.onEvent(CarsEvent.Select(kia))
@@ -109,8 +84,8 @@ class CarsViewModelTest {
 
     @Test
     fun `архив — с подтверждением, авто пропадает из списка`() = runTest {
-        repository.cars = mutableListOf(lada, kia)
-        viewModel.onEvent(CarsEvent.Refresh)
+        repository.cars = listOf(lada, kia)
+        viewModel
         advanceUntilIdle()
 
         viewModel.onEvent(CarsEvent.RequestArchive(lada))
@@ -139,8 +114,8 @@ class CarsViewModelTest {
     @Test
     fun `архив выбранного авто сбрасывает выбор, другого — нет`() = runTest {
         selected.select("car-1")
-        repository.cars = mutableListOf(lada, kia)
-        viewModel.onEvent(CarsEvent.Refresh)
+        repository.cars = listOf(lada, kia)
+        viewModel
         advanceUntilIdle()
 
         viewModel.onEvent(CarsEvent.RequestArchive(kia))
@@ -152,20 +127,5 @@ class CarsViewModelTest {
         viewModel.onEvent(CarsEvent.ConfirmArchive)
         advanceUntilIdle()
         assertNull(selected.current)
-    }
-
-    @Test
-    fun `ошибка архива — Snackbar, авто остаётся`() = runTest {
-        repository.cars = mutableListOf(lada)
-        repository.archiveResult = httpError(404, ErrorCodes.NOT_FOUND, message = "Ресурс не найден")
-        viewModel.onEvent(CarsEvent.Refresh)
-        advanceUntilIdle()
-
-        viewModel.onEvent(CarsEvent.RequestArchive(lada))
-        viewModel.onEvent(CarsEvent.ConfirmArchive)
-        advanceUntilIdle()
-
-        assertEquals(listOf(lada), viewModel.state.value.cars)
-        assertEquals(UiText.Raw("Ресурс не найден"), viewModel.state.value.snackbar)
     }
 }

@@ -9,13 +9,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ru.fueltracker.app.data.remote.ApiError
-import ru.fueltracker.app.data.remote.ApiResult
+import ru.fueltracker.app.R
 import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.domain.model.FuelType
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.filterDecimalInput
-import ru.fueltracker.app.ui.common.toUiText
 import javax.inject.Inject
 
 data class CarEditUiState(
@@ -85,10 +83,12 @@ class CarEditViewModel @Inject constructor(
     private fun load(id: String) {
         _state.update { it.copy(isLoading = true, loadError = null) }
         viewModelScope.launch {
-            when (val result = carRepository.getCar(id)) {
-                is ApiResult.Success -> _state.update { it.copy(isLoading = false, form = result.data.toForm()) }
-                is ApiResult.Failure -> _state.update {
-                    it.copy(isLoading = false, loadError = result.error.toUiText())
+            val car = carRepository.getCar(id)
+            _state.update {
+                if (car != null) {
+                    it.copy(isLoading = false, form = car.toForm())
+                } else {
+                    it.copy(isLoading = false, loadError = UiText.Resource(R.string.rule_not_found))
                 }
             }
         }
@@ -104,18 +104,13 @@ class CarEditViewModel @Inject constructor(
         }
         _state.update { it.copy(isSaving = true, errors = CarFormErrors()) }
         viewModelScope.launch {
-            val result = if (carId == null) carRepository.createCar(input) else carRepository.updateCar(carId, input)
-            when (result) {
-                is ApiResult.Success -> _state.update { it.copy(isSaving = false, saved = true) }
-                is ApiResult.Failure -> {
-                    val fieldErrors = serverFieldErrors(result.error)
-                    _state.update {
-                        it.copy(
-                            isSaving = false,
-                            errors = fieldErrors ?: CarFormErrors(),
-                            snackbar = if (fieldErrors == null) result.error.toUiText() else null,
-                        )
-                    }
+            // Сохранение — в базу на телефоне: все проверки уже сделала форма
+            val saved = if (carId == null) carRepository.createCar(input) else carRepository.updateCar(carId, input)
+            _state.update {
+                if (saved != null) {
+                    it.copy(isSaving = false, saved = true)
+                } else {
+                    it.copy(isSaving = false, snackbar = UiText.Resource(R.string.rule_not_found))
                 }
             }
         }
@@ -124,19 +119,4 @@ class CarEditViewModel @Inject constructor(
     companion object {
         internal const val ARG_CAR_ID = "carId"
     }
-}
-
-/** 400 с причинами по полям API → ошибки под полями формы; null — показать общую ошибку. */
-private fun serverFieldErrors(error: ApiError): CarFormErrors? {
-    if (error !is ApiError.Http || error.status != 400) return null
-    fun field(name: String) = error.fieldError(name)?.let { UiText.Raw(it) }
-    val errors = CarFormErrors(
-        name = field("name"),
-        plateNumber = field("plate_number"),
-        fuelType = field("fuel_type"),
-        tankCapacity = field("tank_capacity_l"),
-        normSummer = field("norm_l_per_100km"),
-        normWinter = field("norm_winter_l_per_100km"),
-    )
-    return errors.takeIf { it.hasAny }
 }
