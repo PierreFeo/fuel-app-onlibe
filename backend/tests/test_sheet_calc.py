@@ -10,7 +10,6 @@ from app.services.sheet_calc import (
     FUEL_END_OVER_TANK,
     ODOMETER_GAP,
     REFUELING_ODOMETER_OUT_OF_RANGE,
-    REFUELING_OVER_TANK,
     ConsumptionStatus,
     RefuelingData,
     SheetData,
@@ -244,13 +243,14 @@ def test_fuel_end_over_tank_by_calculated_fuel() -> None:
     assert calculate(sheet, tank_capacity_l=TANK).warnings == [FUEL_END_OVER_TANK]
 
 
-def test_refueling_over_tank_reported_once() -> None:
+def test_refueling_over_tank_is_not_warning() -> None:
+    """Сотрудники вводят одной записью все заправки за месяц — это нормально."""
     big = RefuelingData(liters=D("55.00"), total_cost=D("3000.00"))
     sheet = replace(EXAMPLE_A, refuelings=(big, big), fuel_end_actual_l=D("40.00"))
 
     warnings = calculate(sheet, tank_capacity_l=TANK).warnings
 
-    assert warnings == [REFUELING_OVER_TANK]
+    assert warnings == []
 
 
 def test_refueling_equal_to_tank_is_fine() -> None:
@@ -310,7 +310,6 @@ def test_several_warnings_in_table_order() -> None:
 
     assert [w.code for w in calc.warnings] == [
         "FUEL_END_NEGATIVE",
-        "REFUELING_OVER_TANK",
         "ODOMETER_GAP",
         "REFUELING_ODOMETER_OUT_OF_RANGE",
     ]

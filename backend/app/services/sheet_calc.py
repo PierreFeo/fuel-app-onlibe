@@ -69,9 +69,6 @@ FUEL_END_NEGATIVE = CalcWarning(
     "FUEL_END_NEGATIVE", "Расчётный остаток отрицательный — проверьте пробег и заправки"
 )
 FUEL_END_OVER_TANK = CalcWarning("FUEL_END_OVER_TANK", "Остаток на конец месяца больше объёма бака")
-REFUELING_OVER_TANK = CalcWarning(
-    "REFUELING_OVER_TANK", "Заправка больше объёма бака — проверьте литры"
-)
 ODOMETER_GAP = CalcWarning(
     "ODOMETER_GAP", "Пробег на начало не совпадает с пробегом на конец прошлого месяца"
 )
@@ -173,8 +170,6 @@ def _warnings(
         warnings.append(FUEL_END_NEGATIVE)
     if fuel_end_l is not None and fuel_end_l > tank_capacity_l:
         warnings.append(FUEL_END_OVER_TANK)
-    if any(r.liters > tank_capacity_l for r in sheet.refuelings):
-        warnings.append(REFUELING_OVER_TANK)
     if prev_odometer_end_km is not None and start != prev_odometer_end_km:
         warnings.append(ODOMETER_GAP)
     # Пока пробег на конец не введён — проверяем только нижнюю границу.

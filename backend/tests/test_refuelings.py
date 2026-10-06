@@ -185,12 +185,13 @@ async def test_refuelings_sorted_by_date(
     assert body["calc"]["refueled_l"] == "120.00"
 
 
-async def test_refueling_over_tank_is_warning_not_error(
+async def test_refueling_over_tank_is_allowed_without_warning(
     api: AsyncClient, headers: dict[str, str], sheet: dict
 ) -> None:
+    """Одна запись за весь месяц может быть больше бака — ни ошибки, ни предупреждения."""
     body = await _add(api, headers, sheet, liters="60.00")  # бак 50 л
 
-    assert [w["code"] for w in body["calc"]["warnings"]] == ["REFUELING_OVER_TANK"]
+    assert body["calc"]["warnings"] == []
 
 
 async def test_refueling_odometer_below_start_is_warning(
