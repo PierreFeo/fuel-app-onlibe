@@ -11,7 +11,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import ru.fueltracker.app.data.local.DataStoreSelectedCarStorage
 import ru.fueltracker.app.data.local.DataStoreTokenStorage
+import ru.fueltracker.app.data.local.SelectedCarStorage
 import ru.fueltracker.app.data.local.TokenStorage
 import javax.inject.Singleton
 
@@ -21,6 +23,9 @@ abstract class StorageModule {
 
     @Binds
     abstract fun bindTokenStorage(impl: DataStoreTokenStorage): TokenStorage
+
+    @Binds
+    abstract fun bindSelectedCarStorage(impl: DataStoreSelectedCarStorage): SelectedCarStorage
 
     companion object {
 

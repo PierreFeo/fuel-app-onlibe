@@ -50,7 +50,7 @@
 ## Фаза 5. Android: экраны
 - [x] 5.1 Splash + PhoneScreen + CodeScreen + PasswordLoginScreen + NameScreen
   (вход по SMS и по паролю работает с локальным backend)
-- [ ] 5.2 CarsScreen + CarEditScreen + выбор авто
+- [x] 5.2 CarsScreen + CarEditScreen + выбор авто
 - [ ] 5.3 SheetsFeedScreen + SheetCard (только отображение, пагинация, pull-to-refresh)
 - [ ] 5.4 NewSheetDialog + CloseSheetDialog + reopen
 - [ ] 5.5 RefuelingEditScreen: добавить/изменить/удалить заправку

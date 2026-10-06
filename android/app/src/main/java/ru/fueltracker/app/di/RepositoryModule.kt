@@ -5,7 +5,9 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import ru.fueltracker.app.data.repository.AuthRepository
+import ru.fueltracker.app.data.repository.CarRepository
 import ru.fueltracker.app.data.repository.DefaultAuthRepository
+import ru.fueltracker.app.data.repository.DefaultCarRepository
 import ru.fueltracker.app.data.repository.DefaultProfileRepository
 import ru.fueltracker.app.data.repository.ProfileRepository
 
@@ -18,4 +20,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindProfileRepository(impl: DefaultProfileRepository): ProfileRepository
+
+    @Binds
+    abstract fun bindCarRepository(impl: DefaultCarRepository): CarRepository
 }

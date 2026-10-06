@@ -16,7 +16,9 @@ import ru.fueltracker.app.ui.auth.CodeScreen
 import ru.fueltracker.app.ui.auth.NameScreen
 import ru.fueltracker.app.ui.auth.PasswordLoginScreen
 import ru.fueltracker.app.ui.auth.PhoneScreen
-import ru.fueltracker.app.ui.cars.CarsPlaceholderScreen
+import ru.fueltracker.app.ui.cars.CarEditScreen
+import ru.fueltracker.app.ui.cars.CarsScreen
+import ru.fueltracker.app.ui.sheets.SheetsFeedPlaceholderScreen
 import ru.fueltracker.app.ui.splash.SplashScreen
 
 @Composable
@@ -28,15 +30,18 @@ fun NavGraph(
 
     // Splash → вход или приложение; потеря токенов на экране приложения → снова вход
     LaunchedEffect(navController) {
-        appViewModel.isLoggedIn.filterNotNull().collect { isLoggedIn ->
+        appViewModel.session.filterNotNull().collect { session ->
             val screen = navController.currentBackStackEntry?.destination?.kind()
-            sessionRedirect(screen, isLoggedIn)?.let { navController.navigateClearingBackStack(it) }
+            sessionRedirect(screen, session)?.let { navController.navigateClearingBackStack(it) }
         }
     }
 
+    // После Splash сессия уже прочитана, value не null
+    val goHome = { navController.navigateClearingBackStack(homeRoute(appViewModel.session.value)) }
+
     // После входа экраны входа убираются из истории: «Назад» закрывает приложение
     val onLoggedIn: (LoginResult) -> Unit = { result ->
-        navController.navigateClearingBackStack(if (result.isNewUser) NameRoute else HomeRoute)
+        if (result.isNewUser) navController.navigateClearingBackStack(NameRoute) else goHome()
     }
 
     NavHost(
@@ -69,9 +74,25 @@ fun NavGraph(
             )
         }
         composable<NameRoute> {
-            NameScreen(onSaved = { navController.navigateClearingBackStack(HomeRoute) })
+            NameScreen(onSaved = goHome)
         }
-        composable<CarsRoute> { CarsPlaceholderScreen() }
+        composable<CarsRoute> {
+            // Корень (авто ещё не выбрано) — без стрелки «Назад»; из ленты — со стрелкой
+            val canGoBack = navController.previousBackStackEntry != null
+            CarsScreen(
+                // Лента становится корнем: «Назад» из неё закрывает приложение
+                onOpenFeed = { navController.navigateClearingBackStack(SheetsFeedRoute) },
+                onAddCar = { navController.navigate(CarEditRoute()) },
+                onEditCar = { navController.navigate(CarEditRoute(it)) },
+                onBack = if (canGoBack) ({ navController.popBackStack() }) else null,
+            )
+        }
+        composable<CarEditRoute> {
+            CarEditScreen(onDone = { navController.popBackStack() })
+        }
+        composable<SheetsFeedRoute> {
+            SheetsFeedPlaceholderScreen(onChangeCar = { navController.navigate(CarsRoute) })
+        }
     }
 }
 

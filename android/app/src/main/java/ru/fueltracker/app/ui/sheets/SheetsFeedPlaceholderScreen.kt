@@ -1,9 +1,11 @@
-package ru.fueltracker.app.ui.cars
+package ru.fueltracker.app.ui.sheets
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -17,29 +19,34 @@ import androidx.compose.ui.unit.dp
 import ru.fueltracker.app.R
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 
-// TODO(5.2): заменить на CarsScreen
+// TODO(5.3): заменить на SheetsFeedScreen
 @Composable
-fun CarsPlaceholderScreen(modifier: Modifier = Modifier) {
+fun SheetsFeedPlaceholderScreen(
+    onChangeCar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Surface(modifier = modifier.fillMaxSize()) {
-        Box(
+        Column(
             modifier = Modifier
                 .safeDrawingPadding()
                 .padding(24.dp),
-            contentAlignment = Alignment.Center,
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = stringResource(R.string.cars_placeholder),
+                text = stringResource(R.string.feed_placeholder),
                 style = MaterialTheme.typography.bodyLarge,
                 textAlign = TextAlign.Center,
             )
+            Button(onClick = onChangeCar) { Text(stringResource(R.string.feed_change_car)) }
         }
     }
 }
 
 @PreviewLightDark
 @Composable
-private fun CarsPlaceholderScreenPreview() {
+private fun SheetsFeedPlaceholderScreenPreview() {
     FuelTrackerTheme {
-        CarsPlaceholderScreen()
+        SheetsFeedPlaceholderScreen(onChangeCar = {})
     }
 }

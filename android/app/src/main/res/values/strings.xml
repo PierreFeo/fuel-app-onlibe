@@ -49,6 +49,54 @@
     <string name="name_label">Имя и фамилия</string>
     <string name="name_continue">Продолжить</string>
 
-    <!-- Временная заглушка до 5.2 -->
-    <string name="cars_placeholder">Вы вошли.\nСписок автомобилей появится в следующей задаче (5.2).</string>
+    <!-- Общие действия -->
+    <string name="action_back">Назад</string>
+    <string name="action_cancel">Отмена</string>
+    <string name="action_save">Сохранить</string>
+    <string name="action_more">Ещё</string>
+
+    <!-- Тип топлива -->
+    <string name="fuel_ai92">АИ-92</string>
+    <string name="fuel_ai95">АИ-95</string>
+    <string name="fuel_ai98">АИ-98</string>
+    <string name="fuel_diesel">Дизель</string>
+    <string name="fuel_gas">Газ</string>
+
+    <!-- Список авто -->
+    <string name="cars_title">Мои автомобили</string>
+    <string name="cars_add">Добавить авто</string>
+    <string name="cars_empty">Добавьте первый автомобиль</string>
+    <string name="cars_selected">Выбран</string>
+    <string name="cars_norm_summer">☀️ %1$s</string>
+    <string name="cars_norm_winter">❄️ %1$s</string>
+    <string name="cars_norm_line">Норма: %1$s л/100 км</string>
+    <string name="cars_edit">Изменить</string>
+    <string name="cars_archive">В архив</string>
+    <string name="cars_archive_title">Отправить в архив?</string>
+    <string name="cars_archive_text">«%1$s» пропадёт из списка. Листы учёта сохранятся.</string>
+    <string name="cars_archived">Автомобиль отправлен в архив</string>
+
+    <!-- Форма авто -->
+    <string name="car_edit_title_new">Новый автомобиль</string>
+    <string name="car_edit_title_edit">Изменить автомобиль</string>
+    <string name="car_name_label">Название *</string>
+    <string name="car_name_placeholder">Lada Vesta</string>
+    <string name="car_plate_label">Госномер</string>
+    <string name="car_plate_placeholder">А123ВС77</string>
+    <string name="car_fuel_label">Тип топлива *</string>
+    <string name="car_tank_label">Объём бака, л *</string>
+    <string name="car_norms_title">Норма расхода, л/100 км</string>
+    <string name="car_norm_summer_label">☀️ Лето *</string>
+    <string name="car_norm_winter_label">❄️ Зима</string>
+    <string name="car_norm_winter_hint">необязательно</string>
+    <string name="car_norms_caption">Изменение норм не меняет уже созданные месяцы</string>
+    <string name="error_required">Обязательное поле</string>
+    <string name="error_too_long">Не больше %1$d символов</string>
+    <string name="error_positive_number">Введите число больше 0</string>
+    <string name="error_max_decimals">Не больше %1$d знаков после запятой</string>
+    <string name="error_too_big">Слишком большое число</string>
+
+    <!-- Временная заглушка ленты до 5.3 -->
+    <string name="feed_placeholder">Лента листов учёта появится в задаче 5.3.</string>
+    <string name="feed_change_car">Сменить авто</string>
 </resources>
