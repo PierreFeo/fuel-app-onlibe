@@ -1,7 +1,10 @@
 package ru.fueltracker.app.data.repository
 
 import kotlinx.coroutines.withTimeoutOrNull
+import ru.fueltracker.app.data.local.AppStateStorage
 import ru.fueltracker.app.data.local.AuthTokens
+import ru.fueltracker.app.data.local.SignedInUser
+import ru.fueltracker.app.data.local.db.LocalData
 import ru.fueltracker.app.data.local.SelectedCarStorage
 import ru.fueltracker.app.data.local.TokenStorage
 import ru.fueltracker.app.data.remote.ApiResult
@@ -30,8 +33,8 @@ interface AuthRepository {
     suspend fun login(phone: String, password: String): ApiResult<LoginResult>
 
     /**
-     * Выйти: отозвать refresh-токен на сервере и стереть токены и выбранное авто.
-     * Выход срабатывает всегда — даже без связи данные на телефоне стираются.
+     * Выйти: отозвать refresh-токен на сервере и стереть с телефона токены, режим, выбранное авто
+     * и все данные Room. Перед выходом данные нужно синхронизировать — это делает вызывающий.
      */
     suspend fun logout()
 }
@@ -41,6 +44,8 @@ class DefaultAuthRepository @Inject constructor(
     private val api: AuthApi,
     private val tokenStorage: TokenStorage,
     private val selectedCarStorage: SelectedCarStorage,
+    private val appState: AppStateStorage,
+    private val localData: LocalData,
 ) : AuthRepository {
 
     override suspend fun logout() {
@@ -53,6 +58,9 @@ class DefaultAuthRepository @Inject constructor(
         }
         tokenStorage.clear()
         selectedCarStorage.clear()
+        localData.clearAll()
+        // Режим — последним: его исчезновение переводит приложение на экран входа
+        appState.clear()
     }
 
     private companion object {
@@ -70,10 +78,17 @@ class DefaultAuthRepository @Inject constructor(
         apiCall { api.login(LoginRequest(phone, password)) }.saveTokens()
 
     private suspend fun ApiResult<TokensResponse>.saveTokens(): ApiResult<LoginResult> {
-        if (this is ApiResult.Success) {
-            tokenStorage.save(AuthTokens(data.accessToken, data.refreshToken))
+        val data = when (this) {
+            is ApiResult.Failure -> return this
+            is ApiResult.Success -> data
         }
+        val user = data.user
+        // Имя гостя (если было) уйдёт на сервер при синхронизации — спрашивать его снова не нужно
+        val hadLocalName = appState.get().name != null
+        tokenStorage.save(AuthTokens(data.accessToken, data.refreshToken))
+        appState.signedIn(SignedInUser(user.id, user.phone, user.name, user.hasPassword))
         // is_new_user в ответе входа есть всегда; на всякий случай — «имя не заполнено»
-        return map { LoginResult(isNewUser = it.isNewUser ?: it.user.name.isNullOrBlank()) }
+        val serverHasNoName = data.isNewUser ?: user.name.isNullOrBlank()
+        return ApiResult.Success(LoginResult(isNewUser = serverHasNoName && !hadLocalName))
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,18 +46,17 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.fueltracker.app.BuildConfig
 import ru.fueltracker.app.R
-import ru.fueltracker.app.domain.model.User
-import ru.fueltracker.app.ui.common.ErrorView
+import ru.fueltracker.app.data.local.AppMode
 import ru.fueltracker.app.ui.common.LoadingView
 import ru.fueltracker.app.ui.common.PhoneFormat
 import ru.fueltracker.app.ui.common.SnackbarEffect
-import ru.fueltracker.app.ui.common.UiText
-import ru.fueltracker.app.ui.common.asString
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
+    /** Гость: «Войти и сохранить данные на сервере». */
+    onSignIn: () -> Unit,
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -64,6 +64,7 @@ fun ProfileScreen(
         state = state,
         onEvent = viewModel::onEvent,
         onBack = onBack,
+        onSignIn = onSignIn,
         appVersion = BuildConfig.VERSION_NAME,
     )
 }
@@ -74,6 +75,7 @@ fun ProfileContent(
     state: ProfileUiState,
     onEvent: (ProfileEvent) -> Unit,
     onBack: () -> Unit,
+    onSignIn: () -> Unit,
     appVersion: String,
     modifier: Modifier = Modifier,
 ) {
@@ -95,15 +97,7 @@ fun ProfileContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
-            val user = state.user
-            when {
-                state.isLoading -> LoadingView()
-                state.loadError != null || user == null -> ErrorView(
-                    message = (state.loadError ?: UiText.Resource(R.string.error_no_connection)).asString(),
-                    onRetry = { onEvent(ProfileEvent.Retry) },
-                )
-                else -> ProfileDetails(state, user, appVersion, onEvent)
-            }
+            if (state.isLoading) LoadingView() else ProfileDetails(state, appVersion, onEvent, onSignIn)
         }
     }
 
@@ -129,9 +123,9 @@ fun ProfileContent(
 @Composable
 private fun ProfileDetails(
     state: ProfileUiState,
-    user: User,
     appVersion: String,
     onEvent: (ProfileEvent) -> Unit,
+    onSignIn: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -146,15 +140,11 @@ private fun ProfileDetails(
             onValueChange = { onEvent(ProfileEvent.NameChanged(it)) },
             label = { Text(stringResource(R.string.profile_name)) },
             singleLine = true,
-            enabled = !state.isSavingName && !state.isLoggingOut,
-            isError = state.nameError != null,
-            supportingText = state.nameError?.let { { Text(it.asString()) } },
+            enabled = !state.isLoggingOut,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { onEvent(ProfileEvent.SaveName) }),
             trailingIcon = {
-                if (state.isSavingName) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else if (state.canSaveName) {
+                if (state.canSaveName) {
                     TextButton(onClick = { onEvent(ProfileEvent.SaveName) }, modifier = Modifier.testTag(ProfileTestTags.SAVE_NAME)) {
                         Text(stringResource(R.string.action_save))
                     }
@@ -164,24 +154,53 @@ private fun ProfileDetails(
                 .fillMaxWidth()
                 .testTag(ProfileTestTags.NAME),
         )
-        InfoRow(label = stringResource(R.string.profile_phone), value = PhoneFormat.display(user.phone))
+        if (state.isGuest) {
+            GuestBlock(onSignIn)
+        } else {
+            state.phone?.let { InfoRow(label = stringResource(R.string.profile_phone), value = PhoneFormat.display(it)) }
+        }
         HorizontalDivider()
         InfoRow(label = stringResource(R.string.profile_version), value = appVersion)
-        Spacer(Modifier.height(16.dp))
-        OutlinedButton(
-            onClick = { onEvent(ProfileEvent.RequestLogout) },
-            enabled = !state.isLoggingOut,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-                .testTag(ProfileTestTags.LOGOUT),
-        ) {
-            if (state.isLoggingOut) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-            } else {
-                Text(stringResource(R.string.profile_logout))
-            }
+        if (!state.isGuest) {
+            Spacer(Modifier.height(16.dp))
+            LogoutButton(state, onEvent)
+        }
+    }
+}
+
+/** У гостя: данные только на телефоне — и как их сохранить. */
+@Composable
+private fun GuestBlock(onSignIn: () -> Unit) {
+    Text(
+        text = stringResource(R.string.profile_guest_info),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Button(
+        onClick = onSignIn,
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag(ProfileTestTags.SIGN_IN),
+    ) {
+        Text(stringResource(R.string.profile_sign_in))
+    }
+}
+
+@Composable
+private fun LogoutButton(state: ProfileUiState, onEvent: (ProfileEvent) -> Unit) {
+    OutlinedButton(
+        onClick = { onEvent(ProfileEvent.RequestLogout) },
+        enabled = !state.isLoggingOut,
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .testTag(ProfileTestTags.LOGOUT),
+    ) {
+        if (state.isLoggingOut) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+        } else {
+            Text(stringResource(R.string.profile_logout))
         }
     }
 }
@@ -198,6 +217,7 @@ object ProfileTestTags {
     const val NAME = "profile_name"
     const val SAVE_NAME = "profile_save_name"
     const val LOGOUT = "profile_logout"
+    const val SIGN_IN = "profile_sign_in"
 }
 
 @PreviewLightDark
@@ -207,11 +227,14 @@ private fun ProfileContentPreview() {
         ProfileContent(
             state = ProfileUiState(
                 isLoading = false,
-                user = User("u1", "+79991234567", "Иван Петров"),
+                mode = AppMode.ACCOUNT,
+                phone = "+79991234567",
+                savedName = "Иван Петров",
                 name = "Иван Петрович",
             ),
             onEvent = {},
             onBack = {},
+            onSignIn = {},
             appVersion = "1.0",
         )
     }
@@ -219,12 +242,13 @@ private fun ProfileContentPreview() {
 
 @PreviewLightDark
 @Composable
-private fun ProfileContentErrorPreview() {
+private fun ProfileContentGuestPreview() {
     FuelTrackerTheme {
         ProfileContent(
-            state = ProfileUiState(isLoading = false, loadError = UiText.Resource(R.string.error_no_connection)),
+            state = ProfileUiState(isLoading = false, mode = AppMode.GUEST, savedName = "Иван", name = "Иван"),
             onEvent = {},
             onBack = {},
+            onSignIn = {},
             appVersion = "1.0",
         )
     }

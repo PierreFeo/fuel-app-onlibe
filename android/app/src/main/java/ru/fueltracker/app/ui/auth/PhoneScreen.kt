@@ -1,8 +1,12 @@
 package ru.fueltracker.app.ui.auth
 
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -18,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.fueltracker.app.R
@@ -31,6 +36,8 @@ import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 fun PhoneScreen(
     onCodeSent: (CodeSent) -> Unit,
     onPasswordLogin: (phone: String?) -> Unit,
+    /** null — кнопки «Продолжить без входа» нет (гость пришёл сюда из профиля, чтобы войти). */
+    onContinueAsGuest: (() -> Unit)?,
     viewModel: PhoneViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -44,6 +51,7 @@ fun PhoneScreen(
         state = state,
         onEvent = viewModel::onEvent,
         onPasswordLogin = { onPasswordLogin(state.digits.ifEmpty { null }) },
+        onContinueAsGuest = onContinueAsGuest,
     )
 }
 
@@ -52,6 +60,7 @@ fun PhoneContent(
     state: PhoneUiState,
     onEvent: (PhoneEvent) -> Unit,
     onPasswordLogin: () -> Unit,
+    onContinueAsGuest: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -83,6 +92,23 @@ fun PhoneContent(
             modifier = Modifier.align(Alignment.CenterHorizontally),
         ) {
             Text(stringResource(R.string.phone_password_login))
+        }
+        if (onContinueAsGuest != null) {
+            Spacer(Modifier.height(24.dp))
+            OutlinedButton(
+                onClick = onContinueAsGuest,
+                enabled = !state.isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(PhoneTestTags.GUEST),
+            ) {
+                Text(stringResource(R.string.phone_continue_as_guest))
+            }
+            Text(
+                text = stringResource(R.string.phone_guest_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -119,13 +145,14 @@ internal fun PhoneField(
 object PhoneTestTags {
     const val PHONE_FIELD = "phone_field"
     const val SUBMIT = "phone_submit"
+    const val GUEST = "phone_guest"
 }
 
 @PreviewLightDark
 @Composable
 private fun PhoneContentPreview() {
     FuelTrackerTheme {
-        PhoneContent(state = PhoneUiState(digits = "999123"), onEvent = {}, onPasswordLogin = {})
+        PhoneContent(state = PhoneUiState(digits = "999123"), onEvent = {}, onPasswordLogin = {}, onContinueAsGuest = {})
     }
 }
 
@@ -140,6 +167,7 @@ private fun PhoneContentErrorPreview() {
             ),
             onEvent = {},
             onPasswordLogin = {},
+            onContinueAsGuest = null,
         )
     }
 }

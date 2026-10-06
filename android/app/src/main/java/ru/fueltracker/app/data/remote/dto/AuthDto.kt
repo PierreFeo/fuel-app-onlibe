@@ -40,6 +40,8 @@ data class UserDto(
     val id: String,
     val phone: String,
     val name: String?,
+    /** Задан ли пароль для входа без SMS; в старых ответах поля нет. */
+    @SerialName("has_password") val hasPassword: Boolean = false,
 )
 
 @Serializable

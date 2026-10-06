@@ -9,6 +9,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import ru.fueltracker.app.data.local.db.AppDatabase
 import ru.fueltracker.app.data.local.db.CarDao
+import ru.fueltracker.app.data.local.db.LocalData
+import ru.fueltracker.app.data.local.db.RoomLocalData
 import ru.fueltracker.app.data.local.db.RefuelingDao
 import ru.fueltracker.app.data.local.db.SheetDao
 import ru.fueltracker.app.data.local.db.SyncDao
@@ -35,4 +37,7 @@ object DatabaseModule {
 
     @Provides
     fun provideSyncDao(db: AppDatabase): SyncDao = db.syncDao()
+
+    @Provides
+    fun provideLocalData(impl: RoomLocalData): LocalData = impl
 }

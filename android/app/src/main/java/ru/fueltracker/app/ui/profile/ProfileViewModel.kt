@@ -9,34 +9,33 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.fueltracker.app.R
-import ru.fueltracker.app.data.remote.ApiError
-import ru.fueltracker.app.data.remote.ApiResult
+import ru.fueltracker.app.data.local.AppMode
+import ru.fueltracker.app.data.local.AppStateStorage
 import ru.fueltracker.app.data.repository.AuthRepository
-import ru.fueltracker.app.data.repository.ProfileRepository
-import ru.fueltracker.app.domain.model.User
 import ru.fueltracker.app.ui.auth.NameViewModel
 import ru.fueltracker.app.ui.common.UiText
-import ru.fueltracker.app.ui.common.toUiText
 import javax.inject.Inject
 
 data class ProfileUiState(
+    /** Профиль с телефона ещё не прочитан (доли секунды). */
     val isLoading: Boolean = true,
-    val loadError: UiText? = null,
-    val user: User? = null,
-    /** Имя в поле ввода; «Сохранить» активна, когда оно отличается от сохранённого. */
+    val mode: AppMode? = null,
+    val phone: String? = null,
+    /** Сохранённое имя; [name] — то, что в поле ввода. */
+    val savedName: String? = null,
     val name: String = "",
-    val nameError: UiText? = null,
-    val isSavingName: Boolean = false,
     val confirmLogout: Boolean = false,
     val isLoggingOut: Boolean = false,
     val snackbar: UiText? = null,
 ) {
+    val isGuest: Boolean get() = mode == AppMode.GUEST
+
+    /** «Сохранить» видна, когда имя изменено. */
     val canSaveName: Boolean
-        get() = user != null && name.isNotBlank() && name.trim() != user.name && !isSavingName && !isLoggingOut
+        get() = !isLoading && name.isNotBlank() && name.trim() != savedName && !isLoggingOut
 }
 
 sealed interface ProfileEvent {
-    data object Retry : ProfileEvent
     data class NameChanged(val value: String) : ProfileEvent
     data object SaveName : ProfileEvent
     data object RequestLogout : ProfileEvent
@@ -46,12 +45,13 @@ sealed interface ProfileEvent {
 }
 
 /**
- * Профиль: имя, телефон, «Выйти». После выхода токены стёрты — `AppViewModel` сам
- * откроет экран входа, отдельного перехода отсюда не нужно.
+ * Профиль (07_UI_SCREENS.md, ProfileScreen): всё — с телефона, сеть не нужна.
+ * Имя меняется офлайн: у аккаунта оно уйдёт на сервер при синхронизации.
+ * После «Выйти» режим стёрт — `AppViewModel` сам откроет экран входа.
  */
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val profileRepository: ProfileRepository,
+    private val appState: AppStateStorage,
     private val authRepository: AuthRepository,
 ) : ViewModel() {
 
@@ -59,15 +59,26 @@ class ProfileViewModel @Inject constructor(
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
 
     init {
-        load()
+        viewModelScope.launch {
+            appState.profile.collect { profile ->
+                _state.update {
+                    // Поле ввода не трогаем, если человек сейчас его правит
+                    val typing = !it.isLoading && it.name != it.savedName.orEmpty()
+                    it.copy(
+                        isLoading = false,
+                        mode = profile.mode,
+                        phone = profile.phone,
+                        savedName = profile.name,
+                        name = if (typing) it.name else profile.name.orEmpty(),
+                    )
+                }
+            }
+        }
     }
 
     fun onEvent(event: ProfileEvent) {
         when (event) {
-            ProfileEvent.Retry -> load()
-            is ProfileEvent.NameChanged -> _state.update {
-                it.copy(name = event.value.take(NameViewModel.NAME_MAX_LENGTH), nameError = null)
-            }
+            is ProfileEvent.NameChanged -> _state.update { it.copy(name = event.value.take(NameViewModel.NAME_MAX_LENGTH)) }
             ProfileEvent.SaveName -> saveName()
             ProfileEvent.RequestLogout -> _state.update { it.copy(confirmLogout = true) }
             ProfileEvent.DismissLogout -> _state.update { it.copy(confirmLogout = false) }
@@ -76,53 +87,17 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    private fun load() {
-        _state.update { it.copy(isLoading = true, loadError = null) }
-        viewModelScope.launch {
-            when (val result = profileRepository.getMe()) {
-                is ApiResult.Success -> _state.update {
-                    it.copy(isLoading = false, user = result.data, name = result.data.name.orEmpty())
-                }
-                is ApiResult.Failure -> _state.update { it.copy(isLoading = false, loadError = result.error.toUiText()) }
-            }
-        }
-    }
-
     private fun saveName() {
         if (!_state.value.canSaveName) return
         val name = _state.value.name.trim()
-        _state.update { it.copy(isSavingName = true, nameError = null) }
         viewModelScope.launch {
-            when (val result = profileRepository.updateName(name)) {
-                is ApiResult.Success -> _state.update {
-                    it.copy(
-                        isSavingName = false,
-                        user = result.data,
-                        name = result.data.name.orEmpty(),
-                        snackbar = UiText.Resource(R.string.profile_name_saved),
-                    )
-                }
-                is ApiResult.Failure -> {
-                    val error = result.error
-                    // 400 — сервер не принял имя: текст под полем
-                    val inline = (error as? ApiError.Http)
-                        ?.takeIf { it.status == 400 }
-                        ?.let { it.fieldError("name") ?: it.message }
-                        ?.let { UiText.Raw(it) }
-                    _state.update {
-                        it.copy(
-                            isSavingName = false,
-                            nameError = inline,
-                            snackbar = if (inline == null) error.toUiText() else null,
-                        )
-                    }
-                }
-            }
+            appState.setName(name)
+            _state.update { it.copy(name = name, snackbar = UiText.Resource(R.string.profile_name_saved)) }
         }
     }
 
     private fun logout() {
-        if (_state.value.isLoggingOut) return
+        if (_state.value.isLoggingOut || _state.value.isGuest) return
         _state.update { it.copy(confirmLogout = false, isLoggingOut = true) }
         viewModelScope.launch { authRepository.logout() }
     }

@@ -29,7 +29,7 @@ fun NavGraph(
 ) {
     val navController = rememberNavController()
 
-    // Splash → вход или приложение; потеря токенов на экране приложения → снова вход
+    // Splash → вход или приложение; выход (режим стёрт) на экране приложения → снова вход
     LaunchedEffect(navController) {
         appViewModel.session.filterNotNull().collect { session ->
             val screen = navController.currentBackStackEntry?.destination?.kind()
@@ -42,7 +42,7 @@ fun NavGraph(
 
     // После входа экраны входа убираются из истории: «Назад» закрывает приложение
     val onLoggedIn: (LoginResult) -> Unit = { result ->
-        if (result.isNewUser) navController.navigateClearingBackStack(NameRoute) else goHome()
+        if (result.isNewUser) navController.navigateClearingBackStack(NameRoute()) else goHome()
     }
 
     NavHost(
@@ -52,9 +52,12 @@ fun NavGraph(
     ) {
         composable<SplashRoute> { SplashScreen() }
         composable<PhoneRoute> {
+            // Гость пришёл из профиля, чтобы войти, — второй раз «без входа» не предлагаем
+            val isFirstStart = appViewModel.session.value?.mode == null
             PhoneScreen(
                 onCodeSent = { navController.navigate(CodeRoute(it.phone, it.resendAfterSec)) },
                 onPasswordLogin = { navController.navigate(PasswordLoginRoute(it)) },
+                onContinueAsGuest = if (isFirstStart) ({ navController.navigate(NameRoute(guest = true)) }) else null,
             )
         }
         composable<CodeRoute> {
@@ -75,6 +78,7 @@ fun NavGraph(
             )
         }
         composable<NameRoute> {
+            // guest берёт из маршрута сам NameViewModel (SavedStateHandle)
             NameScreen(onSaved = goHome)
         }
         composable<CarsRoute> {
@@ -90,8 +94,11 @@ fun NavGraph(
             )
         }
         composable<ProfileRoute> {
-            // После «Выйти» переход на вход делает LaunchedEffect выше: токены стёрты → PhoneRoute
-            ProfileScreen(onBack = { navController.popBackStack() })
+            // После «Выйти» переход на вход делает LaunchedEffect выше: режим стёрт → PhoneRoute
+            ProfileScreen(
+                onBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(PhoneRoute) },
+            )
         }
         composable<CarEditRoute> {
             CarEditScreen(onDone = { navController.popBackStack() })
@@ -117,6 +124,7 @@ private fun NavController.navigateClearingBackStack(route: Any) {
 
 private fun NavDestination.kind(): ScreenKind = when {
     hasRoute<SplashRoute>() -> ScreenKind.SPLASH
-    hasRoute<PhoneRoute>() || hasRoute<CodeRoute>() || hasRoute<PasswordLoginRoute>() -> ScreenKind.AUTH
+    hasRoute<PhoneRoute>() || hasRoute<CodeRoute>() || hasRoute<PasswordLoginRoute>() || hasRoute<NameRoute>() ->
+        ScreenKind.AUTH
     else -> ScreenKind.APP
 }

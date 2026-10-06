@@ -5,73 +5,75 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import ru.fueltracker.app.R
-import ru.fueltracker.app.data.remote.ApiResult
-import ru.fueltracker.app.data.remote.dto.ErrorCodes
-import ru.fueltracker.app.domain.model.User
+import ru.fueltracker.app.data.local.AppMode
+import ru.fueltracker.app.data.local.FakeAppStateStorage
+import ru.fueltracker.app.data.local.LocalProfile
 import ru.fueltracker.app.testutil.FakeAuthRepository
-import ru.fueltracker.app.testutil.FakeProfileRepository
 import ru.fueltracker.app.testutil.MainDispatcherRule
-import ru.fueltracker.app.testutil.httpError
-import ru.fueltracker.app.testutil.networkError
 import ru.fueltracker.app.ui.common.UiText
 
+/** Профиль читает всё с телефона — сеть не нужна. */
 class ProfileViewModelTest {
 
     @get:Rule
     val mainDispatcher = MainDispatcherRule()
 
-    private val profile = FakeProfileRepository()
+    private val account = LocalProfile(mode = AppMode.ACCOUNT, ownerUserId = "id-1", phone = "+79991234567", name = "Иван")
+    private val appState = FakeAppStateStorage(account)
     private val auth = FakeAuthRepository()
 
     private fun TestScope.createViewModel(): ProfileViewModel {
-        val viewModel = ProfileViewModel(profile, auth)
+        val viewModel = ProfileViewModel(appState, auth)
         advanceUntilIdle()
         return viewModel
     }
 
     @Test
-    fun `загружает имя и телефон`() = runTest {
+    fun `имя и телефон аккаунта`() = runTest {
         val state = createViewModel().state.value
         assertFalse(state.isLoading)
-        assertEquals("+79991234567", state.user?.phone)
+        assertFalse(state.isGuest)
+        assertEquals("+79991234567", state.phone)
         assertEquals("Иван", state.name)
-        // Имя не меняли — сохранять нечего
-        assertFalse(state.canSaveName)
+        assertFalse(state.canSaveName) // имя не меняли — сохранять нечего
     }
 
     @Test
-    fun `ошибка загрузки — Повторить`() = runTest {
-        profile.getMeResult = networkError
+    fun `аккаунт меняет имя офлайн — оно помечено для синхронизации`() = runTest {
         val viewModel = createViewModel()
-        assertEquals(UiText.Resource(R.string.error_no_connection), viewModel.state.value.loadError)
-
-        profile.getMeResult = ApiResult.Success(User("id-1", "+79991234567", "Иван"))
-        viewModel.onEvent(ProfileEvent.Retry)
-        advanceUntilIdle()
-        assertNull(viewModel.state.value.loadError)
-        assertEquals("Иван", viewModel.state.value.name)
-    }
-
-    @Test
-    fun `изменить имя`() = runTest {
-        profile.updateNameResult = ApiResult.Success(User("id-1", "+79991234567", "Иван Петров"))
-        val viewModel = createViewModel()
-
-        viewModel.onEvent(ProfileEvent.NameChanged(" Иван Петров "))
+        viewModel.onEvent(ProfileEvent.NameChanged("  Иван Петров "))
         assertTrue(viewModel.state.value.canSaveName)
+
         viewModel.onEvent(ProfileEvent.SaveName)
         advanceUntilIdle()
 
-        assertEquals(listOf("Иван Петров"), profile.updateNameCalls)
+        assertEquals("Иван Петров", appState.current.name)
+        assertTrue(appState.current.nameDirty)
         val state = viewModel.state.value
-        assertEquals("Иван Петров", state.user?.name)
+        assertEquals("Иван Петров", state.savedName)
         assertFalse(state.canSaveName)
         assertEquals(UiText.Resource(R.string.profile_name_saved), state.snackbar)
+    }
+
+    @Test
+    fun `гость — имя только на телефоне, выйти нельзя`() = runTest {
+        appState.clear()
+        appState.startGuest("Иван")
+        val viewModel = createViewModel()
+        assertTrue(viewModel.state.value.isGuest)
+
+        viewModel.onEvent(ProfileEvent.NameChanged("Пётр"))
+        viewModel.onEvent(ProfileEvent.SaveName)
+        viewModel.onEvent(ProfileEvent.ConfirmLogout)
+        advanceUntilIdle()
+
+        assertEquals("Пётр", appState.current.name)
+        assertFalse(appState.current.nameDirty) // гостю отправлять некуда
+        assertEquals(0, auth.logoutCalls)
     }
 
     @Test
@@ -79,19 +81,6 @@ class ProfileViewModelTest {
         val viewModel = createViewModel()
         viewModel.onEvent(ProfileEvent.NameChanged("   "))
         assertFalse(viewModel.state.value.canSaveName)
-        viewModel.onEvent(ProfileEvent.SaveName)
-        advanceUntilIdle()
-        assertTrue(profile.updateNameCalls.isEmpty())
-    }
-
-    @Test
-    fun `сервер не принял имя (400) — текст под полем`() = runTest {
-        profile.updateNameResult = httpError(400, ErrorCodes.VALIDATION_ERROR, details = mapOf("name" to "Слишком длинное"))
-        val viewModel = createViewModel()
-        viewModel.onEvent(ProfileEvent.NameChanged("Пётр"))
-        viewModel.onEvent(ProfileEvent.SaveName)
-        advanceUntilIdle()
-        assertEquals(UiText.Raw("Слишком длинное"), viewModel.state.value.nameError)
     }
 
     @Test
@@ -102,10 +91,10 @@ class ProfileViewModelTest {
         assertEquals(0, auth.logoutCalls)
 
         viewModel.onEvent(ProfileEvent.ConfirmLogout)
-        assertTrue(viewModel.state.value.isLoggingOut)
         advanceUntilIdle()
+
         assertEquals(1, auth.logoutCalls)
-        assertFalse(viewModel.state.value.confirmLogout)
+        assertTrue(viewModel.state.value.isLoggingOut)
     }
 
     @Test
