@@ -63,8 +63,8 @@ data class SheetCalc(
     val warnings: List<SheetWarning>,
 )
 
-/** Предупреждение сервера: код и готовый текст. */
-data class SheetWarning(val code: String, val message: String)
+/** Предупреждение листа (06_BUSINESS_RULES.md, «Предупреждения»): не блокирует сохранение. Текст — в strings.xml. */
+enum class SheetWarning { FUEL_END_NEGATIVE, FUEL_END_OVER_TANK, ODOMETER_GAP, REFUELING_ODOMETER_OUT_OF_RANGE }
 
 /** Страница ленты; [nextBefore] — для следующей страницы, null — листов больше нет. */
 data class SheetPage(

@@ -73,7 +73,7 @@
   - Готово, когда: задал пароль через Swagger → `/auth/login` с ним пускает без SMS
 - **Android**
 - [x] 6.4 Room: зависимость, таблицы, DAO, служебные поля `is_dirty` / `is_deleted` / `change_seq`; тесты DAO
-- [ ] 6.5 `SheetCalculator`, проверки, `next-prefill` на Kotlin; эталонные примеры A–I и предупреждения
+- [x] 6.5 `SheetCalculator`, проверки, `next-prefill` на Kotlin; эталонные примеры A–I и предупреждения
   как unit-тесты
 - [ ] 6.6 Репозитории авто, листов и заправок — на Room; экраны на Flow; без пагинации и
   pull-to-refresh; карточка и формы считают и проверяют на телефоне

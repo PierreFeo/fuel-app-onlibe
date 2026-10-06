@@ -133,6 +133,10 @@
     <string name="sheet_exact">Ровно по норме</string>
     <string name="sheet_cost_per_km">1 км = %1$s ₽</string>
     <string name="sheet_warning">⚠ %1$s</string>
+    <string name="warning_fuel_end_negative">Расчётный остаток отрицательный — проверьте пробег и заправки</string>
+    <string name="warning_fuel_end_over_tank">Остаток на конец месяца больше объёма бака</string>
+    <string name="warning_odometer_gap">Пробег на начало не совпадает с пробегом на конец прошлого месяца</string>
+    <string name="warning_refueling_odometer_out_of_range">Пробег при заправке вне пробега за месяц — проверьте показания одометра</string>
 
     <!-- Действия с ЛУТ (5.4) -->
     <string name="feed_new_sheet">Новый лист</string>

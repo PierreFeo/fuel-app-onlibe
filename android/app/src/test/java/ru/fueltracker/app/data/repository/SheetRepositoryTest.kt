@@ -61,7 +61,7 @@ class SheetRepositoryTest {
         assertEquals(BigDecimal("-74.84"), calc.deviationL)
         assertEquals(BigDecimal("-64.84"), calc.fuelEndCalcL)
         assertEquals(
-            listOf(SheetWarning("FUEL_END_NEGATIVE", "Расчётный остаток отрицательный — проверьте пробег и заправки")),
+            listOf(SheetWarning.FUEL_END_NEGATIVE),
             calc.warnings,
         )
     }

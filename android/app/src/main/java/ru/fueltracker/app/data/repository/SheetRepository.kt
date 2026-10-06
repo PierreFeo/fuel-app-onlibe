@@ -144,5 +144,6 @@ private fun SheetCalcDto.toDomain() = SheetCalc(
     consumptionStatus = consumptionStatus?.let { ConsumptionStatus.valueOf(it.name) },
     deviationL = deviationL?.let(::BigDecimal),
     costPerKm = costPerKm?.let(::BigDecimal),
-    warnings = warnings.map { SheetWarning(it.code, it.message) },
+    // Незнакомый код (новее приложения) пропускаем — показать его всё равно нечем.
+    warnings = warnings.mapNotNull { w -> SheetWarning.entries.firstOrNull { it.name == w.code } },
 )

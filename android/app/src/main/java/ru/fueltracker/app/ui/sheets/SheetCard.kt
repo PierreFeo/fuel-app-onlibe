@@ -1,6 +1,7 @@
 package ru.fueltracker.app.ui.sheets
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,7 @@ import ru.fueltracker.app.R
 import ru.fueltracker.app.domain.model.ConsumptionStatus
 import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.Season
+import ru.fueltracker.app.domain.model.SheetWarning
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.asString
@@ -368,7 +370,7 @@ private fun SheetDetails(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardAc
 
         calc.warnings.forEach { warning ->
             Text(
-                text = stringResource(R.string.sheet_warning, warning.message),
+                text = stringResource(R.string.sheet_warning, stringResource(warning.textRes)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error,
             )
@@ -392,6 +394,15 @@ private fun SheetDetails(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardAc
 private fun DetailText(text: String, color: Color = Color.Unspecified) {
     Text(text = text, style = MaterialTheme.typography.bodyMedium, color = color)
 }
+
+/** Текст предупреждения листа. */
+internal val SheetWarning.textRes: Int
+    @StringRes get() = when (this) {
+        SheetWarning.FUEL_END_NEGATIVE -> R.string.warning_fuel_end_negative
+        SheetWarning.FUEL_END_OVER_TANK -> R.string.warning_fuel_end_over_tank
+        SheetWarning.ODOMETER_GAP -> R.string.warning_odometer_gap
+        SheetWarning.REFUELING_ODOMETER_OUT_OF_RANGE -> R.string.warning_refueling_odometer_out_of_range
+    }
 
 /** Цвет по `consumption_status` сервера: NORMAL — зелёный, OVER — красный, null — обычный. */
 @Composable
