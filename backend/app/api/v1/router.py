@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, cars, health, me, refuelings, sheets
+from app.api.v1 import auth, cars, health, me, refuelings, sheets, sync
 
 api_router = APIRouter()
 api_router.include_router(health.router)
@@ -9,3 +9,4 @@ api_router.include_router(me.router)
 api_router.include_router(cars.router)
 api_router.include_router(sheets.router)
 api_router.include_router(refuelings.router)
+api_router.include_router(sync.router)
