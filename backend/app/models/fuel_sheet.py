@@ -7,23 +7,33 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Numeric,
     SmallInteger,
-    UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db.base import Base, TimestampMixin, UUIDPkMixin
+from app.db.base import Base, SyncMixin, TimestampMixin, UUIDPkMixin
 from app.models.enums import Season, SheetStatus
 from app.models.refueling import Refueling
 
 
-class FuelSheet(UUIDPkMixin, TimestampMixin, Base):
+class FuelSheet(UUIDPkMixin, TimestampMixin, SyncMixin, Base):
     """ЛУТ — лист учёта топлива за один месяц по одному авто."""
 
     __tablename__ = "fuel_sheets"
     __table_args__ = (
-        UniqueConstraint("car_id", "year", "month"),
+        # Один лист на авто на месяц — среди неудалённых: удалённый на телефоне лист не мешает
+        # завести новый за тот же месяц.
+        Index(
+            "uq_fuel_sheets_car_id_year_month",
+            "car_id",
+            "year",
+            "month",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         CheckConstraint("year BETWEEN 2020 AND 2100", name="year_range"),
         CheckConstraint("month BETWEEN 1 AND 12", name="month_range"),
         CheckConstraint("odometer_start_km >= 0", name="odometer_start_non_negative"),

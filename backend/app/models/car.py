@@ -4,11 +4,11 @@ from decimal import Decimal
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, String, false
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, TimestampMixin, UUIDPkMixin
+from app.db.base import Base, SyncMixin, TimestampMixin, UUIDPkMixin
 from app.models.enums import FuelType
 
 
-class Car(UUIDPkMixin, TimestampMixin, Base):
+class Car(UUIDPkMixin, TimestampMixin, SyncMixin, Base):
     __tablename__ = "cars"
     __table_args__ = (
         CheckConstraint("tank_capacity_l > 0", name="tank_capacity_positive"),

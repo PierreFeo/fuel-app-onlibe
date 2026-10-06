@@ -91,6 +91,9 @@ def test_schema_details_follow_data_model(migrated_db: Config) -> None:
         return {
             "users_unique": insp.get_unique_constraints("users"),
             "sheets_unique": insp.get_unique_constraints("fuel_sheets"),
+            "sheets_unique_index": [
+                i for i in insp.get_indexes("fuel_sheets") if i["name"].startswith("uq_")
+            ],
             "sheets_fk": insp.get_foreign_keys("fuel_sheets"),
             "fuel_start_type": sheet_cols["fuel_start_l"]["type"],
             "sheet_norm_type": sheet_cols["norm_l_per_100km"]["type"],
@@ -104,7 +107,12 @@ def test_schema_details_follow_data_model(migrated_db: Config) -> None:
     d = run_on_db(details)
 
     assert [u["column_names"] for u in d["users_unique"]] == [["phone"]]
-    assert [u["column_names"] for u in d["sheets_unique"]] == [["car_id", "year", "month"]]
+    # Один лист на месяц — частичный уникальный индекс среди неудалённых (не constraint).
+    assert d["sheets_unique"] == []
+    [month_index] = d["sheets_unique_index"]
+    assert month_index["column_names"] == ["car_id", "year", "month"]
+    assert month_index["unique"]
+    assert month_index["dialect_options"]["postgresql_where"] == "(deleted_at IS NULL)"
     assert d["sheets_fk"][0]["referred_table"] == "cars"
     assert d["sheets_fk"][0]["options"]["ondelete"] == "CASCADE"
     assert (d["fuel_start_type"].precision, d["fuel_start_type"].scale) == (8, 2)
@@ -112,7 +120,7 @@ def test_schema_details_follow_data_model(migrated_db: Config) -> None:
     assert (d["sheet_norm_type"].precision, d["sheet_norm_type"].scale) == (6, 3)
     assert [(t.precision, t.scale) for t in d["car_norm_types"]] == [(6, 3), (6, 3)]
     assert d["odometer_end_nullable"] is True
-    assert {"id", "created_at", "updated_at"} <= d["base_cols"]
+    assert {"id", "created_at", "updated_at", "version", "deleted_at"} <= d["base_cols"]
 
 
 def _insert_user_and_car(
@@ -135,14 +143,16 @@ def _insert_user_and_car(
 
 def _insert_sheet(
     conn: Connection, car_id: uuid.UUID, month: int = 10, season: str = "SUMMER"
-) -> None:
+) -> uuid.UUID:
+    sheet_id = uuid.uuid4()
     conn.execute(
         text(
             "INSERT INTO fuel_sheets (id, car_id, year, month, odometer_start_km, fuel_start_l, "
             "season, norm_l_per_100km) VALUES (:id, :car, 2026, :m, 52340, 12, :season, 10.068)"
         ),
-        {"id": uuid.uuid4(), "car": car_id, "m": month, "season": season},
+        {"id": sheet_id, "car": car_id, "m": month, "season": season},
     )
+    return sheet_id
 
 
 def test_valid_rows_are_accepted_with_defaults(migrated_db: Config) -> None:
@@ -176,6 +186,61 @@ def test_constraints_reject_invalid_rows(
 ) -> None:
     with pytest.raises(IntegrityError):
         run_on_db(bad_action)
+
+
+def test_rows_get_increasing_versions_from_one_sequence(migrated_db: Config) -> None:
+    """version берётся из общей последовательности: у разных таблиц значения не повторяются."""
+
+    def scenario(conn: Connection) -> list[int]:
+        car_id = _insert_user_and_car(conn)
+        _insert_sheet(conn, car_id, month=9)
+        _insert_sheet(conn, car_id, month=10)
+        car = conn.execute(text("SELECT version FROM cars")).scalar_one()
+        sheets = conn.execute(text("SELECT version FROM fuel_sheets ORDER BY month")).scalars()
+        return [car, *sheets]
+
+    versions = run_on_db(scenario)
+
+    assert versions == sorted(versions)
+    assert len(set(versions)) == 3
+
+
+def test_deleted_sheet_does_not_block_same_month(migrated_db: Config) -> None:
+    def scenario(conn: Connection) -> int:
+        car_id = _insert_user_and_car(conn)
+        old = _insert_sheet(conn, car_id)
+        conn.execute(text("UPDATE fuel_sheets SET deleted_at = now() WHERE id = :id"), {"id": old})
+        _insert_sheet(conn, car_id)  # тот же месяц — можно, старый лист удалён
+        return conn.execute(text("SELECT count(*) FROM fuel_sheets")).scalar_one()
+
+    assert run_on_db(scenario) == 2
+
+
+def test_downgrade_from_sync_fields_keeps_live_rows(migrated_db: Config) -> None:
+    """Откат 0004: удалённые строки стираются, живые остаются, UNIQUE месяца — снова constraint."""
+
+    def prepare(conn: Connection) -> None:
+        car_id = _insert_user_and_car(conn)
+        deleted = _insert_sheet(conn, car_id, month=9)
+        conn.execute(
+            text("UPDATE fuel_sheets SET deleted_at = now() WHERE id = :id"), {"id": deleted}
+        )
+        _insert_sheet(conn, car_id, month=10)
+
+    run_on_db(prepare)
+    command.downgrade(migrated_db, "0003")
+
+    def check(conn: Connection) -> tuple[list[int], list[list[str]]]:
+        months = list(conn.execute(text("SELECT month FROM fuel_sheets")).scalars())
+        unique = [u["column_names"] for u in inspect(conn).get_unique_constraints("fuel_sheets")]
+        return months, unique
+
+    result = run_on_db(check)
+    # Обратно на head: остальные тесты создают таблицы через create_all, а он не добавляет
+    # колонки в уже существующие таблицы.
+    command.upgrade(migrated_db, "head")
+
+    assert result == ([10], [["car_id", "year", "month"]])
 
 
 def test_downgrade_removes_all_tables(migrated_db: Config) -> None:

@@ -5,11 +5,11 @@ from decimal import Decimal
 from sqlalchemy import CheckConstraint, Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.db.base import Base, TimestampMixin, UUIDPkMixin
+from app.db.base import Base, SyncMixin, TimestampMixin, UUIDPkMixin
 from app.models.enums import PaymentType
 
 
-class Refueling(UUIDPkMixin, TimestampMixin, Base):
+class Refueling(UUIDPkMixin, TimestampMixin, SyncMixin, Base):
     __tablename__ = "refuelings"
     __table_args__ = (
         CheckConstraint("liters > 0", name="liters_positive"),
