@@ -170,7 +170,7 @@ FastAPI автоматически публикует интерактивную
 | POST | `/cars/{car_id}/sheets` | `{ year, month, odometer_start_km, fuel_start_l, season? }` (без `season` — как в `next-prefill`) | 201 `FuelSheet` · 409 `SHEET_EXISTS` · 422 `WINTER_NORM_NOT_SET` |
 | GET | `/sheets/{sheet_id}` | — | 200 `FuelSheet` |
 | PATCH | `/sheets/{sheet_id}` | `{ odometer_start_km?, odometer_end_km?, fuel_start_l?, fuel_end_actual_l?, season? }` | 200 · 409 `SHEET_CLOSED` · 422 `WINTER_NORM_NOT_SET` |
-| POST | `/sheets/{sheet_id}/close` | `{ odometer_end_km, fuel_end_actual_l? }` | 200 `FuelSheet` (status `CLOSED`) |
+| POST | `/sheets/{sheet_id}/close` | `{ odometer_end_km, fuel_end_actual_l }` (оба обязательны; пустой бак — `"0.00"`) | 200 `FuelSheet` (status `CLOSED`) · 400 `VALIDATION_ERROR`, если нет любого из полей |
 | POST | `/sheets/{sheet_id}/reopen` | — | 200 `FuelSheet` (status `OPEN`) |
 | DELETE | `/sheets/{sheet_id}` | — | 204 (только если нет заправок, иначе 422) |
 
