@@ -280,8 +280,49 @@ class ProfileViewModelTest {
         viewModel.onEvent(ProfileEvent.ConfirmLogout)
         advanceUntilIdle()
 
-        assertEquals(1, auth.logoutCalls)
+        assertEquals(1, sync.syncCalls) // сначала синхронизация
+        assertEquals(1, auth.logoutCalls) // потом выход и очистка телефона
         assertTrue(viewModel.state.value.isLoggingOut)
+    }
+
+    @Test
+    fun `выход без интернета — остаёмся в аккаунте, данные целы`() = runTest {
+        sync.results = mutableListOf(SyncResult.Failure(ApiError.Network(IOException("no route"))))
+        val viewModel = createViewModel()
+
+        viewModel.onEvent(ProfileEvent.ConfirmLogout)
+        advanceUntilIdle()
+
+        assertEquals(0, auth.logoutCalls)
+        val state = viewModel.state.value
+        assertFalse(state.isLoggingOut)
+        assertEquals(UiText.Resource(R.string.logout_failed), state.snackbar)
+    }
+
+    @Test
+    fun `сервер не принял часть данных — не выходим, показываем что не отправлено`() = runTest {
+        val rejected = listOf(RejectedRecord(SyncEntity.CAR, "c1", "Неверный формат"))
+        sync.results = mutableListOf(SyncResult.Success(sent = 2, received = 0, rejected = rejected))
+        val viewModel = createViewModel()
+
+        viewModel.onEvent(ProfileEvent.ConfirmLogout)
+        advanceUntilIdle()
+
+        assertEquals(0, auth.logoutCalls)
+        assertEquals(rejected, viewModel.state.value.rejected)
+        assertEquals(UiText.Resource(R.string.logout_rejected), viewModel.state.value.snackbar)
+    }
+
+    @Test
+    fun `сессия истекла — выйти нельзя, просим войти снова`() = runTest {
+        sync.results = mutableListOf(SyncResult.SessionExpired)
+        val viewModel = createViewModel()
+
+        viewModel.onEvent(ProfileEvent.ConfirmLogout)
+        advanceUntilIdle()
+
+        assertEquals(0, auth.logoutCalls)
+        assertEquals(UiText.Resource(R.string.logout_session_expired), viewModel.state.value.snackbar)
     }
 
     @Test

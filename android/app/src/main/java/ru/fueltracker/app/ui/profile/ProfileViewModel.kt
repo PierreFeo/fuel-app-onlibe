@@ -199,9 +199,27 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Выход = синхронизация + очистка телефона (docs/05_AUTH_SMS.md). Не удалось отправить всё —
+     * пользователь остаётся в аккаунте, данные не трогаются: иначе они пропали бы.
+     */
     private fun logout() {
         if (_state.value.isLoggingOut || _state.value.isGuest) return
         _state.update { it.copy(confirmLogout = false, isLoggingOut = true) }
-        viewModelScope.launch { authRepository.logout() }
+        viewModelScope.launch {
+            val result = syncRepository.sync()
+            if (result is SyncResult.Success && result.rejected.isEmpty()) {
+                // Режим стёрт — AppViewModel сам откроет экран входа
+                authRepository.logout()
+                return@launch
+            }
+            val rejected = (result as? SyncResult.Success)?.rejected.orEmpty()
+            val reason = when {
+                rejected.isNotEmpty() -> R.string.logout_rejected
+                result == SyncResult.SessionExpired -> R.string.logout_session_expired
+                else -> R.string.logout_failed
+            }
+            _state.update { it.copy(isLoggingOut = false, rejected = rejected, snackbar = UiText.Resource(reason)) }
+        }
     }
 }
