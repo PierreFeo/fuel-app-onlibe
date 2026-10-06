@@ -13,15 +13,20 @@ import androidx.compose.ui.tooling.preview.PreviewLightDark
 import ru.fueltracker.app.R
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 
-// Пока заглушка: проверка токена и переход дальше — в задаче 5.1
+/**
+ * Показывается, пока читаются сохранённые токены. Куда идти дальше,
+ * решает NavGraph по `AppViewModel.isLoggedIn` (без запроса к серверу).
+ */
 @Composable
 fun SplashScreen(modifier: Modifier = Modifier) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary,
-        )
+    Surface(modifier = modifier.fillMaxSize()) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 
@@ -29,6 +34,6 @@ fun SplashScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun SplashScreenPreview() {
     FuelTrackerTheme {
-        Surface { SplashScreen() }
+        SplashScreen()
     }
 }

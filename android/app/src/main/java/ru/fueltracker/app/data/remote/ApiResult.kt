@@ -82,3 +82,9 @@ private fun HttpException.toApiError(json: Json): ApiError.Http {
         ApiError.Http(status, code = null, message = null)
     }
 }
+
+/** Преобразовать данные успешного ответа; ошибка проходит без изменений. */
+inline fun <T, R> ApiResult<T>.map(transform: (T) -> R): ApiResult<R> = when (this) {
+    is ApiResult.Success -> ApiResult.Success(transform(data))
+    is ApiResult.Failure -> this
+}

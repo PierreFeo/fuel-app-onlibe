@@ -10,4 +10,45 @@
     <string name="format_money">%1$s ₽</string>
     <string name="format_km">%1$s км</string>
     <string name="format_l_per_100km">%1$s л/100 км</string>
+
+    <!-- Вход: номер телефона -->
+    <string name="phone_title">Вход</string>
+    <string name="phone_subtitle">Введите номер — пришлём код в SMS</string>
+    <string name="phone_label">Номер телефона</string>
+    <string name="phone_placeholder">+7 (___) ___-__-__</string>
+    <string name="phone_get_code">Получить код</string>
+    <string name="phone_password_login">Войти по паролю</string>
+    <string name="error_phone_not_allowed">Этот номер не зарегистрирован в организации</string>
+    <string name="error_retry_after_sec">Повторите через %1$d сек</string>
+
+    <!-- Вход: код из SMS -->
+    <string name="code_title">Код из SMS</string>
+    <string name="code_subtitle">Отправили код на номер %1$s</string>
+    <string name="code_input_description">Код из 6 цифр</string>
+    <string name="code_resend_timer">Отправить код повторно через %1$s</string>
+    <string name="code_resend">Отправить ещё раз</string>
+    <string name="code_resent">Код отправлен повторно</string>
+    <string name="code_change_phone">Изменить номер</string>
+    <string name="code_password_login">Не пришла SMS? Войти по паролю</string>
+    <string name="error_code_invalid">Неверный код</string>
+    <string name="error_code_expired">Код истёк — запросите новый</string>
+
+    <!-- Вход по паролю -->
+    <string name="password_title">Вход по паролю</string>
+    <string name="password_label">Пароль</string>
+    <string name="password_show">Показать пароль</string>
+    <string name="password_hide">Скрыть пароль</string>
+    <string name="password_login">Войти</string>
+    <string name="password_hint">Пароль выдаёт ответственный сотрудник организации</string>
+    <string name="password_sms_login">Войти по коду из SMS</string>
+    <string name="error_invalid_credentials">Неверный номер или пароль</string>
+    <string name="error_too_many_attempts">Слишком много попыток. Повторите через %1$d мин</string>
+
+    <!-- Имя -->
+    <string name="name_title">Как вас зовут</string>
+    <string name="name_label">Имя и фамилия</string>
+    <string name="name_continue">Продолжить</string>
+
+    <!-- Временная заглушка до 5.2 -->
+    <string name="cars_placeholder">Вы вошли.\nСписок автомобилей появится в следующей задаче (5.2).</string>
 </resources>

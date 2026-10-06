@@ -41,14 +41,14 @@
   - Готово, когда: через Swagger проходит весь сценарий из `01_PRODUCT.md`, все тесты зелёные
 
 ## Фаза 4. Android: каркас
-- [ ] 4.1 Человек создаёт проект в Android Studio в папке `android/` (см. START_HERE.md)
-- [ ] 4.2 Зависимости (Hilt, Retrofit, kotlinx.serialization, Navigation, DataStore), тема, структура пакетов
-- [ ] 4.3 Сетевой слой: Retrofit, DTO по `04_API_CONTRACT.md`, разбор ошибок, `BASE_URL` из `BuildConfig`
-- [ ] 4.4 Хранение токенов, interceptor с Bearer, автообновление токена по 401
+- [x] 4.1 Человек создаёт проект в Android Studio в папке `android/` (см. START_HERE.md)
+- [x] 4.2 Зависимости (Hilt, Retrofit, kotlinx.serialization, Navigation, DataStore), тема, структура пакетов
+- [x] 4.3 Сетевой слой: Retrofit, DTO по `04_API_CONTRACT.md`, разбор ошибок, `BASE_URL` из `BuildConfig`
+- [x] 4.4 Хранение токенов, interceptor с Bearer, автообновление токена по 401
   - Готово, когда: приложение запускается на эмуляторе, тесты `./gradlew test` зелёные
 
 ## Фаза 5. Android: экраны
-- [ ] 5.1 Splash + PhoneScreen + CodeScreen + PasswordLoginScreen + NameScreen
+- [x] 5.1 Splash + PhoneScreen + CodeScreen + PasswordLoginScreen + NameScreen
   (вход по SMS и по паролю работает с локальным backend)
 - [ ] 5.2 CarsScreen + CarEditScreen + выбор авто
 - [ ] 5.3 SheetsFeedScreen + SheetCard (только отображение, пагинация, pull-to-refresh)

@@ -56,3 +56,9 @@ object Formatters {
         return if (fracPart.isEmpty()) "$sign$grouped" else "$sign$grouped,$fracPart"
     }
 }
+
+/** 59 → «0:59», 125 → «2:05» (таймер повторной отправки кода). */
+fun formatCountdown(seconds: Int): String {
+    val s = seconds.coerceAtLeast(0)
+    return "%d:%02d".format(s / 60, s % 60)
+}
