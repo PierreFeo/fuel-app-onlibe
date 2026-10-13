@@ -95,7 +95,7 @@
 
 ## Фаза 7. Реальные SMS
 - [x] 7.1 Человек настраивает домашний телефон (см. `05_AUTH_SMS.md`)
-- [ ] 7.2 `SmsGateSender` + тест с замоканным HTTP; проверка на реальном номере с локального backend
+- [x] 7.2 `SmsGateSender` + тест с замоканным HTTP; проверка на реальном номере с локального backend
 
 ## Фаза 8. Продакшен
 - [ ] 8.1 `docker-compose.prod.yml` + Caddy (HTTPS) + `.env.prod.example`
