@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +15,12 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://fuel:fuel@db:5432/fuel"
     test_database_url: str = "postgresql+asyncpg://fuel:fuel@db:5432/fuel_test"
 
+    # Отправка SMS (docs/05_AUTH_SMS.md). smsgate — настоящие SMS через домашний телефон.
     sms_provider: Literal["console", "smsgate"] = "console"
+    smsgate_url: str = "https://api.sms-gate.app/3rdparty/v1"
+    smsgate_username: str = ""
+    smsgate_password: str = ""
+    smsgate_timeout_sec: float = 10.0
 
     # Токены (docs/05_AUTH_SMS.md, «Токены»)
     jwt_secret: str = Field(min_length=32)
@@ -38,6 +43,13 @@ class Settings(BaseSettings):
     registration_mode: Literal["whitelist", "open"] = "whitelist"
     allowed_phones: str = ""  # через запятую: +79991234567,+79997654321
     default_phone_region: str = "RU"
+
+    @model_validator(mode="after")
+    def _smsgate_needs_credentials(self) -> "Settings":
+        # Без логина/пароля сервер запустился бы, а SMS падали бы при каждом входе — лучше сразу.
+        if self.sms_provider == "smsgate" and not (self.smsgate_username and self.smsgate_password):
+            raise ValueError("SMS_PROVIDER=smsgate требует SMSGATE_USERNAME и SMSGATE_PASSWORD")
+        return self
 
     @property
     def is_dev(self) -> bool:
