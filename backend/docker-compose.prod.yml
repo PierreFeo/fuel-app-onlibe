@@ -1,0 +1,77 @@
+# Prod-окружение на VDS: caddy (HTTPS) → api → PostgreSQL. Dev — docker-compose.yml.
+# Запуск (из папки backend на сервере):
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# Отдельное имя проекта — тома и контейнеры не пересекаются с dev на той же машине.
+name: fuel-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m" # логи не съедят диск VDS
+    max-file: "3"
+
+services:
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?укажите DOMAIN в .env.prod}
+    ports:
+      - "80:80" # нужен Caddy для получения сертификата Let's Encrypt
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # сертификаты — терять нельзя, иначе Let's Encrypt может временно отказать
+      - caddy_config:/config
+    depends_on:
+      - api
+    logging: *logging
+
+  api:
+    build:
+      context: .
+      args:
+        INSTALL_DEV: "false"
+    restart: unless-stopped
+    # Сначала миграции, потом сервер. Один процесс uvicorn: лимиты частоты хранятся в памяти
+    # (docs/05_AUTH_SMS.md). --proxy-headers: реальный IP клиента приходит от Caddy в
+    # X-Forwarded-For; доверять заголовку безопасно — порт api наружу не открыт.
+    # exec — uvicorn становится главным процессом и корректно останавливается по docker stop.
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head &&
+        exec uvicorn app.main:app --host 0.0.0.0 --port 8000
+        --proxy-headers --forwarded-allow-ips='*'
+    env_file: .env.prod
+    environment:
+      # Собираем из POSTGRES_* — пароль базы задаётся в .env.prod один раз
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@db:5432/${POSTGRES_DB:?}
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *logging
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+    # ports не открываем: база доступна только контейнеру api
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

@@ -98,7 +98,7 @@
 - [x] 7.2 `SmsGateSender` + тест с замоканным HTTP; проверка на реальном номере с локального backend
 
 ## Фаза 8. Продакшен
-- [ ] 8.1 `docker-compose.prod.yml` + Caddy (HTTPS) + `.env.prod.example`
+- [x] 8.1 `docker-compose.prod.yml` + Caddy (HTTPS) + `.env.prod.example`
 - [ ] 8.2 Человек: VDS, домен, установка Docker, деплой (Claude даёт пошаговые команды)
 - [ ] 8.3 Бэкап БД (cron + `pg_dump`, хранить 14 дней)
 - [ ] 8.4 Release-сборка APK с prod `BASE_URL`, подпись, раздача сотрудникам

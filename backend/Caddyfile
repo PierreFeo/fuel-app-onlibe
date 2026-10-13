@@ -1,0 +1,6 @@
+# Caddy сам получает и продлевает HTTPS-сертификат Let's Encrypt для домена из DOMAIN
+# (.env.prod). Для DOMAIN=localhost — локальный самоподписанный сертификат (проверка на ПК).
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy api:8000
+}

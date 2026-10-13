@@ -21,6 +21,17 @@ docker compose down                          # остановить (данны�
 ```
 Swagger: http://localhost:8000/docs
 
+Prod (VDS): `docker-compose.prod.yml` + `Caddyfile` + `.env.prod` (образец — `.env.prod.example`).
+Миграции применяются сами при старте api. Порты api и базы наружу закрыты, вход — только через Caddy.
+```bash
+P="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+$P up -d --build                             # запустить / обновить после git pull
+$P logs -f api                               # логи
+$P exec api python -m app.cli set-password --phone "+7..."   # выдать пароль
+```
+Проверка на своём ПК: `DOMAIN=localhost` в `.env.prod` → `https://localhost/api/v1/health`
+(сертификат самоподписанный, `curl -k`). Потом `$P down -v` и удалить `.env.prod`.
+
 ## Правила кода
 - Роутеры в `app/api/v1/` — тонкие: валидация через схемы, вызов сервиса, возврат схемы.
 - Логика — `app/services/`. Сервер — хранилище копии данных (`../docs/02_ARCHITECTURE.md`):

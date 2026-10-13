@@ -1,4 +1,4 @@
-# Dev-окружение: api + PostgreSQL. Prod — отдельный docker-compose.prod.yml (фаза 7).
+# Dev-окружение: api + PostgreSQL. Prod — отдельный docker-compose.prod.yml.
 services:
   api:
     build: .
