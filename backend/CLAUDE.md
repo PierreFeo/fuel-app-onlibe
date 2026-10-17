@@ -21,10 +21,12 @@ docker compose down                          # остановить (данны�
 ```
 Swagger: http://localhost:8000/docs
 
-Prod (VDS): `docker-compose.prod.yml` + `Caddyfile` + `.env.prod` (образец — `.env.prod.example`).
+Prod (VDS, `https://fuelapp.ru`, Ubuntu 24.04): код в `/opt/fuel-app` (git clone), команды — из `/opt/fuel-app/backend`.
+`docker-compose.prod.yml` + `Caddyfile` + `.env.prod` (образец — `.env.prod.example`, секреты созданы на сервере).
 Миграции применяются сами при старте api. Порты api и базы наружу закрыты, вход — только через Caddy.
 ```bash
 P="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+git -C /opt/fuel-app pull                    # забрать новый код с GitHub
 $P up -d --build                             # запустить / обновить после git pull
 $P logs -f api                               # логи
 $P exec api python -m app.cli set-password --phone "+7..."   # выдать пароль

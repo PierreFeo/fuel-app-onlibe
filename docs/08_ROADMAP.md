@@ -99,7 +99,7 @@
 
 ## Фаза 8. Продакшен
 - [x] 8.1 `docker-compose.prod.yml` + Caddy (HTTPS) + `.env.prod.example`
-- [ ] 8.2 Человек: VDS, домен, установка Docker, деплой (Claude даёт пошаговые команды)
+- [x] 8.2 Человек: VDS, домен, установка Docker, деплой (Claude даёт пошаговые команды) — `https://fuelapp.ru`, код на сервере в `/opt/fuel-app`, SMS с prod доставлена
 - [ ] 8.3 Бэкап БД (cron + `pg_dump`, хранить 14 дней)
 - [ ] 8.4 Release-сборка APK с prod `BASE_URL`, подпись, раздача сотрудникам
 
