@@ -7,6 +7,9 @@
 *.keystore
 keystore.properties
 
+# Бэкапы prod-базы (backend/scripts/backup_db.sh)
+backups/
+
 # Python
 __pycache__/
 *.pyc
