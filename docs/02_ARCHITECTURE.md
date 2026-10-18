@@ -115,8 +115,9 @@ Open-source проект **SMS Gateway for Android** (SMSGate): https://sms-gate
   только если они ещё лежат на телефонах неотправленными; остальное придётся ввести заново.
 
 ## Раздача APK
-Caddy отдаёт `https://<домен>/app.apk` из `/opt/fuel-app/download/app.apk` на сервере; остальные адреса
-идут в `api`. Как собрать, подписать и выложить — `docs/RELEASE.md`.
+Caddy отдаёт `https://<домен>/app.apk` из `/opt/fuel-app/download/app.apk` на сервере, а главную
+`https://<домен>/` — страницу со ссылкой на скачивание и инструкцией (`backend/landing/index.html`);
+остальные адреса идут в `api`. Как собрать, подписать и выложить — `docs/RELEASE.md`.
 
 ## Окружения
 | Окружение | Где | SMS |

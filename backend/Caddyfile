@@ -12,6 +12,12 @@
 		file_server
 	}
 
+	# Главная — страница со ссылкой на APK (backend/landing/index.html)
+	handle / {
+		root * /srv/landing
+		file_server
+	}
+
 	handle {
 		reverse_proxy api:8000
 	}

@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Главная https://<домен>/ — ссылка на скачивание APK (docs/RELEASE.md). Отдаёт Caddy, не api. -->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Учёт топлива</title>
+<style>
+  :root { --bg: #f6f7f9; --card: #fff; --text: #1b1f24; --muted: #5b6470; --accent: #1f6feb; --on-accent: #fff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121417; --card: #1c1f24; --text: #e8eaed; --muted: #9aa3ad; --accent: #4c8dff; --on-accent: #0b0d10; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 480px; margin: 0 auto; padding: 32px 16px; }
+  .card { background: var(--card); border-radius: 16px; padding: 24px; }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  p { margin: 0 0 16px; color: var(--muted); }
+  .btn { display: block; text-align: center; background: var(--accent); color: var(--on-accent);
+         text-decoration: none; font-weight: 600; padding: 14px; border-radius: 12px; margin: 20px 0; }
+  ol { padding-left: 20px; margin: 0; }
+  li { margin-bottom: 8px; }
+  small { display: block; margin-top: 20px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h1>⛽ Учёт топлива</h1>
+    <p>Листы учёта топлива личных автомобилей. Работает без интернета.</p>
+    <a class="btn" href="/app.apk">Скачать для Android</a>
+    <ol>
+      <li>Откройте скачанный файл <b>fuel-tracker.apk</b>.</li>
+      <li>Если телефон спросит — разрешите установку из этого источника, вернитесь назад и нажмите «Установить».</li>
+      <li>Если Play Защита предупредит о неизвестном приложении — «Подробнее» → «Всё равно установить».</li>
+      <li>Откройте «Учёт топлива» и войдите по номеру телефона и коду из SMS.</li>
+    </ol>
+    <small>Обновление — так же по этой ссылке, удалять старую версию не нужно.</small>
+  </div>
+</main>
+</body>
+</html>

@@ -101,7 +101,7 @@
 - [x] 8.1 `docker-compose.prod.yml` + Caddy (HTTPS) + `.env.prod.example`
 - [x] 8.2 Человек: VDS, домен, установка Docker, деплой (Claude даёт пошаговые команды) — `https://fuelapp.ru`, код на сервере в `/opt/fuel-app`, SMS с prod доставлена
 - [x] 8.3 Бэкап БД (cron + `pg_dump`, хранить 14 дней) — `backend/scripts/backup_db.sh` по cron в 03:30, копии в `/opt/fuel-app/backups`, восстановление — `restore_db.sh`; первый бэкап на VDS — OK
-- [ ] 8.4 Release-сборка APK с prod `BASE_URL`, подпись, раздача сотрудникам — сборка с подписью и раздача по `https://fuelapp.ru/app.apk` настроены (`docs/RELEASE.md`); осталось: ключ, сборка, выкладка, проверка на телефоне
+- [ ] 8.4 Release-сборка APK с prod `BASE_URL`, подпись, раздача сотрудникам — сборка с подписью и раздача по `https://fuelapp.ru/app.apk` настроены (`docs/RELEASE.md`), на главной `https://fuelapp.ru` — страница со ссылкой на скачивание; осталось: ключ, сборка, выкладка, проверка на телефоне
 
 ## Идеи после MVP (не делать без запроса)
 Выгрузка ЛУТ в Excel/PDF · роль администратора · автоматическая синхронизация и напоминания ·

@@ -22,6 +22,7 @@ services:
       - "443:443/udp" # HTTP/3
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./landing:/srv/landing:ro # главная страница со ссылкой на APK
       - caddy_data:/data # сертификаты — терять нельзя, иначе Let's Encrypt может временно отказать
       - caddy_config:/config
       - ../download:/srv/download:ro # APK для сотрудников (/opt/fuel-app/download на сервере)
