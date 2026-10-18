@@ -2,5 +2,17 @@
 # (.env.prod). Для DOMAIN=localhost — локальный самоподписанный сертификат (проверка на ПК).
 {$DOMAIN} {
 	encode gzip
-	reverse_proxy api:8000
+
+	# APK для сотрудников: https://<домен>/app.apk. Файл кладётся на сервер в
+	# /opt/fuel-app/download/app.apk (docs/RELEASE.md), Caddy видит эту папку как /srv/download
+	handle /app.apk {
+		root * /srv/download
+		header Content-Type application/vnd.android.package-archive
+		header Content-Disposition "attachment; filename=fuel-tracker.apk"
+		file_server
+	}
+
+	handle {
+		reverse_proxy api:8000
+	}
 }

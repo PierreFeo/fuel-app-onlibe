@@ -9,6 +9,8 @@ keystore.properties
 
 # Бэкапы prod-базы (backend/scripts/backup_db.sh)
 backups/
+# APK для раздачи на сервере (docs/RELEASE.md)
+download/
 
 # Python
 __pycache__/
