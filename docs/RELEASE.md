@@ -33,6 +33,13 @@ ssh root@fuelapp.ru mv /opt/fuel-app/download/app.apk.tmp /opt/fuel-app/download
 ```
 Сначала временное имя, потом переименование — никто не скачает недокачанный файл.
 
+Если после `git pull` изменился `backend/Caddyfile` или `docker-compose.prod.yml`, Caddy надо пересоздать —
+иначе он работает со старой настройкой (например, `/app.apk` отвечает 404 в JSON):
+```
+cd /opt/fuel-app/backend
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --force-recreate caddy
+```
+
 ## Обновление
 1. В `android/app/build.gradle.kts` увеличить `versionCode` на 1 (и `versionName`, напр. `1.1`).
 2. Собрать и выложить, как выше. Сотрудникам — та же ссылка; новая версия встаёт поверх, данные сохраняются.
