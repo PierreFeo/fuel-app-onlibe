@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Прототип ленты ЛУТ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;500;600;700&family=Golos+Text:wght@400;500;600;700&family=Onest:wght@400;500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Страница-стенд: выбор направления, два телефона (светлая и тёмная тема) */
+:root {
+  --stand-bg: #E4E7EB;
+  --stand-ink: #1C232D;
+  --stand-muted: #5A6472;
+  --stand-tab: #FFFFFF;
+  --stand-tab-on: #1C232D;
+  --stand-tab-on-ink: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --stand-bg: #1A1F26;
+    --stand-ink: #E8ECF1;
+    --stand-muted: #9AA4B2;
+    --stand-tab: #262D37;
+    --stand-tab-on: #E8ECF1;
+    --stand-tab-on-ink: #1A1F26;
+  }
+}
+:root[data-theme="dark"] {
+  --stand-bg: #1A1F26;
+  --stand-ink: #E8ECF1;
+  --stand-muted: #9AA4B2;
+  --stand-tab: #262D37;
+  --stand-tab-on: #E8ECF1;
+  --stand-tab-on-ink: #1A1F26;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--stand-bg);
+  color: var(--stand-ink);
+  font: 15px/1.5 "Golos Text", system-ui, sans-serif;
+}
+.stand { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+.stand h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+.stand > p { margin: 0 0 16px; color: var(--stand-muted); max-width: 70ch; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.tabs button {
+  font: inherit; font-weight: 500;
+  border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  background: var(--stand-tab); color: var(--stand-ink);
+}
+.tabs button[aria-pressed="true"] { background: var(--stand-tab-on); color: var(--stand-tab-on-ink); }
+.tabs button:focus-visible { outline: 3px solid #3B82F6; outline-offset: 2px; }
+.idea { margin: 0 0 20px; color: var(--stand-muted); max-width: 70ch; min-height: 3em; }
+.phones { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
+.phone-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.phone-wrap > span { font-size: 13px; color: var(--stand-muted); }
+
+/* ===== Телефон ===== */
+.phone {
+  width: 360px; max-width: calc(100vw - 32px); height: 740px;
+  border-radius: 36px; padding: 10px;
+  background: #2A2F36;
+  box-shadow: 0 1px 0 rgba(255,255,255,.08) inset;
+}
+.screen {
+  position: relative; height: 100%; overflow: hidden; border-radius: 28px;
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font); font-size: 15px; line-height: 1.35;
+  display: flex; flex-direction: column;
+}
+.statusbar { height: 28px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 12px; color: var(--muted); }
+.appbar { flex: none; display: flex; align-items: center; gap: 4px; padding: 4px 8px 8px 16px; }
+.appbar .title { flex: 1; min-width: 0; }
+.car-name { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.icon-btn { width: 40px; height: 40px; border: 0; background: none; color: var(--ink); border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+.icon-btn svg { width: 22px; height: 22px; }
+.feed { flex: 1; overflow-y: auto; padding: 4px 12px 96px; display: flex; flex-direction: column; gap: 12px; scrollbar-width: none; }
+.feed::-webkit-scrollbar { display: none; }
+.fab {
+  position: absolute; right: 16px; bottom: 20px;
+  display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 20px 0 16px;
+  border: 0; border-radius: var(--fab-radius); cursor: pointer;
+  background: var(--fab-bg); color: var(--fab-ink);
+  font: 600 15px var(--font);
+  box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+.fab svg { width: 22px; height: 22px; }
+
+/* Госномер — по образцу российского знака: номер и регион с RUS */
+.plate {
+  display: inline-flex; align-items: stretch; margin-top: 2px;
+  border: 1.5px solid var(--plate-line); border-radius: 4px;
+  background: var(--plate-bg); color: var(--plate-ink);
+  font: 600 13px/1 var(--font); letter-spacing: .04em;
+}
+.plate b { padding: 3px 6px; font-weight: 600; }
+.plate i { font-style: normal; padding: 1px 4px; border-left: 1.5px solid var(--plate-line); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; }
+.plate i small { font-size: 6px; letter-spacing: .08em; }
+
+/* ===== Общая карточка ===== */
+.card {
+  position: relative; background: var(--surface); border-radius: var(--radius);
+  padding: 12px 12px 14px 16px;
+}
+/* Шапка в одну строку. Шрифт месяца уменьшается, только если строка не помещается (fitHeads, как autosize в Android) */
+.head { display: flex; align-items: center; gap: 3px; height: 34px; margin: 0 0 8px -6px; }
+.month { font-size: 19px; font-weight: 600; color: var(--primary); letter-spacing: -0.01em; white-space: nowrap; }
+.warn { flex: none; border: 0; background: none; color: var(--over); font-size: 16px; padding: 2px 4px; cursor: pointer; border-radius: 8px; }
+.season { flex: none; border: 0; background: none; font-size: 17px; line-height: 1; padding: 6px; border-radius: 50%; cursor: pointer; }
+.closed .season { opacity: .5; }
+.lock { width: 15px; height: 15px; color: var(--muted); flex: none; margin-left: 2px; }
+.grow { flex: 1; }
+/* Заправки и меню — мягкие тональные кнопки одного стиля: капсула «колонка + число» и круг «…» */
+.refuels { flex: none; display: flex; align-items: center; gap: 5px; border: 0; background: var(--chip, var(--tonal)); color: var(--on-chip, var(--on-tonal)); font: 600 13.5px var(--font); height: 30px; padding: 0 9px 0 7px; border-radius: 999px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.refuels svg { width: 18px; height: 18px; }
+.more { flex: none; border: 0; background: var(--chip, var(--tonal)); color: var(--on-chip, var(--on-tonal)); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; }
+.more svg { width: 18px; height: 18px; }
+.odo { display: flex; align-items: center; }
+.odo-left { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.row { display: flex; align-items: center; gap: 6px; }
+.lbl { color: var(--muted); font-size: 14px; }
+.val { font-size: 15px; font-variant-numeric: tabular-nums; }
+.cons { width: 92px; flex: none; text-align: center; border-left: 2px solid var(--primary); padding-left: 10px; }
+.cons-lbl { font-size: 13px; font-weight: 700; }
+.cons-val { font-size: 21px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cons-unit { font-size: 10px; color: var(--muted); }
+.normal .cons-val { color: var(--normal); }
+.over .cons-val { color: var(--over); }
+.sep { height: 1px; background: var(--line); margin: 12px 0 10px; }
+.sum { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 4px; }
+.sum .lbl { white-space: nowrap; }
+.sum div:nth-child(2) { text-align: center; }
+.sum div:nth-child(3) { text-align: right; }
+.sum .lbl { font-size: 12px; display: block; }
+.sum .val { font-size: 14px; }
+.close-btn {
+  border: 0; cursor: pointer; height: 28px; padding: 0 12px; white-space: nowrap; flex: none;
+  font: 600 12.5px var(--font); border-radius: var(--btn-radius);
+  background: var(--tonal); color: var(--on-tonal);
+}
+button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+/* ===== 1. Одометр: синий дорожных знаков, пробег в ячейках счётчика ===== */
+.d-odometer {
+  --font: "Geologica", system-ui, sans-serif;
+  --bg: #E9EDF2; --surface: #FFFFFF; --ink: #17202C; --muted: #5C6778; --line: #DCE2EA;
+  --primary: #1F5FAE; --tonal: #DCE8F7; --on-tonal: #17457F;
+  --normal: #1E7F45; --over: #C2312A;
+  --radius: 18px; --btn-radius: 8px; --fab-radius: 16px;
+  --fab-bg: #1F5FAE; --fab-ink: #FFFFFF;
+  --plate-bg: #FFFFFF; --plate-ink: #17202C; --plate-line: #17202C;
+  --cell-bg: #17202C; --cell-ink: #FFFFFF; --cell-last-bg: #FFFFFF; --cell-last-ink: #C2312A; --cell-line: #17202C;
+}
+.d-odometer.dark {
+  --bg: #10161E; --surface: #19212C; --ink: #E7ECF2; --muted: #98A3B3; --line: #2A3442;
+  --primary: #7FB2F0; --tonal: #233A57; --on-tonal: #CFE2FB;
+  --normal: #5BCB86; --over: #FF8A80;
+  --fab-bg: #7FB2F0; --fab-ink: #0E2440;
+  --plate-bg: #E7ECF2; --plate-ink: #10161E; --plate-line: #E7ECF2;
+  --cell-bg: #0A0F15; --cell-ink: #E7ECF2; --cell-last-bg: #E7ECF2; --cell-last-ink: #C2312A; --cell-line: #3A4656;
+}
+.cells { display: inline-flex; gap: 2px; font-variant-numeric: tabular-nums; }
+.cells span {
+  width: 14px; height: 21px; display: grid; place-items: center;
+  background: var(--cell-bg); color: var(--cell-ink); border-radius: 3px;
+  font: 600 14px/1 var(--font);
+}
+.cells span:last-child { background: var(--cell-last-bg); color: var(--cell-last-ink); box-shadow: 0 0 0 1px var(--cell-line) inset; }
+.d-odometer .lbl.odo-lbl { width: 54px; }
+
+/* ===== 2. Бланк со штампом: чернила и фиолетовая печать ===== */
+.d-blank {
+  --font: "Golos Text", system-ui, sans-serif;
+  --bg: #E8ECF3; --surface: #FBFCFE; --ink: #1D2440; --muted: #5D6585; --line: #C9D0E2;
+  --primary: #2B3F8C; --tonal: #E2E7F6; --on-tonal: #2B3F8C;
+  --normal: #22784A; --over: #B5302A;
+  --radius: 6px; --btn-radius: 4px; --fab-radius: 6px;
+  --fab-bg: #2B3F8C; --fab-ink: #FFFFFF;
+  --plate-bg: #FFFFFF; --plate-ink: #1D2440; --plate-line: #1D2440;
+  --stamp: #6B3FA6;
+}
+.d-blank.dark {
+  --bg: #121729; --surface: #1B2238; --ink: #E4E8F6; --muted: #A1A9C6; --line: #34405F;
+  --primary: #AFC0FF; --tonal: #2A3560; --on-tonal: #D8E0FF;
+  --normal: #6BD39A; --over: #FF8F87;
+  --fab-bg: #AFC0FF; --fab-ink: #16204A;
+  --plate-bg: #E4E8F6; --plate-ink: #121729; --plate-line: #E4E8F6;
+  --stamp: #C3A2FF;
+}
+.d-blank .card { box-shadow: 0 0 0 1px var(--line); padding-top: 12px; }
+.d-blank .val.field { border-bottom: 1px solid var(--line); padding: 0 4px; min-width: 64px; }
+.stamp {
+  position: absolute; right: 112px; top: 52px;
+  transform: rotate(-9deg);
+  border: 2.5px solid var(--stamp); outline: 1px solid var(--stamp); outline-offset: 2px;
+  color: var(--stamp); border-radius: 6px; padding: 2px 10px;
+  font: 700 15px/1.2 var(--font); letter-spacing: .12em;
+  opacity: .82; pointer-events: none;
+}
+.stamp small { display: block; font-size: 9px; letter-spacing: .04em; font-weight: 600; text-align: center; }
+
+/* ===== 3. Датчик топлива: бирюза «петроль», сегментная шкала остатка ===== */
+.d-gauge {
+  --font: "Onest", system-ui, sans-serif;
+  --bg: #EDF1F0; --surface: #FFFFFF; --ink: #142326; --muted: #586B6F; --line: #DCE5E4;
+  --primary: #0D6170; --tonal: #D5ECEE; --on-tonal: #0A4A55;
+  --normal: #1E7F45; --over: #C2312A;
+  --radius: 22px; --btn-radius: 999px; --fab-radius: 18px;
+  --fab-bg: #0D6170; --fab-ink: #FFFFFF;
+  --plate-bg: #FFFFFF; --plate-ink: #142326; --plate-line: #142326;
+  --seg-on: #0D6170; --seg-low: #C77A00; --seg-off: #DCE5E4;
+}
+.d-gauge.dark {
+  --bg: #0E1719; --surface: #172326; --ink: #E3EEEF; --muted: #93A9AD; --line: #27393D;
+  --primary: #5CC7D6; --tonal: #1D4248; --on-tonal: #C8F0F5;
+  --normal: #5BCB86; --over: #FF8A80;
+  --fab-bg: #5CC7D6; --fab-ink: #062A31;
+  --plate-bg: #E3EEEF; --plate-ink: #0E1719; --plate-line: #E3EEEF;
+  --seg-on: #5CC7D6; --seg-low: #F2A93B; --seg-off: #27393D;
+}
+.gauge { margin-top: 12px; }
+.gauge-top { display: flex; justify-content: space-between; align-items: baseline; }
+.gauge-top .val { font-weight: 600; }
+.segs { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; margin: 4px 0 2px; }
+.segs span { height: 10px; border-radius: 3px; background: var(--seg-off); }
+.segs span.on { background: var(--seg-on); }
+.segs.low span.on { background: var(--seg-low); }
+.gauge-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+.d-gauge .sum { grid-template-columns: 1fr 1fr; }
+.d-gauge .sum div:nth-child(2) { text-align: right; }
+
+/* ===== 4. Дорога месяца: стиль «Датчика топлива», машинка едет по дням месяца ===== */
+.d-road {
+  --font: "Onest", system-ui, sans-serif;
+  --bg: #EDF1F0; --surface: #FFFFFF; --ink: #142326; --muted: #586B6F; --line: #DCE5E4;
+  --primary: #0D6170; --tonal: #D5ECEE; --on-tonal: #0A4A55;
+  --normal: #1E7F45; --over: #C2312A;
+  --radius: 22px; --btn-radius: 8px; --fab-radius: 18px;
+  --fab-bg: #0D6170; --fab-ink: #FFFFFF;
+  --plate-bg: #FFFFFF; --plate-ink: #142326; --plate-line: #142326;
+  --chip: #E3EEED; --on-chip: #0A4A55;
+  --road: #DCE5E4; --road-done: #0D6170; --soon: #A86400; --soon-bg: #FCEBD0; --late-bg: #F9DEDB;
+}
+.d-road.dark {
+  --bg: #0E1719; --surface: #172326; --ink: #E3EEEF; --muted: #93A9AD; --line: #27393D;
+  --primary: #5CC7D6; --tonal: #1D4248; --on-tonal: #C8F0F5;
+  --normal: #5BCB86; --over: #FF8A80;
+  --fab-bg: #5CC7D6; --fab-ink: #062A31;
+  --plate-bg: #E3EEEF; --plate-ink: #0E1719; --plate-line: #E3EEEF;
+  --chip: #223438; --on-chip: #C8F0F5;
+  --road: #27393D; --road-done: #5CC7D6; --soon: #F2B45A; --soon-bg: #3D2E14; --late-bg: #47201D;
+}
+/* Альтернативные палитры варианта 4 (palettes.html): меняются основной цвет и нейтральные тона,
+   зелёный/красный/жёлтый остаются за смыслом — норма, перерасход, «пора закрыть» */
+.d-road.pal-violet {
+  --bg: #F1F0F7; --surface: #FFFFFF; --ink: #1C1A2E; --muted: #625E78; --line: #E2E0EE;
+  --primary: #5B47D6; --tonal: #E7E3FB; --on-tonal: #3B2BA0; --chip: #ECE9F8; --on-chip: #3B2BA0;
+  --fab-bg: #5B47D6; --fab-ink: #FFFFFF; --road: #E2E0EE; --road-done: #5B47D6;
+}
+.d-road.dark.pal-violet {
+  --bg: #121120; --surface: #1C1A2E; --ink: #E9E7F5; --muted: #A29DBC; --line: #2E2B45;
+  --primary: #B2A6FF; --tonal: #322A6B; --on-tonal: #E2DDFF; --chip: #29254A; --on-chip: #E2DDFF;
+  --fab-bg: #B2A6FF; --fab-ink: #1E1559; --road: #2E2B45; --road-done: #B2A6FF;
+}
+.d-road.pal-graphite {
+  --bg: #EFF0F2; --surface: #FFFFFF; --ink: #15191E; --muted: #5F6670; --line: #E1E3E7;
+  --primary: #1F252D; --tonal: #E4E6EA; --on-tonal: #1F252D; --chip: #EBEDF0; --on-chip: #1F252D;
+  --fab-bg: #1F252D; --fab-ink: #FFFFFF; --road: #E1E3E7; --road-done: #1F252D;
+}
+.d-road.dark.pal-graphite {
+  --bg: #0F1114; --surface: #1A1D22; --ink: #ECEEF1; --muted: #9BA1AA; --line: #2C3037;
+  --primary: #ECEEF1; --tonal: #2C3138; --on-tonal: #ECEEF1; --chip: #262A30; --on-chip: #ECEEF1;
+  --fab-bg: #ECEEF1; --fab-ink: #15191E; --road: #2C3037; --road-done: #ECEEF1;
+}
+.d-road.pal-berry {
+  --bg: #F6F0F3; --surface: #FFFFFF; --ink: #26151D; --muted: #6E5A64; --line: #EEDFE6;
+  --primary: #A8204F; --tonal: #F8DDE7; --on-tonal: #7A1238; --chip: #F5E6EC; --on-chip: #7A1238;
+  --fab-bg: #A8204F; --fab-ink: #FFFFFF; --road: #EEDFE6; --road-done: #A8204F;
+}
+.d-road.dark.pal-berry {
+  --bg: #170E12; --surface: #24161C; --ink: #F3E6EB; --muted: #B79EA8; --line: #3A2730;
+  --primary: #FF8FB4; --tonal: #5A1E35; --on-tonal: #FFD9E4; --chip: #3A2130; --on-chip: #FFD9E4;
+  --fab-bg: #FF8FB4; --fab-ink: #4A0B22; --road: #3A2730; --road-done: #FF8FB4;
+}
+.d-road.pal-orange {
+  --bg: #F1F2F4; --surface: #FFFFFF; --ink: #221A14; --muted: #6B6058; --line: #E7E2DE;
+  --primary: #C2410C; --tonal: #FCE3D2; --on-tonal: #8A3304; --chip: #F7E9DF; --on-chip: #8A3304;
+  --fab-bg: #C2410C; --fab-ink: #FFFFFF; --road: #E7E2DE; --road-done: #C2410C;
+  --soon: #8A6A00; --soon-bg: #F6EDC4;
+}
+.d-road.dark.pal-orange {
+  --bg: #131110; --surface: #1E1A17; --ink: #F2EAE4; --muted: #AA9E95; --line: #332C27;
+  --primary: #FF9A5C; --tonal: #5A2C10; --on-tonal: #FFDCC7; --chip: #34261D; --on-chip: #FFDCC7;
+  --fab-bg: #FF9A5C; --fab-ink: #4A1C02; --road: #332C27; --road-done: #FF9A5C;
+  --soon: #E8C547; --soon-bg: #3A3212;
+}
+/* Режим «один телефон» (?solo) — для palettes.html */
+body.solo { background: transparent; }
+body.solo .stand { padding: 0; max-width: none; }
+body.solo .stand > :not(.phones) { display: none; }
+body.solo .phone-wrap > span { display: none; }
+
+/* Короткие подписи и одна высота строк — как в «Одометре», кнопка не переносится */
+.d-road .row { min-height: 28px; }
+.d-road .lbl.odo-lbl { width: 54px; }
+/* Пробег на начало и конец — округлый плотный Nunito: цифры видно сразу */
+.d-road .odo .val { font: 700 17px/1.2 "Nunito", var(--font); font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.trip { margin-top: 14px; }
+.trip-text { font-size: 13px; color: var(--muted); }
+.trip-text b { color: var(--ink); font-weight: 600; }
+.track { position: relative; height: 30px; margin: 2px 14px 0 0; }
+.track .lane { position: absolute; left: 0; right: 0; bottom: 6px; height: 4px; border-radius: 2px; background: var(--road); }
+.track .done { position: absolute; left: 0; bottom: 6px; height: 4px; border-radius: 2px; background: var(--road-done); }
+.track .flag { position: absolute; right: -14px; bottom: 4px; width: 16px; height: 22px; color: var(--muted); }
+.track .car { position: absolute; bottom: 7px; width: 34px; height: 18px; transform: translateX(-50%); color: var(--road-done); }
+.trip-scale { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-right: 14px; }
+/* Последние дни месяца — пора закрывать; месяц закончился — срочно */
+.trip.soon .done, .trip.late .done { background: var(--soon); }
+.trip.soon .car, .trip.soon .flag { color: var(--soon); }
+.trip.late .done { background: var(--over); }
+.trip.late .car, .trip.late .flag { color: var(--over); }
+.trip-alert { display: none; margin-top: 6px; padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 500; }
+.trip.soon .trip-alert { display: block; background: var(--soon-bg); color: var(--ink); }
+.trip.late .trip-alert { display: block; background: var(--late-bg); color: var(--ink); }
+
+.sim { display: none; align-items: center; gap: 12px; flex-wrap: wrap; margin: -8px 0 20px; }
+.sim.on { display: flex; }
+.sim input { width: min(320px, 100%); accent-color: #0D6170; }
+.sim output { font-weight: 600; min-width: 13ch; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tabs button { transition: background .15s, color .15s; }
+  .track .car { transition: left .5s cubic-bezier(.3,.7,.3,1); }
+  .track .done { transition: width .5s cubic-bezier(.3,.7,.3,1); }
+}
+</style>
+</head>
+<body>
+<main class="stand">
+  <h1>Лента ЛУТ: четыре направления дизайна</h1>
+  <p>Один и тот же экран с одинаковыми данными. Слева светлая тема, справа тёмная. Выберите направление — потом его можно доработать.</p>
+  <div class="tabs" role="group" aria-label="Направление">
+    <button data-dir="odometer" aria-pressed="true">1. Одометр</button>
+    <button data-dir="blank" aria-pressed="false">2. Бланк со штампом</button>
+    <button data-dir="gauge" aria-pressed="false">3. Датчик топлива</button>
+    <button data-dir="road" aria-pressed="false">4. Дорога месяца</button>
+  </div>
+  <p class="idea" id="idea"></p>
+  <div class="sim" id="sim">
+    <label for="day">Представьте, что сегодня:</label>
+    <input type="range" id="day" min="1" max="32" value="25">
+    <output id="day-out" for="day"></output>
+  </div>
+  <div class="phones" id="phones"></div>
+</main>
+
+<script>
+// Данные как в приложении: октябрь открыт, сентябрь закрыт с перерасходом, август — в норме с ⚠
+const car = { name: "Lada Vesta", plate: "А123ВС", region: "77", tank: 50 };
+const sheets = [
+  { month: "Октябрь 2026", season: "summer", closed: false, start: 53340, end: null, cons: null, status: null,
+    mileage: null, fuel: "47,50", fuelL: 47.5, refueled: "38,50", count: 1, warn: false },
+  { month: "Сентябрь 2026", season: "summer", closed: true, start: 52340, end: 53340, cons: "10,150", status: "over",
+    mileage: 1000, fuel: "9,00", fuelL: 9, refueled: "98,50", count: 2, warn: false },
+  { month: "Август 2026", season: "summer", closed: true, start: 51210, end: 52340, cons: "9,820", status: "normal",
+    mileage: 1130, fuel: "12,00", fuelL: 12, refueled: "105,00", count: 3, warn: true },
+];
+
+const ideas = {
+  odometer: "Пробег показан цифрами в ячейках, как на механическом одометре: последняя цифра — на светлой ячейке. Цвет — синий информационных дорожных знаков. Всё остальное спокойное.",
+  blank: "Карточка — заполненный бланк: значения стоят на линиях, как в графах. Закрытый месяц отмечен фиолетовым штампом, как настоящей печатью. Тёмно-синий — цвет чернил шариковой ручки.",
+  gauge: "Остаток в баке показан шкалой от 0 до объёма бака, как указатель топлива на приборной панели. Меньше 20% — шкала жёлтая. Цвет — тёмная бирюза «петроль».",
+  road: "У открытого месяца машинка едет по дороге: 1-го числа — на старте, в последний день — у финиша. За 3 дня до конца дорога желтеет и появляется подсказка закрыть месяц, после конца месяца — красная. Двигайте ползунок, чтобы увидеть, как это выглядит в разные дни.",
+};
+
+// Октябрь 2026 — открытый лист; день 32 на ползунке — «уже ноябрь, а месяц не закрыт»
+const OPEN_DAYS = 31;
+const SOON_DAYS = 3;
+let today = 25;
+const dayText = d => d > OPEN_DAYS ? "3 ноября" : `${d} октября`;
+
+const km = n => n == null ? "" : n.toLocaleString("ru-RU").replace(/ /g, " ");
+const icon = {
+  swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h13"/><path d="m17 20 4-4-4-4"/><path d="M21 16H8"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>',
+  pump: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 20.5V5.5a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v15"/><path d="M3 20.5h12"/><rect x="7" y="6.5" width="4" height="3.5" rx="1"/><path d="M13.5 9.5h1.25a1.5 1.5 0 0 1 1.5 1.5v4.25a1.5 1.5 0 0 0 3 0V8.6a1.5 1.5 0 0 0-.44-1.06L17 5.75"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="18.5" cy="12" r="2"/></svg>',
+  lock: '<svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-label="Месяц закрыт"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+};
+
+// Одна строка: сезон (☀️/❄️) перед месяцем, ⚠, справа — заправки и меню
+function head(s) {
+  const winter = s.season === "winter";
+  return `
+    <div class="head">
+      <button class="season" aria-label="${winter ? "Зима" : "Лето"}. Переключить сезон">${winter ? "❄️" : "☀️"}</button>
+      <span class="month">${s.month}</span>
+      ${s.warn ? '<button class="warn" aria-label="Есть предупреждения">⚠</button>' : ""}
+      <span class="grow"></span>
+      <button class="refuels" aria-label="Заправки (${s.count})">${icon.pump}<span>${s.count}</span></button>
+      ${s.closed ? `<button class="more" aria-label="Ещё">${icon.more}</button>` : ""}
+    </div>`;
+}
+
+// Пробег на конец: число и 🔒 сразу за ним у закрытого месяца, у открытого — кнопка
+function endValue(s, value) {
+  if (s.end == null) return closeBtn;
+  return `${value}${s.closed ? icon.lock : ""}`;
+}
+
+function consumption(s) {
+  return `
+    <div class="cons">
+      <div class="cons-lbl">Расход</div>
+      <div class="cons-val">${s.cons ?? "—"}</div>
+      ${s.cons ? '<div class="cons-unit">л/100 км</div>' : ""}
+    </div>`;
+}
+
+const closeBtn = '<button class="close-btn">Закрыть месяц</button>';
+
+function summary(s, cells) {
+  return `
+    <div class="sep"></div>
+    <div class="sum">
+      ${cells.map(([l, v]) => `<div><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join("")}
+    </div>`;
+}
+
+const sumCells = s => [
+  ["Пробег", s.mileage != null ? `${km(s.mileage)} км` : "—"],
+  [s.closed ? "Остаток в баке" : "Доступно", `${s.fuel} л`],
+  ["Заправлено", `${s.refueled} л`],
+];
+
+// 1. Одометр
+function cells(n) {
+  return `<span class="cells" aria-label="${km(n)} км">${String(n).padStart(6, "0").split("").map(d => `<span>${d}</span>`).join("")}</span>`;
+}
+function cardOdometer(s) {
+  return `
+  <article class="card ${s.closed ? "closed" : ""} ${s.status ?? ""}">
+    ${head(s)}
+    <div class="body">
+      <div class="odo">
+        <div class="odo-left">
+          <div class="row"><span class="lbl odo-lbl">Начало</span>${cells(s.start)}</div>
+          <div class="row"><span class="lbl odo-lbl">Конец</span>${endValue(s, s.end != null ? cells(s.end) : "")}</div>
+        </div>
+        ${consumption(s)}
+      </div>
+      ${summary(s, sumCells(s))}
+    </div>
+  </article>`;
+}
+
+// 2. Бланк со штампом
+function cardBlank(s) {
+  return `
+  <article class="card ${s.closed ? "closed" : ""} ${s.status ?? ""}">
+    ${s.closed ? '<div class="stamp" aria-hidden="true">ЗАКРЫТ<small>лист учёта топлива</small></div>' : ""}
+    ${head(s)}
+    <div class="body">
+      <div class="odo">
+        <div class="odo-left">
+          <div class="row"><span class="lbl">Начало месяца:</span><span class="val field">${km(s.start)}</span></div>
+          <div class="row"><span class="lbl">Конец месяца:</span>${endValue(s, `<span class="val field">${km(s.end)}</span>`)}</div>
+        </div>
+        ${consumption(s)}
+      </div>
+      ${summary(s, sumCells(s))}
+    </div>
+  </article>`;
+}
+
+// 3. Датчик топлива
+function cardGauge(s) {
+  const pct = Math.min(1, s.fuelL / car.tank);
+  const on = Math.round(pct * 10);
+  const low = pct < 0.2;
+  return `
+  <article class="card ${s.closed ? "closed" : ""} ${s.status ?? ""}">
+    ${head(s)}
+    <div class="body">
+      <div class="odo">
+        <div class="odo-left">
+          <div class="row"><span class="lbl">Начало месяца:</span><span class="val">${km(s.start)}</span></div>
+          <div class="row"><span class="lbl">Конец месяца:</span>${endValue(s, `<span class="val">${km(s.end)}</span>`)}</div>
+        </div>
+        ${consumption(s)}
+      </div>
+      <div class="gauge" aria-label="${s.closed ? "Остаток в баке" : "Доступно"} ${s.fuel} л из ${car.tank}">
+        <div class="gauge-top"><span class="lbl">${s.closed ? "Остаток в баке" : "Доступно"}</span><span class="val">${s.fuel} л</span></div>
+        <div class="segs ${low ? "low" : ""}">${Array.from({ length: 10 }, (_, i) => `<span class="${i < on ? "on" : ""}"></span>`).join("")}</div>
+        <div class="gauge-scale"><span>0</span><span>${car.tank} л</span></div>
+      </div>
+      ${summary(s, [
+        ["Пробег", s.mileage != null ? `${km(s.mileage)} км` : "—"],
+        ["Заправлено", `${s.refueled} л`],
+      ])}
+    </div>
+  </article>`;
+}
+
+// 4. Дорога месяца
+// Машинка смотрит вправо, к финишу: длинный низкий капот и фара справа, короткий багажник слева
+const carSvg = '<svg class="car" viewBox="0 0 34 18" fill="currentColor" aria-hidden="true"><path d="M2 12.6V9.6c0-1 .6-1.8 1.6-2L6 7l3.4-4.1C9.9 2.3 10.6 2 11.4 2h6.8c.8 0 1.5.3 2 .9L23.6 7l6.8 1.1c1 .2 1.6 1 1.6 2v2.5c0 .7-.6 1.3-1.3 1.3H3.3C2.6 13.9 2 13.3 2 12.6z"/><path d="M7.6 6.9l2.7-3.3H14v3.3zM15.2 3.6H18l3 3.3h-5.8z" style="fill:var(--surface)"/><rect x="29.6" y="9" width="2.2" height="1.6" rx=".6" style="fill:var(--surface)"/><circle cx="8.5" cy="14" r="3"/><circle cx="25.5" cy="14" r="3"/><circle cx="8.5" cy="14" r="1.2" style="fill:var(--surface)"/><circle cx="25.5" cy="14" r="1.2" style="fill:var(--surface)"/></svg>';
+const flagSvg = '<svg class="flag" viewBox="0 0 16 22" aria-hidden="true"><path d="M2 1v20" stroke="currentColor" stroke-width="1.8"/><path d="M2.9 2h11v8h-11z" fill="currentColor" opacity=".25"/><path d="M2.9 2h2.75v2h-2.75zM8.4 2h2.75v2H8.4zM5.65 4H8.4v2H5.65zM11.15 4h2.75v2h-2.75zM2.9 6h2.75v2h-2.75zM8.4 6h2.75v2H8.4zM5.65 8H8.4v2H5.65zM11.15 8h2.75v2h-2.75z" fill="currentColor"/></svg>';
+
+function trip() {
+  const late = today > OPEN_DAYS;
+  const day = Math.min(today, OPEN_DAYS);
+  const left = OPEN_DAYS - day;
+  const soon = !late && left < SOON_DAYS;
+  const pos = trackPos(day);
+  const text = late
+    ? "<b>Октябрь закончился</b>"
+    : `<b>${day} октября</b>, ${left === 0 ? "последний день месяца" : `до конца месяца ${left} ${plural(left, "день", "дня", "дней")}`}`;
+  const alert = late ? "Закройте октябрь, чтобы начать ноябрь" : "Пора закрыть месяц: внесите пробег и остаток";
+  return `
+    <div class="trip ${soon ? "soon" : ""} ${late ? "late" : ""}">
+      <div class="trip-text">${text}</div>
+      <div class="track" role="img" aria-label="Прошло ${day} из ${OPEN_DAYS} дней месяца">
+        <div class="lane"></div>
+        <div class="done" style="width:${pos}"></div>
+        ${flagSvg}
+        <div style="position:absolute;inset:0;">${carSvg.replace('class="car"', `class="car" style="left:${pos}"`)}</div>
+      </div>
+      <div class="trip-scale"><span>1 окт</span><span>31 окт</span></div>
+      <div class="trip-alert" role="status">${alert}</div>
+    </div>`;
+}
+
+// Середина машинки: от 17 px (старт) до «ширина − 17 px» (финиш), чтобы она не вылезала за край
+const trackPos = day => `calc(17px + (100% - 34px) * ${(day - 1) / (OPEN_DAYS - 1)})`;
+
+function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
+function cardRoad(s) {
+  return `
+  <article class="card ${s.closed ? "closed" : ""} ${s.status ?? ""}">
+    ${head(s)}
+    <div class="body">
+      <div class="odo">
+        <div class="odo-left">
+          <div class="row"><span class="lbl odo-lbl">Начало</span><span class="val">${km(s.start)}</span></div>
+          <div class="row"><span class="lbl odo-lbl">Конец</span>${endValue(s, `<span class="val">${km(s.end)}</span>`)}</div>
+        </div>
+        ${consumption(s)}
+      </div>
+      ${s.closed ? "" : trip()}
+      ${summary(s, sumCells(s))}
+    </div>
+  </article>`;
+}
+
+const renderers = { odometer: cardOdometer, blank: cardBlank, gauge: cardGauge, road: cardRoad };
+let current = "odometer";
+
+// ?solo&palette=violet&theme=dark — один телефон в нужной палитре (для palettes.html)
+const params = new URLSearchParams(location.search);
+const solo = params.has("solo");
+const soloDark = params.get("theme") === "dark";
+const palette = params.get("palette");
+
+function phone(dir, dark) {
+  return `
+  <div class="phone-wrap">
+    <div class="phone">
+      <div class="screen d-${dir} ${dark ? "dark" : ""} ${palette ? `pal-${palette}` : ""}">
+        <div class="statusbar"><span>12:30</span><span>●●● ▮</span></div>
+        <header class="appbar">
+          <div class="title">
+            <div class="car-name">${car.name}</div>
+            <span class="plate"><b>${car.plate}</b><i>${car.region}<small>RUS</small></i></span>
+          </div>
+          <button class="icon-btn" aria-label="Сменить авто">${icon.swap}</button>
+          <button class="icon-btn" aria-label="Профиль">${icon.user}</button>
+        </header>
+        <div class="feed">${sheets.map(renderers[dir]).join("")}</div>
+        <button class="fab">${icon.plus}Новый лист</button>
+      </div>
+    </div>
+    <span>${dark ? "Тёмная тема" : "Светлая тема"}</span>
+  </div>`;
+}
+
+function show(dir) {
+  current = dir;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.dir === dir)));
+  document.getElementById("idea").textContent = ideas[dir];
+  document.getElementById("sim").classList.toggle("on", dir === "road");
+  document.getElementById("day-out").textContent = dayText(today);
+  document.getElementById("phones").innerHTML = solo ? phone(dir, soloDark) : phone(dir, false) + phone(dir, true);
+  fitHeads();
+  try { localStorage.setItem("fuel-proto-dir", dir); } catch (e) {}
+}
+
+
+// Автоподбор: один размер шрифта месяца для всех карточек — по самой длинной строке, не меньше 13 px
+function fitHeads() {
+  document.querySelectorAll(".feed").forEach(feed => {
+    const heads = [...feed.querySelectorAll(".head")];
+    const overflows = () => heads.some(h => h.scrollWidth > h.clientWidth);
+    let size = 19;
+    const apply = () => heads.forEach(h => { h.querySelector(".month").style.fontSize = `${size}px`; });
+    apply();
+    while (overflows() && size > 13) {
+      size -= 0.5;
+      apply();
+    }
+  });
+}
+window.addEventListener("resize", fitHeads);
+document.fonts?.ready.then(fitHeads);
+// Ползунок двигает машинку плавно: меняем только дорогу, карточки не перерисовываем
+document.getElementById("day").addEventListener("input", e => {
+  today = Number(e.target.value);
+  document.getElementById("day-out").textContent = dayText(today);
+  document.querySelectorAll(".trip").forEach(el => {
+    const fresh = document.createElement("div");
+    fresh.innerHTML = trip();
+    const next = fresh.firstElementChild;
+    const day = Math.min(today, OPEN_DAYS);
+    const pos = trackPos(day);
+    el.className = next.className;
+    el.querySelector(".trip-text").innerHTML = next.querySelector(".trip-text").innerHTML;
+    el.querySelector(".trip-alert").textContent = next.querySelector(".trip-alert").textContent;
+    el.querySelector(".track").setAttribute("aria-label", next.querySelector(".track").getAttribute("aria-label"));
+    el.querySelector(".done").style.width = pos;
+    el.querySelector(".car").style.left = pos;
+  });
+});
+
+
+// Нажатие на ☀️/❄️ у открытого месяца переключает сезон — как в приложении
+document.getElementById("phones").addEventListener("click", e => {
+  const btn = e.target.closest(".season");
+  if (!btn || btn.closest(".closed")) return;
+  const toWinter = btn.textContent.includes("☀");
+  btn.textContent = toWinter ? "❄️" : "☀️";
+  btn.setAttribute("aria-label", `${toWinter ? "Зима" : "Лето"}. Переключить сезон`);
+});
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => show(b.dataset.dir)));
+if (solo) document.body.classList.add("solo");
+show("road");
+</script>
+</body>
+</html>

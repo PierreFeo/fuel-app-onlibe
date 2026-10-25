@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Палитры приложения</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --stand-bg: #E4E7EB; --stand-ink: #1C232D; --stand-muted: #5A6472; --stand-tab: #FFFFFF; --stand-on: #1C232D; --stand-on-ink: #FFFFFF; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --stand-bg: #1A1F26; --stand-ink: #E8ECF1; --stand-muted: #9AA4B2; --stand-tab: #262D37; --stand-on: #E8ECF1; --stand-on-ink: #1A1F26; }
+}
+:root[data-theme="dark"] { --stand-bg: #1A1F26; --stand-ink: #E8ECF1; --stand-muted: #9AA4B2; --stand-tab: #262D37; --stand-on: #E8ECF1; --stand-on-ink: #1A1F26; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--stand-bg); color: var(--stand-ink); font: 15px/1.5 "Onest", system-ui, sans-serif; }
+.stand { max-width: 2100px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+.stand > p { margin: 0 0 16px; color: var(--stand-muted); max-width: 72ch; }
+.tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.tabs button { font: 500 15px "Onest", sans-serif; border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer; background: var(--stand-tab); color: var(--stand-ink); }
+.tabs button[aria-pressed="true"] { background: var(--stand-on); color: var(--stand-on-ink); }
+.tabs button:focus-visible { outline: 3px solid #3B82F6; outline-offset: 2px; }
+.grid { display: flex; flex-wrap: wrap; gap: 32px 20px; justify-content: center; }
+figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 392px; max-width: 100%; }
+iframe { width: 392px; max-width: 100%; height: 760px; border: 0; background: transparent; }
+figcaption { text-align: center; max-width: 320px; }
+figcaption b { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; }
+figcaption i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+figcaption span { font-size: 13px; color: var(--stand-muted); }
+</style>
+</head>
+<body>
+<main class="stand">
+  <h1>Палитры для варианта «Дорога месяца»</h1>
+  <p>Один и тот же главный экран, меняется только основной цвет. Зелёный (расход в норме), красный (перерасход) и жёлтый (пора закрыть месяц) остаются во всех палитрах — они несут смысл.</p>
+  <div class="tabs" role="group" aria-label="Тема">
+    <button data-theme="light" aria-pressed="true">Светлая тема</button>
+    <button data-theme="dark" aria-pressed="false">Тёмная тема</button>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+<script>
+const palettes = [
+  { id: "", name: "Петроль (сейчас)", color: "#0D6170", note: "Тёмная бирюза — для сравнения" },
+  { id: "violet", name: "Фиолетовый", color: "#5B47D6", note: "Насыщенный индиго-фиолетовый, как в современных Android-приложениях" },
+  { id: "graphite", name: "Графит", color: "#1F252D", note: "Почти монохром: акцентов нет, ярко только расход — зелёный или красный" },
+  { id: "berry", name: "Ягодный", color: "#A8204F", note: "Глубокий малиновый. Тёплый и заметный, но близок к красному «перерасходу»" },
+  { id: "orange", name: "Оранжевый", color: "#C2410C", note: "Сигнальный оранжевый, как разметка и АЗС. «Пора закрыть» здесь не жёлтое, а оливковое" },
+];
+
+function render(theme) {
+  document.getElementById("grid").innerHTML = palettes.map(p => `
+    <figure>
+      <iframe title="${p.name}" src="index.html?solo&theme=${theme}${p.id ? `&palette=${p.id}` : ""}"></iframe>
+      <figcaption><b><i style="background:${p.color}"></i>${p.name}</b><span>${p.note}</span></figcaption>
+    </figure>`).join("");
+}
+
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  render(b.dataset.theme);
+}));
+// ?theme=dark — сразу тёмная тема
+const start = new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light";
+document.querySelectorAll(".tabs button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.theme === start)));
+render(start);
+</script>
+</body>
+</html>
