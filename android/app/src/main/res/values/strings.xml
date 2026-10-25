@@ -220,6 +220,9 @@
     <string name="refueling_price">Цена за литр, ₽ *</string>
     <string name="refueling_total_label">Сумма</string>
     <string name="refueling_delete">Удалить заправку</string>
+    <string name="refueling_edit">Изменить заправку</string>
+    <string name="refuelings_closed_hint">Месяц закрыт — заправки не меняются. Чтобы исправить или удалить заправку, переоткройте месяц.</string>
+    <string name="refuelings_reopen">Переоткрыть месяц</string>
     <string name="refueling_delete_title">Удалить заправку?</string>
     <string name="refueling_delete_text">Заправка %1$s на %2$s л будет удалена.</string>
     <string name="error_date_outside_month">Дата должна быть в месяце листа</string>

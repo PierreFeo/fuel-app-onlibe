@@ -112,6 +112,7 @@ fun SheetsFeedContent(
                 onAdd = { onEvent(SheetsFeedEvent.OpenRefueling(sheet)) },
                 onRefuelingClick = { onEvent(SheetsFeedEvent.OpenRefueling(sheet, it)) },
                 onDeleteClick = { onEvent(SheetsFeedEvent.RequestDeleteRefueling(it)) },
+                onReopen = { onEvent(SheetsFeedEvent.Reopen(sheet)) },
             ),
             onDismiss = { onEvent(SheetsFeedEvent.DismissRefuelings) },
         )
@@ -295,6 +296,8 @@ object SheetsFeedTestTags {
     fun addRefueling(sheetId: String) = "sheet_add_refueling_$sheetId"
     fun refueling(refuelingId: String) = "refueling_row_$refuelingId"
     fun deleteRefueling(refuelingId: String) = "refueling_delete_$refuelingId"
+    fun editRefueling(refuelingId: String) = "refueling_edit_$refuelingId"
+    fun reopenFromRefuelings(sheetId: String) = "refuelings_reopen_$sheetId"
 }
 
 private val previewCar =

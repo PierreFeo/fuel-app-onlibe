@@ -14,10 +14,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.sp
 import ru.fueltracker.app.ui.theme.ButtonShape
 import ru.fueltracker.app.ui.theme.NumberStyle
@@ -47,11 +49,13 @@ class RefuelingsListActions(
     val onAdd: () -> Unit = {},
     val onRefuelingClick: (Refueling) -> Unit = {},
     val onDeleteClick: (Refueling) -> Unit = {},
+    /** Закрытый лист: «Переоткрыть месяц» прямо из списка. */
+    val onReopen: () -> Unit = {},
 )
 
 /**
- * Шторка «Заправки · месяц»: список заправок листа, итог из `calc`, «+ Заправка» и 🗑 в строках.
- * У закрытого листа строки не нажимаются, кнопок «+ Заправка» и 🗑 нет.
+ * Шторка «Заправки · месяц»: список заправок листа, итог из `calc`, «+ Заправка», ✏️ и 🗑 в строках.
+ * У закрытого листа строки не нажимаются, кнопок нет — вместо них подсказка и «Переоткрыть месяц».
  * [error] — ошибка удаления (Snackbar ленты под шторкой не виден).
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -137,7 +141,9 @@ fun RefuelingsListContent(
                 modifier = Modifier.testTag(SheetsFeedTestTags.REFUELINGS_ERROR),
             )
         }
-        if (!sheet.isClosed) {
+        if (sheet.isClosed) {
+            ClosedHint(isBusy = isBusy, onReopen = actions.onReopen, modifier = Modifier.testTag(SheetsFeedTestTags.reopenFromRefuelings(sheet.id)))
+        } else {
             FilledTonalButton(
                 onClick = actions.onAdd,
                 enabled = !isBusy,
@@ -158,7 +164,7 @@ fun RefuelingsListContent(
     }
 }
 
-/** Строка заправки: нажатие — форма заправки, 🗑 — удаление (только у открытого листа). */
+/** Строка заправки: нажатие или ✏️ — форма заправки, 🗑 — удаление (только у открытого листа). */
 @Composable
 private fun RefuelingRow(
     refueling: Refueling,
@@ -167,7 +173,7 @@ private fun RefuelingRow(
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    // «05.07 | 50,00 л / по 55,00 ₽, Лукойл | 2 750,00 ₽ | 🗑» (07_UI_SCREENS.md, RefuelingsListSheet)
+    // «05.07 | 50,00 л / по 55,00 ₽, Лукойл | 2 750,00 ₽ | ✏️ 🗑» (07_UI_SCREENS.md, RefuelingsListSheet)
     Row(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -196,17 +202,39 @@ private fun RefuelingRow(
             textAlign = TextAlign.End,
         )
         if (showDelete) {
-            IconButton(
-                onClick = onDelete,
-                enabled = enabled,
-                modifier = Modifier.testTag(SheetsFeedTestTags.deleteRefueling(refueling.id)),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_delete),
-                    contentDescription = stringResource(R.string.refueling_delete),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            // Нажатие на строку тоже открывает форму, но без значка об этом не догадаться
+            Row {
+                RowIcon(R.drawable.ic_edit, R.string.refueling_edit, enabled, onClick, SheetsFeedTestTags.editRefueling(refueling.id))
+                RowIcon(R.drawable.ic_delete, R.string.refueling_delete, enabled, onDelete, SheetsFeedTestTags.deleteRefueling(refueling.id))
             }
+        }
+    }
+}
+
+@Composable
+private fun RowIcon(icon: Int, description: Int, enabled: Boolean, onClick: () -> Unit, tag: String) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(40.dp).testTag(tag)) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = stringResource(description),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp),
+        )
+    }
+}
+
+/** Закрытый лист: почему нельзя менять заправки и как это исправить. */
+@Composable
+private fun ClosedHint(isBusy: Boolean, onReopen: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = stringResource(R.string.refuelings_closed_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedButton(onClick = onReopen, enabled = !isBusy, shape = ButtonShape, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+            Icon(painterResource(R.drawable.ic_lock), contentDescription = null, modifier = Modifier.size(18.dp))
+            Text(stringResource(R.string.refuelings_reopen), modifier = Modifier.padding(start = 8.dp))
         }
     }
 }
