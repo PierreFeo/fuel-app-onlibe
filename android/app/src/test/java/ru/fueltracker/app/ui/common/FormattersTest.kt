@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.math.BigDecimal
+import java.time.LocalDate
 
 class FormattersTest {
 
@@ -101,5 +102,15 @@ class FormattersTest {
         listOf("", " ", ",", "abc", "1,2,3", "1.2.3", "-5", "1e5", "12a").forEach { input ->
             assertNull("ввод «$input»", Formatters.parseDecimalInput(input))
         }
+    }
+
+    @Test
+    fun `даты для дороги месяца`() {
+        assertEquals("25 октября", Formatters.dayMonthLong(LocalDate.of(2026, 10, 25)))
+        assertEquals("1 марта", Formatters.dayMonthLong(LocalDate.of(2026, 3, 1)))
+        assertEquals("1 окт", Formatters.dayMonthShort(1, 10))
+        assertEquals("31 окт", Formatters.dayMonthShort(31, 10))
+        assertEquals("октябрь", Formatters.monthName(10))
+        assertEquals("май", Formatters.monthName(5))
     }
 }

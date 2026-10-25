@@ -1,6 +1,9 @@
 package ru.fueltracker.app.ui.sheets
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -103,7 +106,14 @@ private fun MonthSelector(form: NewSheetForm, enabled: Boolean, onEvent: (Sheets
     val next = stringResource(R.string.new_sheet_next_month)
     Column {
         Text(stringResource(R.string.new_sheet_month), style = MaterialTheme.typography.labelMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // Месяц в рамке, как поле ввода, стрелки по краям (прототип design/prototype)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .height(54.dp)
+                .border(1.5.dp, MaterialTheme.colorScheme.outline, MaterialTheme.shapes.extraSmall),
+        ) {
             TextButton(
                 onClick = { onEvent(SheetsFeedEvent.NewSheetMonthShift(-1)) },
                 enabled = enabled,
@@ -142,6 +152,10 @@ private fun SeasonSelector(
                     onClick = { onSelect(value) },
                     enabled = enabled && (value != Season.WINTER || hasWinterNorm),
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
                     label = { Text(stringResource(label)) },
                 )
             }

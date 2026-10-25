@@ -57,6 +57,7 @@ fun SetupContent(
 
     AuthLayout(
         title = stringResource(if (state.isGuest) R.string.name_title else R.string.setup_title),
+        step = if (state.isGuest) null else AuthStep.SETUP,
         snackbarHostState = snackbarHostState,
         modifier = modifier,
     ) {

@@ -10,12 +10,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.sp
+import ru.fueltracker.app.ui.theme.ButtonShape
+import ru.fueltracker.app.ui.theme.NumberStyle
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -106,15 +111,23 @@ fun RefuelingsListContent(
                     onDelete = { actions.onDeleteClick(refueling) },
                 )
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-            Text(
-                text = stringResource(
-                    R.string.refuelings_total,
-                    Formatters.amount(sheet.calc.refueledL),
-                    Formatters.amount(sheet.calc.refueledCost),
-                ),
-                style = MaterialTheme.typography.bodyLarge,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+            ) {
+                Text(stringResource(R.string.refuelings_total_label), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Text(
+                    text = stringResource(
+                        R.string.refuelings_total_value,
+                        Formatters.amount(sheet.calc.refueledL),
+                        Formatters.amount(sheet.calc.refueledCost),
+                    ),
+                    style = NumberStyle,
+                    fontSize = 17.sp,
+                )
+            }
         }
         error?.let {
             Text(
@@ -125,15 +138,21 @@ fun RefuelingsListContent(
             )
         }
         if (!sheet.isClosed) {
-            OutlinedButton(
+            FilledTonalButton(
                 onClick = actions.onAdd,
                 enabled = !isBusy,
+                shape = ButtonShape,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
                 modifier = Modifier
-                    .align(Alignment.End)
-                    .padding(top = 8.dp)
+                    .fillMaxWidth()
+                    .padding(top = 12.dp)
+                    .height(52.dp)
                     .testTag(SheetsFeedTestTags.addRefueling(sheet.id)),
             ) {
-                Text(stringResource(R.string.sheet_add_refueling))
+                Text(stringResource(R.string.sheet_add_refueling), style = MaterialTheme.typography.titleMedium)
             }
         }
     }
@@ -148,32 +167,32 @@ private fun RefuelingRow(
     onClick: () -> Unit,
     onDelete: () -> Unit,
 ) {
+    // «05.07 | 50,00 л / по 55,00 ₽, Лукойл | 2 750,00 ₽ | 🗑» (07_UI_SCREENS.md, RefuelingsListSheet)
     Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .then(if (showDelete) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
-            // С кнопкой 🗑 строка уже высокая (48 dp), без неё — добавляем отступы
-            .padding(vertical = if (showDelete) 0.dp else 10.dp)
+            .padding(vertical = if (showDelete) 4.dp else 10.dp)
             .testTag(SheetsFeedTestTags.refueling(refueling.id)),
     ) {
-        Text(Formatters.dayMonth(refueling.date), style = MaterialTheme.typography.bodyMedium)
+        Text(Formatters.dayMonth(refueling.date), style = NumberStyle, fontSize = 15.sp, modifier = Modifier.width(46.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(stringResource(R.string.sheet_value_l, Formatters.amount(refueling.liters)), style = NumberStyle, fontSize = 15.sp)
+            val price = Formatters.amount(refueling.pricePerLiter)
+            Text(
+                text = refueling.station?.takeIf { it.isNotBlank() }
+                    ?.let { stringResource(R.string.refueling_price_station, price, it) }
+                    ?: stringResource(R.string.refueling_price_only, price),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
         Text(
-            text = refueling.station.orEmpty(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = stringResource(
-                R.string.sheet_refueling_line,
-                Formatters.amount(refueling.liters),
-                Formatters.amount(refueling.pricePerLiter),
-                Formatters.amount(refueling.totalCost),
-            ),
-            style = MaterialTheme.typography.bodyMedium,
+            text = stringResource(R.string.refueling_sum, Formatters.amount(refueling.totalCost)),
+            style = NumberStyle,
+            fontSize = 15.sp,
             textAlign = TextAlign.End,
         )
         if (showDelete) {

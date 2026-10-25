@@ -51,7 +51,14 @@ import ru.fueltracker.app.R
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.asString
+import ru.fueltracker.app.ui.theme.ButtonShape
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
+import ru.fueltracker.app.ui.theme.NumberStyle
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.sp
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -158,18 +165,33 @@ fun RefuelingFormContent(
         )
         // Сумма — только показ: литры × цена, вручную не меняется
         val total = previewTotal(form.liters, form.pricePerLiter)
-        Text(
-            text = total?.let { stringResource(R.string.refueling_total_line, Formatters.amount(it)) }
-                ?: stringResource(R.string.refueling_total_empty),
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.testTag(RefuelingTestTags.TOTAL),
-        )
+        Surface(
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            shape = MaterialTheme.shapes.extraSmall,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(RefuelingTestTags.TOTAL),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            ) {
+                Text(stringResource(R.string.refueling_total_label), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(
+                    text = total?.let { stringResource(R.string.refueling_sum, Formatters.amount(it)) }
+                        ?: stringResource(R.string.sheet_no_value),
+                    style = NumberStyle,
+                    fontSize = 22.sp,
+                )
+            }
+        }
         state.error?.let {
             Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
         }
         Button(
             onClick = { onEvent(RefuelingEditEvent.Save) },
             enabled = enabled,
+            shape = ButtonShape,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
@@ -220,6 +242,7 @@ private fun DateField(
             readOnly = true,
             enabled = enabled,
             label = { Text(stringResource(R.string.refueling_date)) },
+            trailingIcon = { Icon(painterResource(R.drawable.ic_calendar), contentDescription = null) },
             isError = error != null,
             supportingText = error?.let { { Text(it.asString()) } },
             singleLine = true,

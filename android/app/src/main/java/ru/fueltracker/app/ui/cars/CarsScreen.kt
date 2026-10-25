@@ -49,6 +49,9 @@ import ru.fueltracker.app.domain.model.FuelType
 import ru.fueltracker.app.ui.common.EmptyView
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.LoadingView
+import ru.fueltracker.app.ui.common.MoreButton
+import ru.fueltracker.app.ui.common.Pill
+import ru.fueltracker.app.ui.common.PlateBadge
 import ru.fueltracker.app.ui.common.SnackbarEffect
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 import java.math.BigDecimal
@@ -115,7 +118,7 @@ fun CarsContent(
                     // Без авто нет ленты, а значит и её шапки — иначе из приложения было бы не выйти
                     if (onOpenProfile != null) {
                         IconButton(onClick = onOpenProfile) {
-                            Icon(painterResource(R.drawable.ic_person), contentDescription = stringResource(R.string.profile_open))
+                            Icon(painterResource(R.drawable.ic_person_outline), contentDescription = stringResource(R.string.profile_open))
                         }
                     }
                 },
@@ -125,6 +128,8 @@ fun CarsContent(
             if (hasContent) {
                 ExtendedFloatingActionButton(
                     onClick = onAddCar,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = { Icon(painterResource(R.drawable.ic_add), contentDescription = null) },
                     text = { Text(stringResource(R.string.cars_add)) },
                     modifier = Modifier.testTag(CarsTestTags.ADD),
@@ -213,65 +218,74 @@ private fun CarCard(
             .fillMaxWidth()
             .testTag(CarsTestTags.card(car.id)),
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .combinedClickable(onClick = onClick, onLongClick = { menuOpen = true })
-                .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(text = car.name, style = MaterialTheme.typography.titleMedium)
-                val fuel = stringResource(car.fuelType.labelRes)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = car.name, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                if (isSelected) {
+                    Pill(
+                        text = stringResource(R.string.cars_selected),
+                        iconRes = R.drawable.ic_check_circle,
+                        color = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+                CarMenu(menuOpen, onOpen = { menuOpen = true }, onClose = { menuOpen = false }, onEdit = onEdit, onArchive = onArchive)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                car.plateNumber?.let { PlateBadge(it) }
+                Pill(text = stringResource(car.fuelType.labelRes))
                 Text(
-                    text = listOfNotNull(car.plateNumber, fuel).joinToString(" · "),
+                    text = stringResource(R.string.cars_tank, Formatters.decimal(car.tankCapacityL, scale = 0)),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    text = stringResource(R.string.cars_norm_line, normsText(car)),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
             }
-            if (isSelected) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_check_circle),
-                    contentDescription = stringResource(R.string.cars_selected),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(painterResource(R.drawable.ic_more_vert), contentDescription = stringResource(R.string.action_more))
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.cars_edit)) },
-                        onClick = {
-                            menuOpen = false
-                            onEdit()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.cars_archive)) },
-                        onClick = {
-                            menuOpen = false
-                            onArchive()
-                        },
-                    )
-                }
-            }
+            Text(
+                text = stringResource(R.string.cars_norm_line, normsText(car)),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
 
-/** «☀️ 10,068 · ❄️ 11,684» или только летняя. */
+/** «•••» с пунктами «Изменить» и «В архив»; долгое нажатие на карточку открывает то же меню. */
+@Composable
+private fun CarMenu(open: Boolean, onOpen: () -> Unit, onClose: () -> Unit, onEdit: () -> Unit, onArchive: () -> Unit) {
+    Box {
+        MoreButton(onClick = onOpen, contentDescription = stringResource(R.string.action_more))
+        DropdownMenu(expanded = open, onDismissRequest = onClose) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.cars_edit)) },
+                onClick = {
+                    onClose()
+                    onEdit()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.cars_archive)) },
+                onClick = {
+                    onClose()
+                    onArchive()
+                },
+            )
+        }
+    }
+}
+
+/** «☀️ 10,068   ❄️ 11,684» или только летняя. */
 @Composable
 private fun normsText(car: Car): String {
     val summer = stringResource(R.string.cars_norm_summer, Formatters.consumption(car.normSummer.toPlainString()))
     val winter = car.normWinter?.let {
         stringResource(R.string.cars_norm_winter, Formatters.consumption(it.toPlainString()))
     }
-    return listOfNotNull(summer, winter).joinToString(" · ")
+    return listOfNotNull(summer, winter).joinToString("   ")
 }
 
 object CarsTestTags {

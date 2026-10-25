@@ -30,7 +30,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.PreviewLightDark
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.background
+import ru.fueltracker.app.ui.theme.NumberStyle
+import ru.fueltracker.app.ui.theme.fuelColors
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.fueltracker.app.R
@@ -78,6 +83,7 @@ fun CodeContent(
     AuthLayout(
         title = stringResource(R.string.code_title),
         subtitle = stringResource(R.string.code_subtitle, PhoneFormat.display(state.phone)),
+        step = AuthStep.CODE,
         snackbarHostState = snackbarHostState,
         modifier = modifier,
     ) {
@@ -150,27 +156,33 @@ private fun CodeCells(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             ) {
+                // Введённые цифры — в закрашенных ячейках, как цифры одометра (прототип design/prototype)
                 repeat(CodeViewModel.CODE_LENGTH) { index ->
                     val isCurrent = enabled && index == code.length
+                    val isFilled = index < code.length
+                    val shape = RoundedCornerShape(12.dp)
                     val borderColor = when {
                         isError -> MaterialTheme.colorScheme.error
-                        isCurrent -> MaterialTheme.colorScheme.primary
+                        isCurrent || isFilled -> MaterialTheme.colorScheme.primary
                         else -> MaterialTheme.colorScheme.outline
                     }
                     Box(
                         modifier = Modifier
                             .width(44.dp)
                             .height(56.dp)
-                            .border(
-                                width = if (isCurrent) 2.dp else 1.dp,
-                                color = borderColor,
-                                shape = RoundedCornerShape(8.dp),
-                            ),
+                            .background(
+                                color = if (isFilled && !isError) MaterialTheme.colorScheme.primary else MaterialTheme.fuelColors.card,
+                                shape = shape,
+                            )
+                            .border(width = if (isCurrent) 2.dp else 1.5.dp, color = borderColor, shape = shape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = code.getOrNull(index)?.toString().orEmpty(),
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = NumberStyle,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (isFilled && !isError) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }

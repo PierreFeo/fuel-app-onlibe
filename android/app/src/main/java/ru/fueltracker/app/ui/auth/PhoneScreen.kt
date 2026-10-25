@@ -30,6 +30,7 @@ import ru.fueltracker.app.ui.common.PhoneVisualTransformation
 import ru.fueltracker.app.ui.common.SnackbarEffect
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.asString
+import ru.fueltracker.app.ui.theme.ButtonShape
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 
 @Composable
@@ -69,6 +70,7 @@ fun PhoneContent(
     AuthLayout(
         title = stringResource(R.string.phone_title),
         subtitle = stringResource(R.string.phone_subtitle),
+        step = AuthStep.PHONE,
         snackbarHostState = snackbarHostState,
         modifier = modifier,
     ) {
@@ -98,8 +100,10 @@ fun PhoneContent(
             OutlinedButton(
                 onClick = onContinueAsGuest,
                 enabled = !state.isLoading,
+                shape = ButtonShape,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(52.dp)
                     .testTag(PhoneTestTags.GUEST),
             ) {
                 Text(stringResource(R.string.phone_continue_as_guest))

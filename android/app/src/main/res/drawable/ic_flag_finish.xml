@@ -1,0 +1,18 @@
+<!-- Клетчатый флажок финиша дороги месяца -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp"
+    android:height="22dp"
+    android:viewportWidth="16"
+    android:viewportHeight="22">
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="1.8"
+        android:pathData="M2,1v20" />
+    <path
+        android:fillColor="@android:color/white"
+        android:fillAlpha="0.25"
+        android:pathData="M2.9,2h11v8h-11z" />
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M2.9,2h2.75v2h-2.75zM8.4,2h2.75v2H8.4zM5.65,4H8.4v2H5.65zM11.15,4h2.75v2h-2.75zM2.9,6h2.75v2h-2.75zM8.4,6h2.75v2H8.4zM5.65,8H8.4v2H5.65zM11.15,8h2.75v2h-2.75z" />
+</vector>

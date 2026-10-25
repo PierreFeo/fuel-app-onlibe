@@ -1,0 +1,13 @@
+<!-- Сменить авто — две стрелки -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M7,4L3,8l4,4M3,8h13M17,20l4,-4 -4,-4M21,16H8" />
+</vector>

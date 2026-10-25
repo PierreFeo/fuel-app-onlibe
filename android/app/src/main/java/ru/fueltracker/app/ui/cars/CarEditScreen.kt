@@ -1,6 +1,7 @@
 package ru.fueltracker.app.ui.cars
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +53,7 @@ import ru.fueltracker.app.ui.common.LoadingView
 import ru.fueltracker.app.ui.common.SnackbarEffect
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.asString
+import ru.fueltracker.app.ui.theme.ButtonShape
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 
 @Composable
@@ -165,7 +167,10 @@ private fun CarFormFields(
             style = MaterialTheme.typography.titleSmall,
             modifier = Modifier.padding(top = 8.dp),
         )
+        // Лето и зима рядом — как в прототипе: видно, что это две нормы одного авто
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         FormField(
+            modifier = Modifier.weight(1f),
             value = form.normSummer,
             onValueChange = { onEvent(CarEditEvent.NormSummerChanged(it)) },
             label = stringResource(R.string.car_norm_summer_label),
@@ -176,6 +181,7 @@ private fun CarFormFields(
             testTag = CarEditTestTags.NORM_SUMMER,
         )
         FormField(
+            modifier = Modifier.weight(1f),
             value = form.normWinter,
             onValueChange = { onEvent(CarEditEvent.NormWinterChanged(it)) },
             label = stringResource(R.string.car_norm_winter_label),
@@ -186,6 +192,7 @@ private fun CarFormFields(
             keyboardOptions = decimalKeyboard.copy(imeAction = ImeAction.Done),
             testTag = CarEditTestTags.NORM_WINTER,
         )
+        }
         Text(
             text = stringResource(R.string.car_norms_caption),
             style = MaterialTheme.typography.bodySmall,
@@ -194,6 +201,7 @@ private fun CarFormFields(
         Button(
             onClick = { onEvent(CarEditEvent.Save) },
             enabled = enabled,
+            shape = ButtonShape,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp)
@@ -222,6 +230,7 @@ private fun FormField(
     testTag: String,
     placeholder: String? = null,
     hint: String? = null,
+    modifier: Modifier = Modifier,
 ) {
     val supporting = error?.asString() ?: hint
     OutlinedTextField(
@@ -234,7 +243,7 @@ private fun FormField(
         isError = error != null,
         supportingText = supporting?.let { { Text(it) } },
         keyboardOptions = keyboardOptions,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .testTag(testTag),
     )

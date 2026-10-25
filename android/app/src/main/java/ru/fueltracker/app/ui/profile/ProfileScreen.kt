@@ -19,7 +19,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Card
+import androidx.compose.foundation.layout.ColumnScope
+import ru.fueltracker.app.ui.theme.ButtonShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -145,35 +147,37 @@ private fun ProfileDetails(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        OutlinedTextField(
-            value = state.name,
-            onValueChange = { onEvent(ProfileEvent.NameChanged(it)) },
-            label = { Text(stringResource(R.string.profile_name)) },
-            singleLine = true,
-            enabled = !state.isLoggingOut,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { onEvent(ProfileEvent.SaveName) }),
-            trailingIcon = {
-                if (state.canSaveName) {
-                    TextButton(onClick = { onEvent(ProfileEvent.SaveName) }, modifier = Modifier.testTag(ProfileTestTags.SAVE_NAME)) {
-                        Text(stringResource(R.string.action_save))
+        // Имя и телефон — в одной карточке, дальше синхронизация и пароль отдельными блоками
+        ProfileSection {
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = { onEvent(ProfileEvent.NameChanged(it)) },
+                label = { Text(stringResource(R.string.profile_name)) },
+                singleLine = true,
+                enabled = !state.isLoggingOut,
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { onEvent(ProfileEvent.SaveName) }),
+                trailingIcon = {
+                    if (state.canSaveName) {
+                        TextButton(onClick = { onEvent(ProfileEvent.SaveName) }, modifier = Modifier.testTag(ProfileTestTags.SAVE_NAME)) {
+                            Text(stringResource(R.string.action_save))
+                        }
                     }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag(ProfileTestTags.NAME),
-        )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(ProfileTestTags.NAME),
+            )
+            if (!state.isGuest) {
+                state.phone?.let { InfoRow(label = stringResource(R.string.profile_phone), value = PhoneFormat.display(it)) }
+            }
+        }
         if (state.isGuest) {
             GuestBlock(onSignIn)
         } else {
-            state.phone?.let { InfoRow(label = stringResource(R.string.profile_phone), value = PhoneFormat.display(it)) }
-            HorizontalDivider()
-            SyncBlock(state, onEvent, onSignIn)
-            HorizontalDivider()
-            PasswordBlock(state, onEvent)
+            ProfileSection { SyncBlock(state, onEvent, onSignIn) }
+            ProfileSection { PasswordBlock(state, onEvent) }
         }
-        HorizontalDivider()
         InfoRow(label = stringResource(R.string.profile_version), value = appVersion)
         if (!state.isGuest) {
             Spacer(Modifier.height(16.dp))
@@ -208,6 +212,7 @@ private fun SyncBlock(state: ProfileUiState, onEvent: (ProfileEvent) -> Unit, on
             color = MaterialTheme.colorScheme.error,
         )
         Button(
+            shape = ButtonShape,
             onClick = onSignIn,
             modifier = Modifier
                 .fillMaxWidth()
@@ -215,6 +220,7 @@ private fun SyncBlock(state: ProfileUiState, onEvent: (ProfileEvent) -> Unit, on
         ) { Text(stringResource(R.string.sync_sign_in_again)) }
     } else {
         Button(
+            shape = ButtonShape,
             onClick = { onEvent(ProfileEvent.Sync) },
             enabled = state.canSync,
             modifier = Modifier
@@ -267,6 +273,7 @@ private fun GuestBlock(onSignIn: () -> Unit) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Button(
+        shape = ButtonShape,
         onClick = onSignIn,
         modifier = Modifier
             .fillMaxWidth()
@@ -279,6 +286,7 @@ private fun GuestBlock(onSignIn: () -> Unit) {
 @Composable
 private fun LogoutButton(state: ProfileUiState, onEvent: (ProfileEvent) -> Unit) {
     OutlinedButton(
+        shape = ButtonShape,
         onClick = { onEvent(ProfileEvent.RequestLogout) },
         enabled = !state.isLoggingOut,
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -375,5 +383,13 @@ private fun ProfileContentSessionExpiredPreview() {
             onSignIn = {},
             appVersion = "1.0",
         )
+    }
+}
+
+/** Блок профиля — белая карточка на сером фоне, как в прототипе. */
+@Composable
+private fun ProfileSection(content: @Composable ColumnScope.() -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }

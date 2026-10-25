@@ -51,6 +51,10 @@
     <string name="name_title">Как вас зовут</string>
     <string name="name_label">Имя и фамилия</string>
     <string name="name_continue">Продолжить</string>
+    <string name="auth_step_phone">Номер</string>
+    <string name="auth_step_code">Код</string>
+    <string name="auth_step_setup">Настройка</string>
+    <string name="auth_step_description">Шаг %1$d из %2$d: %3$s</string>
     <string name="setup_title">Завершите настройку</string>
     <string name="setup_password_block">Пароль для входа без SMS</string>
     <string name="setup_password_hint">Пригодится, если SMS не придёт или вы смените телефон</string>
@@ -77,6 +81,7 @@
     <string name="cars_norm_summer">☀️ %1$s</string>
     <string name="cars_norm_winter">❄️ %1$s</string>
     <string name="cars_norm_line">Норма: %1$s л/100 км</string>
+    <string name="cars_tank">бак %1$s л</string>
     <string name="cars_edit">Изменить</string>
     <string name="cars_archive">В архив</string>
     <string name="cars_archive_title">Отправить в архив?</string>
@@ -105,12 +110,34 @@
 
     <!-- Лента ЛУТ -->
     <string name="feed_change_car">Сменить авто</string>
-    <string name="feed_empty">Листов пока нет. Создайте первый — укажите пробег и остаток топлива</string>
+    <string name="feed_empty_title">Листов пока нет</string>
+    <string name="feed_empty_hint">Создайте первый — укажите пробег и остаток топлива</string>
 
     <!-- Карточка ЛУТ -->
     <string name="sheet_season_summer">☀️ Лето</string>
     <string name="sheet_season_winter">❄️ Зима</string>
     <string name="sheet_closed">Месяц закрыт</string>
+    <string name="sheet_season_icon_summer">☀️</string>
+    <string name="sheet_season_icon_winter">❄️</string>
+    <string name="sheet_season_name_summer">Лето</string>
+    <string name="sheet_season_name_winter">Зима</string>
+    <string name="sheet_month_start_short">Начало</string>
+    <string name="sheet_month_end_short">Конец</string>
+
+    <!-- Дорога месяца на карточке открытого листа (07_UI_SCREENS.md) -->
+    <string name="trip_left">до конца месяца %1$s</string>
+    <string name="trip_last_day">последний день месяца</string>
+    <string name="trip_month_over">%1$s закончился</string>
+    <string name="trip_upcoming">Месяц начнётся %1$s</string>
+    <string name="trip_soon_alert">Пора закрыть месяц: внесите пробег и остаток</string>
+    <string name="trip_late_alert">Закройте %1$s, чтобы начать %2$s</string>
+    <string name="trip_description">Прошло %1$d из %2$d дней месяца</string>
+    <plurals name="trip_days">
+        <item quantity="one">%d день</item>
+        <item quantity="few">%d дня</item>
+        <item quantity="many">%d дней</item>
+        <item quantity="other">%d дня</item>
+    </plurals>
     <string name="sheet_month_start">Начало месяца:</string>
     <string name="sheet_month_end">Конец месяца:</string>
     <string name="sheet_mileage_label">Пробег</string>
@@ -123,7 +150,9 @@
     <string name="sheet_has_warnings">Есть предупреждения</string>
     <string name="sheet_warnings_title">Предупреждения</string>
     <string name="sheet_refuelings">Заправки (%1$d)</string>
-    <string name="sheet_refueling_line">%1$s л × %2$s = %3$s ₽</string>
+    <string name="refueling_price_only">по %1$s ₽</string>
+    <string name="refueling_price_station">по %1$s ₽, %2$s</string>
+    <string name="refueling_sum">%1$s ₽</string>
     <string name="sheet_consumption">Расход</string>
     <string name="sheet_consumption_unit">л/100 км</string>
     <string name="sheet_warning">⚠ %1$s</string>
@@ -179,15 +208,15 @@
     <string name="sheet_add_refueling">+ Заправка</string>
     <string name="refuelings_title">Заправки · %1$s</string>
     <string name="refuelings_empty">Заправок пока нет</string>
-    <string name="refuelings_total">Итого: %1$s л · %2$s ₽</string>
+    <string name="refuelings_total_label">Итого</string>
+    <string name="refuelings_total_value">%1$s л · %2$s ₽</string>
     <string name="refueling_title_new">Новая заправка</string>
     <string name="refueling_title_edit">Заправка</string>
     <string name="refueling_date">Дата *</string>
     <string name="refueling_date_pick">Выбрать дату</string>
     <string name="refueling_liters">Литры *</string>
     <string name="refueling_price">Цена за литр, ₽ *</string>
-    <string name="refueling_total_line">Сумма: %1$s ₽</string>
-    <string name="refueling_total_empty">Сумма: —</string>
+    <string name="refueling_total_label">Сумма</string>
     <string name="refueling_delete">Удалить заправку</string>
     <string name="refueling_delete_title">Удалить заправку?</string>
     <string name="refueling_delete_text">Заправка %1$s на %2$s л будет удалена.</string>

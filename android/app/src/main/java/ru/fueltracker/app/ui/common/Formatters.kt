@@ -56,6 +56,17 @@ object Formatters {
         return "${name.replaceFirstChar { it.titlecase(ruLocale) }} $year"
     }
 
+    /** 2026-10-25 → «25 октября» (подпись над дорогой месяца). */
+    fun dayMonthLong(date: LocalDate): String =
+        "${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL, ruLocale)}"
+
+    /** (1, 10) → «1 окт» (края дороги месяца). */
+    fun dayMonthShort(day: Int, month: Int): String =
+        "$day ${Month.of(month).getDisplayName(TextStyle.SHORT_STANDALONE, ruLocale).trimEnd('.')}"
+
+    /** 10 → «октябрь» (в тексте: «Закройте октябрь»). */
+    fun monthName(month: Int): String = Month.of(month).getDisplayName(TextStyle.FULL_STANDALONE, ruLocale).lowercase(ruLocale)
+
     /**
      * Ввод пользователя → BigDecimal. Принимает «,» и «.», пробелы игнорирует.
      * Пустая строка, буквы, минус, два разделителя → null.

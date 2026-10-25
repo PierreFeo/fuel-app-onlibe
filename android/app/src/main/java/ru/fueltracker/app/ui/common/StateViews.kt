@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import ru.fueltracker.app.R
+import ru.fueltracker.app.ui.theme.ButtonShape
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 
 // Общие состояния экранов с загрузкой: Loading, Error, Empty (см. 07_UI_SCREENS.md)
@@ -82,7 +83,7 @@ private fun MessageWithAction(
             textAlign = TextAlign.Center,
         )
         if (actionLabel != null && onAction != null) {
-            Button(onClick = onAction) { Text(actionLabel) }
+            Button(onClick = onAction, shape = ButtonShape) { Text(actionLabel) }
         }
     }
 }

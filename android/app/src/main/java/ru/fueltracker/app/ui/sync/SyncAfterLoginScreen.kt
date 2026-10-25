@@ -6,7 +6,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -26,6 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.fueltracker.app.R
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.asString
+import ru.fueltracker.app.ui.common.RoadTrack
+import ru.fueltracker.app.ui.theme.ButtonShape
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 
 /** Полноэкранное «Загружаем ваши данные…» после входа (07_UI_SCREENS.md, SyncAfterLogin). */
@@ -49,13 +57,15 @@ fun SyncAfterLoginContent(
 ) {
     Surface(modifier = modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.padding(24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             val error = state.error
             if (error == null) {
-                CircularProgressIndicator()
+                LoadingRoad()
                 Text(stringResource(R.string.sync_after_login_loading), style = MaterialTheme.typography.titleMedium)
             } else {
                 Text(
@@ -77,19 +87,41 @@ fun SyncAfterLoginContent(
                 )
                 Button(
                     onClick = { onEvent(SyncAfterLoginEvent.Retry) },
+                    shape = ButtonShape,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(52.dp)
                         .testTag(SyncAfterLoginTestTags.RETRY),
                 ) { Text(stringResource(R.string.action_retry)) }
                 OutlinedButton(
                     onClick = { onEvent(SyncAfterLoginEvent.Continue) },
+                    shape = ButtonShape,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(52.dp)
                         .testTag(SyncAfterLoginTestTags.CONTINUE),
                 ) { Text(stringResource(R.string.action_continue)) }
             }
         }
     }
+}
+
+/** Машинка едет от старта к флажку снова и снова, пока идёт первая синхронизация. */
+@Composable
+private fun LoadingRoad() {
+    val transition = rememberInfiniteTransition(label = "loading")
+    val fraction by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(durationMillis = 2400, easing = FastOutSlowInEasing), RepeatMode.Restart),
+        label = "car",
+    )
+    RoadTrack(
+        fraction = fraction,
+        color = MaterialTheme.colorScheme.primary,
+        animateFromStart = false,
+        modifier = Modifier.padding(horizontal = 8.dp),
+    )
 }
 
 object SyncAfterLoginTestTags {

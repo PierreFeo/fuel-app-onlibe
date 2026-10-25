@@ -1,0 +1,13 @@
+<!-- Топливная колонка: капсула заправок в карточке ЛУТ -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="@android:color/white"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4.5,20.5V5.5a2,2 0,0 1,2 -2h5a2,2 0,0 1,2 2v15M3,20.5h12M8,6.5h2a1,1 0,0 1,1 1v1.5a1,1 0,0 1,-1 1h-2a1,1 0,0 1,-1 -1v-1.5a1,1 0,0 1,1 -1zM13.5,9.5h1.25a1.5,1.5 0,0 1,1.5 1.5v4.25a1.5,1.5 0,0 0,3 0V8.6a1.5,1.5 0,0 0,-0.44 -1.06L17,5.75" />
+</vector>

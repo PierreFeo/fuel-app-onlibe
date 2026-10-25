@@ -39,7 +39,11 @@ import ru.fueltracker.app.domain.model.Car
 import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.FuelType
 import ru.fueltracker.app.domain.model.SheetWarning
-import ru.fueltracker.app.ui.common.EmptyView
+import ru.fueltracker.app.ui.common.PlateBadge
+import ru.fueltracker.app.ui.common.RoadTrack
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
+import java.time.LocalDate
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.LoadingView
 import ru.fueltracker.app.ui.common.SnackbarEffect
@@ -128,12 +132,12 @@ fun SheetsFeedContent(
                 actions = {
                     IconButton(onClick = onChangeCar, modifier = Modifier.testTag(SheetsFeedTestTags.CHANGE_CAR)) {
                         Icon(
-                            painterResource(R.drawable.ic_directions_car),
+                            painterResource(R.drawable.ic_swap),
                             contentDescription = stringResource(R.string.feed_change_car),
                         )
                     }
                     IconButton(onClick = onOpenProfile, modifier = Modifier.testTag(SheetsFeedTestTags.PROFILE)) {
-                        Icon(painterResource(R.drawable.ic_person), contentDescription = stringResource(R.string.profile_open))
+                        Icon(painterResource(R.drawable.ic_person_outline), contentDescription = stringResource(R.string.profile_open))
                     }
                 },
             )
@@ -142,6 +146,8 @@ fun SheetsFeedContent(
             if (state.hasContent) {
                 ExtendedFloatingActionButton(
                     onClick = { if (!state.isPreparingNewSheet) onEvent(SheetsFeedEvent.NewSheet) },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     icon = {
                         if (state.isPreparingNewSheet) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -168,13 +174,7 @@ private fun CarTitle(car: Car?) {
     if (car == null) return
     Column {
         Text(text = car.name, style = MaterialTheme.typography.titleLarge, maxLines = 1)
-        car.plateNumber?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        car.plateNumber?.let { PlateBadge(it, modifier = Modifier.padding(top = 2.dp)) }
     }
 }
 
@@ -183,6 +183,9 @@ private fun SheetList(
     state: SheetsFeedUiState,
     onEvent: (SheetsFeedEvent) -> Unit,
 ) {
+    // Один размер шрифта месяца на всю ленту и одна «сегодняшняя» дата для дорог месяца
+    val titleFit = remember { MonthTitleFit() }
+    val today = remember { LocalDate.now() }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -193,15 +196,15 @@ private fun SheetList(
     ) {
         if (state.sheets.isEmpty()) {
             item {
-                Box(modifier = Modifier.fillParentMaxSize()) {
-                    EmptyView(message = stringResource(R.string.feed_empty))
-                }
+                Box(modifier = Modifier.fillParentMaxSize()) { EmptyFeed() }
             }
         }
         items(state.sheets, key = { it.id }) { sheet ->
             SheetCard(
                 sheet = sheet,
                 isBusy = sheet.id in state.busySheetIds,
+                today = today,
+                titleFit = titleFit,
                 actions = SheetCardActions(
                     onWarningsClick = { onEvent(SheetsFeedEvent.ShowWarnings(sheet)) },
                     onSeasonClick = { onEvent(SheetsFeedEvent.ToggleSeason(sheet)) },
@@ -212,6 +215,27 @@ private fun SheetList(
                 ),
             )
         }
+    }
+}
+
+/** Листов нет: машинка стоит на старте — месяц ещё не начат. */
+@Composable
+private fun EmptyFeed() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(start = 28.dp, end = 28.dp, bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        RoadTrack(fraction = 0f, color = MaterialTheme.colorScheme.primary, animateFromStart = false)
+        Text(stringResource(R.string.feed_empty_title), style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
+        Text(
+            text = stringResource(R.string.feed_empty_hint),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

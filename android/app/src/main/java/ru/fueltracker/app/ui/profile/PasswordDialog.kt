@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import ru.fueltracker.app.R
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.asString
+import ru.fueltracker.app.ui.theme.ButtonShape
 import ru.fueltracker.app.ui.theme.FuelTrackerTheme
 
 /** «Вход по паролю» в профиле аккаунта: задан ли пароль и кнопка «Задать / Сменить». */
@@ -46,6 +47,7 @@ internal fun PasswordBlock(state: ProfileUiState, onEvent: (ProfileEvent) -> Uni
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     OutlinedButton(
+        shape = ButtonShape,
         onClick = { onEvent(ProfileEvent.OpenPassword) },
         enabled = state.canChangePassword,
         modifier = Modifier

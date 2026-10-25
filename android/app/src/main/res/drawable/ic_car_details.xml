@@ -1,0 +1,10 @@
+<!-- Машинка дороги месяца: окна, фара и диски — красятся цветом карточки поверх ic_car_body -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="34dp"
+    android:height="18dp"
+    android:viewportWidth="34"
+    android:viewportHeight="18">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M7.6,6.9l2.7,-3.3H14v3.3zM15.2,3.6H18l3,3.3h-5.8zM29.6,9h2.2v1.6h-2.2zM7.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0zM24.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0z" />
+</vector>
