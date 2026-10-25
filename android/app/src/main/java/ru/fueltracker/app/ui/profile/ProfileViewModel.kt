@@ -18,7 +18,7 @@ import ru.fueltracker.app.data.repository.ProfileRepository
 import ru.fueltracker.app.data.repository.RejectedRecord
 import ru.fueltracker.app.data.repository.SyncRepository
 import ru.fueltracker.app.data.repository.SyncResult
-import ru.fueltracker.app.ui.auth.NameViewModel
+import ru.fueltracker.app.ui.auth.SetupViewModel
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.sync.toSyncText
 import java.time.Instant
@@ -124,7 +124,7 @@ class ProfileViewModel @Inject constructor(
 
     fun onEvent(event: ProfileEvent) {
         when (event) {
-            is ProfileEvent.NameChanged -> _state.update { it.copy(name = event.value.take(NameViewModel.NAME_MAX_LENGTH)) }
+            is ProfileEvent.NameChanged -> _state.update { it.copy(name = event.value.take(SetupViewModel.NAME_MAX_LENGTH)) }
             ProfileEvent.SaveName -> saveName()
             ProfileEvent.Sync -> sync()
             ProfileEvent.DismissRejected -> _state.update { it.copy(rejected = emptyList()) }

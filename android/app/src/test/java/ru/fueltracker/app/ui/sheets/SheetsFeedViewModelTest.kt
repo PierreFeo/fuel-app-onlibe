@@ -10,6 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import ru.fueltracker.app.data.local.FakeSelectedCarStorage
+import ru.fueltracker.app.domain.model.SheetWarning
 import ru.fueltracker.app.testutil.FakeCarRepository
 import ru.fueltracker.app.testutil.FakeRefuelingRepository
 import ru.fueltracker.app.testutil.FakeSheetRepository
@@ -99,10 +100,9 @@ class SheetsFeedViewModelTest {
     }
 
     @Test
-    fun `смена авто — лента другого авто, раскрытые карточки сброшены`() = runTest {
+    fun `смена авто — лента другого авто`() = runTest {
         sheets.sheets = listOf(october, kiaSheet)
         val viewModel = createViewModel()
-        viewModel.onEvent(SheetsFeedEvent.ToggleExpanded("s-10"))
 
         selected.select("car-2")
         advanceUntilIdle()
@@ -110,15 +110,23 @@ class SheetsFeedViewModelTest {
         val state = viewModel.state.value
         assertEquals("Kia Rio", state.car?.name)
         assertEquals(listOf(kiaSheet), state.sheets)
-        assertTrue(state.expandedSheetIds.isEmpty())
     }
 
     @Test
-    fun `раскрыть и свернуть карточку`() = runTest {
+    fun `⚠ — диалог с предупреждениями листа, закрывается`() = runTest {
         val viewModel = createViewModel()
-        viewModel.onEvent(SheetsFeedEvent.ToggleExpanded("s-09"))
-        assertEquals(setOf("s-09"), viewModel.state.value.expandedSheetIds)
-        viewModel.onEvent(SheetsFeedEvent.ToggleExpanded("s-09"))
-        assertTrue(viewModel.state.value.expandedSheetIds.isEmpty())
+        val withWarnings = october.copy(calc = october.calc.copy(warnings = listOf(SheetWarning.ODOMETER_GAP)))
+
+        viewModel.onEvent(SheetsFeedEvent.ShowWarnings(withWarnings))
+        assertEquals(listOf(SheetWarning.ODOMETER_GAP), viewModel.state.value.warnings)
+        viewModel.onEvent(SheetsFeedEvent.DismissWarnings)
+        assertNull(viewModel.state.value.warnings)
+    }
+
+    @Test
+    fun `лист без предупреждений — диалог не открывается`() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onEvent(SheetsFeedEvent.ShowWarnings(october.copy(calc = october.calc.copy(warnings = emptyList()))))
+        assertNull(viewModel.state.value.warnings)
     }
 }

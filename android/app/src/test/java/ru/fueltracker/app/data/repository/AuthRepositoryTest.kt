@@ -80,11 +80,11 @@ class AuthRepositoryTest {
     @After
     fun tearDown() = server.close()
 
-    private fun tokensJson(name: String?, isNewUser: Boolean) = """
+    private fun tokensJson(name: String?, isNewUser: Boolean, hasPassword: Boolean = true) = """
         {
           "access_token": "acc-1", "refresh_token": "ref-1",
           "token_type": "bearer", "expires_in_sec": 900,
-          "user": { "id": "u1", "phone": "+79991234567", "name": ${name?.let { "\"$it\"" } ?: "null"}, "has_password": true },
+          "user": { "id": "u1", "phone": "+79991234567", "name": ${name?.let { "\"$it\"" } ?: "null"}, "has_password": $hasPassword },
           "is_new_user": $isNewUser
         }
     """.trimIndent()
@@ -118,6 +118,25 @@ class AuthRepositoryTest {
         assertEquals(ApiResult.Success(LoginResult(isNewUser = false)), result)
         assertEquals(AuthTokens("acc-1", "ref-1"), tokenStorage.current)
         assertEquals("/auth/login", server.takeRequest().apiPath)
+    }
+
+    @Test
+    fun `вход по SMS без пароля — нужна настройка, даже если имя есть`() = runTest {
+        server.enqueueJson(tokensJson(name = "Иван", isNewUser = false, hasPassword = false))
+
+        val result = repository.verifyCode("+79991234567", "123456")
+
+        assertEquals(ApiResult.Success(LoginResult(isNewUser = false, needsPassword = true)), result)
+        assertTrue((result as ApiResult.Success).data.needsSetup)
+    }
+
+    @Test
+    fun `вход по паролю — пароль не спрашиваем`() = runTest {
+        server.enqueueJson(tokensJson(name = "Иван", isNewUser = false, hasPassword = false))
+
+        val result = repository.login("+79991234567", "k7Fm2xQp9a")
+
+        assertEquals(ApiResult.Success(LoginResult(isNewUser = false, needsPassword = false)), result)
     }
 
     @Test

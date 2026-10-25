@@ -42,7 +42,7 @@
     <string name="password_show">Показать пароль</string>
     <string name="password_hide">Скрыть пароль</string>
     <string name="password_login">Войти</string>
-    <string name="password_hint">Пароль задаётся в профиле после входа по SMS. Забыли — обратитесь к ответственному сотруднику</string>
+    <string name="password_hint">Пароль задаётся после первого входа по SMS. Забыли — обратитесь к ответственному сотруднику</string>
     <string name="password_sms_login">Войти по коду из SMS</string>
     <string name="error_invalid_credentials">Неверный номер или пароль</string>
     <string name="error_too_many_attempts">Слишком много попыток. Повторите через %1$d мин</string>
@@ -51,6 +51,9 @@
     <string name="name_title">Как вас зовут</string>
     <string name="name_label">Имя и фамилия</string>
     <string name="name_continue">Продолжить</string>
+    <string name="setup_title">Завершите настройку</string>
+    <string name="setup_password_block">Пароль для входа без SMS</string>
+    <string name="setup_password_hint">Пригодится, если SMS не придёт или вы смените телефон</string>
 
     <!-- Общие действия -->
     <string name="action_back">Назад</string>
@@ -108,7 +111,6 @@
     <string name="sheet_season_summer">☀️ Лето</string>
     <string name="sheet_season_winter">❄️ Зима</string>
     <string name="sheet_closed">Месяц закрыт</string>
-    <string name="sheet_norm">Норма %1$s л/100 км</string>
     <string name="sheet_month_start">Начало месяца:</string>
     <string name="sheet_month_end">Конец месяца:</string>
     <string name="sheet_mileage_label">Пробег</string>
@@ -118,23 +120,12 @@
     <string name="sheet_value_km">%1$s км</string>
     <string name="sheet_value_l">%1$s л</string>
     <string name="sheet_no_value">—</string>
-    <string name="sheet_expand">Подробнее</string>
-    <string name="sheet_collapse">Свернуть</string>
     <string name="sheet_has_warnings">Есть предупреждения</string>
-    <string name="sheet_fuel_start">Остаток на начало: %1$s л</string>
-    <string name="sheet_refueled">Заправлено: %1$s л · %2$s ₽</string>
+    <string name="sheet_warnings_title">Предупреждения</string>
     <string name="sheet_refuelings">Заправки (%1$d)</string>
     <string name="sheet_refueling_line">%1$s л × %2$s = %3$s ₽</string>
-    <string name="sheet_fuel_end">Остаток на конец: %1$s л</string>
-    <string name="sheet_fuel_end_by_norm">Остаток на конец: %1$s л (по норме)</string>
     <string name="sheet_consumption">Расход</string>
     <string name="sheet_consumption_unit">л/100 км</string>
-    <string name="sheet_consumption_pending">Расход появится после закрытия месяца</string>
-    <string name="sheet_consumption_no_actual">Расход не посчитан: не указан фактический остаток</string>
-    <string name="sheet_overuse">Перерасход %1$s л</string>
-    <string name="sheet_economy">Экономия %1$s л</string>
-    <string name="sheet_exact">Ровно по норме</string>
-    <string name="sheet_cost_per_km">1 км = %1$s ₽</string>
     <string name="sheet_warning">⚠ %1$s</string>
     <string name="warning_fuel_end_negative">Расчётный остаток отрицательный — проверьте пробег и заправки</string>
     <string name="warning_fuel_end_over_tank">Остаток на конец месяца больше объёма бака</string>
@@ -195,19 +186,11 @@
     <string name="refueling_date_pick">Выбрать дату</string>
     <string name="refueling_liters">Литры *</string>
     <string name="refueling_price">Цена за литр, ₽ *</string>
-    <string name="refueling_total">Сумма, ₽</string>
-    <string name="refueling_total_auto">Считается автоматически, можно изменить</string>
-    <string name="refueling_total_manual">Введена вручную. Сотрите, чтобы считать автоматически</string>
-    <string name="refueling_odometer">Пробег по одометру, км</string>
-    <string name="refueling_station">АЗС</string>
-    <string name="refueling_payment">Способ оплаты</string>
-    <string name="refueling_note">Комментарий</string>
+    <string name="refueling_total_line">Сумма: %1$s ₽</string>
+    <string name="refueling_total_empty">Сумма: —</string>
     <string name="refueling_delete">Удалить заправку</string>
     <string name="refueling_delete_title">Удалить заправку?</string>
     <string name="refueling_delete_text">Заправка %1$s на %2$s л будет удалена.</string>
-    <string name="payment_personal">Личные</string>
-    <string name="payment_fuel_card">Топливная карта</string>
-    <string name="payment_company">Организация</string>
     <string name="error_date_outside_month">Дата должна быть в месяце листа</string>
 
     <!-- Профиль (5.6) -->

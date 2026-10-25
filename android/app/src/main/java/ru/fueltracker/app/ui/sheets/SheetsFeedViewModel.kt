@@ -22,6 +22,7 @@ import ru.fueltracker.app.domain.model.Car
 import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.Refueling
 import ru.fueltracker.app.domain.model.Season
+import ru.fueltracker.app.domain.model.SheetWarning
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.filterDecimalInput
@@ -44,8 +45,8 @@ data class SheetsFeedUiState(
     val sheets: List<FuelSheet> = emptyList(),
     /** Данные из базы ещё не пришли (доли секунды при открытии). */
     val isLoading: Boolean = true,
-    /** Листы, у которых карточка раскрыта (подробности). */
-    val expandedSheetIds: Set<String> = emptySet(),
+    /** Предупреждения листа для диалога по нажатию на ⚠; null — диалог закрыт. */
+    val warnings: List<SheetWarning>? = null,
     /** Листы, по которым идёт действие (сезон, переоткрытие, удаление) — их кнопки неактивны. */
     val busySheetIds: Set<String> = emptySet(),
     /** Считается подсказка `next-prefill` для нового листа. */
@@ -78,7 +79,8 @@ data class SheetsFeedUiState(
 }
 
 sealed interface SheetsFeedEvent {
-    data class ToggleExpanded(val sheetId: String) : SheetsFeedEvent
+    data class ShowWarnings(val sheet: FuelSheet) : SheetsFeedEvent
+    data object DismissWarnings : SheetsFeedEvent
     data class ToggleSeason(val sheet: FuelSheet) : SheetsFeedEvent
     data class Reopen(val sheet: FuelSheet) : SheetsFeedEvent
     data class RequestDelete(val sheet: FuelSheet) : SheetsFeedEvent
@@ -164,10 +166,10 @@ class SheetsFeedViewModel @Inject constructor(
 
     fun onEvent(event: SheetsFeedEvent) {
         when (event) {
-            is SheetsFeedEvent.ToggleExpanded -> _state.update {
-                val ids = it.expandedSheetIds
-                it.copy(expandedSheetIds = if (event.sheetId in ids) ids - event.sheetId else ids + event.sheetId)
+            is SheetsFeedEvent.ShowWarnings -> _state.update {
+                it.copy(warnings = event.sheet.calc.warnings.takeIf { warnings -> warnings.isNotEmpty() })
             }
+            SheetsFeedEvent.DismissWarnings -> _state.update { it.copy(warnings = null) }
             is SheetsFeedEvent.ToggleSeason -> toggleSeason(event.sheet)
             is SheetsFeedEvent.Reopen -> reopen(event.sheet)
             is SheetsFeedEvent.RequestDelete -> _state.update { it.copy(deleteCandidate = event.sheet) }

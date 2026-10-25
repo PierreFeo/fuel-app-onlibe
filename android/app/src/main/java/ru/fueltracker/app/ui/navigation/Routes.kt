@@ -18,9 +18,12 @@ data class CodeRoute(val phone: String, val resendAfterSec: Int = 60)
 @Serializable
 data class PasswordLoginRoute(val phone: String? = null)
 
-/** guest — «Продолжить без входа»: имя сохраняется только на телефоне. */
+/**
+ * «Завершите настройку». guest — «Продолжить без входа»: только имя, оно сохраняется только на
+ * телефоне. askPassword — после входа по SMS пароля нет: задать его обязательно.
+ */
 @Serializable
-data class NameRoute(val guest: Boolean = false)
+data class SetupRoute(val guest: Boolean = false, val askPassword: Boolean = false)
 
 @Serializable
 data object CarsRoute

@@ -14,7 +14,7 @@ import androidx.navigation.toRoute
 import kotlinx.coroutines.flow.filterNotNull
 import ru.fueltracker.app.domain.model.LoginResult
 import ru.fueltracker.app.ui.auth.CodeScreen
-import ru.fueltracker.app.ui.auth.NameScreen
+import ru.fueltracker.app.ui.auth.SetupScreen
 import ru.fueltracker.app.ui.auth.PasswordLoginScreen
 import ru.fueltracker.app.ui.auth.PhoneScreen
 import ru.fueltracker.app.ui.cars.CarEditScreen
@@ -46,7 +46,7 @@ fun NavGraph(
     // После входа — сразу синхронизация (новый телефон получает данные, гость — отправляет свои)
     val syncAfterLogin = { navController.navigateClearingBackStack(SyncAfterLoginRoute) }
     val onLoggedIn: (LoginResult) -> Unit = { result ->
-        if (result.isNewUser) navController.navigateClearingBackStack(NameRoute()) else syncAfterLogin()
+        if (result.needsSetup) navController.navigateClearingBackStack(SetupRoute(askPassword = result.needsPassword)) else syncAfterLogin()
     }
 
     NavHost(
@@ -61,7 +61,7 @@ fun NavGraph(
             PhoneScreen(
                 onCodeSent = { navController.navigate(CodeRoute(it.phone, it.resendAfterSec)) },
                 onPasswordLogin = { navController.navigate(PasswordLoginRoute(it)) },
-                onContinueAsGuest = if (isFirstStart) ({ navController.navigate(NameRoute(guest = true)) }) else null,
+                onContinueAsGuest = if (isFirstStart) ({ navController.navigate(SetupRoute(guest = true)) }) else null,
             )
         }
         composable<CodeRoute> {
@@ -81,10 +81,10 @@ fun NavGraph(
                 },
             )
         }
-        composable<NameRoute> { entry ->
-            // guest берёт из маршрута и сам NameViewModel (SavedStateHandle)
-            val isGuest = entry.toRoute<NameRoute>().guest
-            NameScreen(onSaved = if (isGuest) goHome else syncAfterLogin)
+        composable<SetupRoute> { entry ->
+            // guest и askPassword берёт из маршрута и сам SetupViewModel (SavedStateHandle)
+            val isGuest = entry.toRoute<SetupRoute>().guest
+            SetupScreen(onSaved = if (isGuest) goHome else syncAfterLogin)
         }
         composable<SyncAfterLoginRoute> {
             SyncAfterLoginScreen(onDone = goHome)
@@ -132,7 +132,7 @@ private fun NavController.navigateClearingBackStack(route: Any) {
 
 private fun NavDestination.kind(): ScreenKind = when {
     hasRoute<SplashRoute>() -> ScreenKind.SPLASH
-    hasRoute<PhoneRoute>() || hasRoute<CodeRoute>() || hasRoute<PasswordLoginRoute>() || hasRoute<NameRoute>() ->
+    hasRoute<PhoneRoute>() || hasRoute<CodeRoute>() || hasRoute<PasswordLoginRoute>() || hasRoute<SetupRoute>() ->
         ScreenKind.AUTH
     else -> ScreenKind.APP
 }

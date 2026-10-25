@@ -38,6 +38,7 @@ import ru.fueltracker.app.R
 import ru.fueltracker.app.domain.model.Car
 import ru.fueltracker.app.domain.model.FuelSheet
 import ru.fueltracker.app.domain.model.FuelType
+import ru.fueltracker.app.domain.model.SheetWarning
 import ru.fueltracker.app.ui.common.EmptyView
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.LoadingView
@@ -97,6 +98,7 @@ fun SheetsFeedContent(
     state.newSheet?.let { NewSheetDialog(form = it, hasWinterNorm = state.car?.normWinter != null, onEvent = onEvent) }
     state.closeSheet?.let { CloseSheetDialog(form = it, onEvent = onEvent) }
     state.deleteCandidate?.let { DeleteSheetDialog(it, onEvent) }
+    state.warnings?.let { WarningsDialog(it, onEvent) }
     state.refuelingsSheet?.let { sheet ->
         RefuelingsListSheet(
             sheet = sheet,
@@ -199,10 +201,9 @@ private fun SheetList(
         items(state.sheets, key = { it.id }) { sheet ->
             SheetCard(
                 sheet = sheet,
-                isExpanded = sheet.id in state.expandedSheetIds,
                 isBusy = sheet.id in state.busySheetIds,
                 actions = SheetCardActions(
-                    onToggleExpanded = { onEvent(SheetsFeedEvent.ToggleExpanded(sheet.id)) },
+                    onWarningsClick = { onEvent(SheetsFeedEvent.ShowWarnings(sheet)) },
                     onSeasonClick = { onEvent(SheetsFeedEvent.ToggleSeason(sheet)) },
                     onClose = { onEvent(SheetsFeedEvent.Close(sheet)) },
                     onReopen = { onEvent(SheetsFeedEvent.Reopen(sheet)) },
@@ -212,6 +213,25 @@ private fun SheetList(
             )
         }
     }
+}
+
+/** Нажатие на ⚠ в карточке: тексты предупреждений листа. */
+@Composable
+private fun WarningsDialog(warnings: List<SheetWarning>, onEvent: (SheetsFeedEvent) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onEvent(SheetsFeedEvent.DismissWarnings) },
+        title = { Text(stringResource(R.string.sheet_warnings_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                warnings.forEach { Text(stringResource(R.string.sheet_warning, stringResource(it.textRes))) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onEvent(SheetsFeedEvent.DismissWarnings) }) {
+                Text(stringResource(R.string.action_ok))
+            }
+        },
+    )
 }
 
 @Composable
@@ -242,7 +262,7 @@ object SheetsFeedTestTags {
     const val REFUELINGS_ERROR = "refuelings_error"
     const val DELETE_REFUELING_CONFIRM = "delete_refueling_confirm"
     fun card(sheetId: String) = "sheet_card_$sheetId"
-    fun details(sheetId: String) = "sheet_details_$sheetId"
+    fun warnings(sheetId: String) = "sheet_warnings_$sheetId"
     fun consumption(sheetId: String) = "sheet_consumption_$sheetId"
     fun season(sheetId: String) = "sheet_season_$sheetId"
     fun menu(sheetId: String) = "sheet_menu_$sheetId"
@@ -265,7 +285,6 @@ private fun SheetsFeedContentPreview() {
                 car = previewCar,
                 sheets = listOf(previewOpenSheet(), previewClosedSheet()),
                 isLoading = false,
-                expandedSheetIds = setOf("s-07"),
             ),
             onEvent = {},
             onChangeCar = {},

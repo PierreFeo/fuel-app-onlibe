@@ -45,47 +45,24 @@ class RefuelingEditViewModelTest {
     }
 
     @Test
-    fun `сумма считается по мере ввода литров и цены`() {
-        startNew()
-        viewModel.onEvent(RefuelingEditEvent.LitersChanged("40"))
-        assertEquals("", viewModel.state.value.form.totalCost)
-        viewModel.onEvent(RefuelingEditEvent.PriceChanged("55,5"))
-        assertEquals("2220,00", viewModel.state.value.form.totalCost)
-        assertFalse(viewModel.state.value.form.isTotalManual)
-    }
-
-    @Test
-    fun `сумма вручную не пересчитывается, стёртая — снова авто`() {
+    fun `сохранение новой заправки — только дата, литры, цена, остальное пусто`() = runTest {
         startNew()
         viewModel.onEvent(RefuelingEditEvent.LitersChanged("40"))
         viewModel.onEvent(RefuelingEditEvent.PriceChanged("55"))
-        viewModel.onEvent(RefuelingEditEvent.TotalChanged("2100"))
-        viewModel.onEvent(RefuelingEditEvent.LitersChanged("41"))
-        assertEquals("2100", viewModel.state.value.form.totalCost)
-        assertTrue(viewModel.state.value.form.isTotalManual)
-
-        viewModel.onEvent(RefuelingEditEvent.TotalChanged(""))
-        assertEquals("2255,00", viewModel.state.value.form.totalCost)
-        assertFalse(viewModel.state.value.form.isTotalManual)
-    }
-
-    @Test
-    fun `сохранение новой заправки — в базу, шторка закроется`() = runTest {
-        startNew()
-        viewModel.onEvent(RefuelingEditEvent.LitersChanged("40"))
-        viewModel.onEvent(RefuelingEditEvent.PriceChanged("55"))
-        viewModel.onEvent(RefuelingEditEvent.StationChanged("Лукойл"))
-        viewModel.onEvent(RefuelingEditEvent.PaymentChanged(PaymentType.COMPANY))
         viewModel.onEvent(RefuelingEditEvent.Save)
         assertTrue(viewModel.state.value.isSaving)
         advanceUntilIdle()
 
         val (sheetId, input) = repository.created.single()
         assertEquals(sheet.id, sheetId)
+        assertEquals(today, input.date)
         assertEquals(BigDecimal("40"), input.liters)
-        assertNull(input.totalCost)
-        assertEquals("Лукойл", input.station)
-        assertEquals(PaymentType.COMPANY, input.paymentType)
+        assertEquals(BigDecimal("55"), input.pricePerLiter)
+        assertNull(input.totalCost) // сумму посчитает репозиторий: литры × цена
+        assertNull(input.odometerKm)
+        assertNull(input.station)
+        assertNull(input.note)
+        assertEquals(PaymentType.PERSONAL, input.paymentType)
         assertTrue(viewModel.state.value.saved)
     }
 
@@ -113,6 +90,12 @@ class RefuelingEditViewModelTest {
         assertEquals("r3", id)
         assertEquals(BigDecimal("35"), input.liters)
         assertTrue(repository.created.isEmpty())
+        // Поля, которых нет в форме, у старой заправки сохраняются как были
+        val old = sheet.refuelings.first()
+        assertEquals(old.odometerKm, input.odometerKm)
+        assertEquals(old.station, input.station)
+        assertEquals(old.paymentType, input.paymentType)
+        assertEquals(old.note, input.note)
     }
 
     @Test

@@ -128,7 +128,7 @@ internal fun PasswordDialog(form: PasswordForm, onEvent: (ProfileEvent) -> Unit)
 }
 
 @Composable
-private fun PasswordField(
+internal fun PasswordField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,

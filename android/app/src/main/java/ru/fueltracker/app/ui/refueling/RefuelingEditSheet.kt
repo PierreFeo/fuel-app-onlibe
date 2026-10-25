@@ -5,8 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -22,7 +20,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -45,14 +42,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ru.fueltracker.app.R
-import ru.fueltracker.app.domain.model.PaymentType
 import ru.fueltracker.app.ui.common.Formatters
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.asString
@@ -112,7 +107,6 @@ fun RefuelingEditContent(
 }
 
 /** Содержимое шторки отдельно — его видно в Preview (ModalBottomSheet в Preview не рисуется). */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RefuelingFormContent(
     state: RefuelingEditUiState,
@@ -162,54 +156,13 @@ fun RefuelingFormContent(
             keyboardType = KeyboardType.Decimal,
             testTag = RefuelingTestTags.PRICE,
         )
-        Field(
-            value = form.totalCost,
-            onValueChange = { onEvent(RefuelingEditEvent.TotalChanged(it)) },
-            label = R.string.refueling_total,
-            error = errors.totalCost,
-            hint = stringResource(if (form.isTotalManual) R.string.refueling_total_manual else R.string.refueling_total_auto),
-            enabled = enabled,
-            keyboardType = KeyboardType.Decimal,
-            testTag = RefuelingTestTags.TOTAL,
-        )
-        Field(
-            value = form.odometer,
-            onValueChange = { onEvent(RefuelingEditEvent.OdometerChanged(it)) },
-            label = R.string.refueling_odometer,
-            error = errors.odometer,
-            enabled = enabled,
-            keyboardType = KeyboardType.Number,
-            testTag = RefuelingTestTags.ODOMETER,
-        )
-        Field(
-            value = form.station,
-            onValueChange = { onEvent(RefuelingEditEvent.StationChanged(it)) },
-            label = R.string.refueling_station,
-            error = errors.station,
-            enabled = enabled,
-            keyboardType = KeyboardType.Text,
-            testTag = RefuelingTestTags.STATION,
-        )
-        Text(stringResource(R.string.refueling_payment), style = MaterialTheme.typography.labelLarge)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PaymentType.entries.forEach { type ->
-                FilterChip(
-                    selected = form.paymentType == type,
-                    onClick = { onEvent(RefuelingEditEvent.PaymentChanged(type)) },
-                    label = { Text(stringResource(type.labelRes)) },
-                    enabled = enabled,
-                )
-            }
-        }
-        Field(
-            value = form.note,
-            onValueChange = { onEvent(RefuelingEditEvent.NoteChanged(it)) },
-            label = R.string.refueling_note,
-            error = errors.note,
-            enabled = enabled,
-            keyboardType = KeyboardType.Text,
-            testTag = RefuelingTestTags.NOTE,
-            singleLine = false,
+        // Сумма — только показ: литры × цена, вручную не меняется
+        val total = previewTotal(form.liters, form.pricePerLiter)
+        Text(
+            text = total?.let { stringResource(R.string.refueling_total_line, Formatters.amount(it)) }
+                ?: stringResource(R.string.refueling_total_empty),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.testTag(RefuelingTestTags.TOTAL),
         )
         state.error?.let {
             Text(it.asString(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
@@ -324,23 +277,16 @@ private fun Field(
     enabled: Boolean,
     keyboardType: KeyboardType,
     testTag: String,
-    hint: String? = null,
-    singleLine: Boolean = true,
 ) {
-    val supporting = error?.asString() ?: hint
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(stringResource(label)) },
-        singleLine = singleLine,
+        singleLine = true,
         enabled = enabled,
         isError = error != null,
-        supportingText = supporting?.let { { Text(it) } },
-        keyboardOptions = KeyboardOptions(
-            keyboardType = keyboardType,
-            capitalization = if (keyboardType == KeyboardType.Text) KeyboardCapitalization.Sentences else KeyboardCapitalization.None,
-            imeAction = ImeAction.Next,
-        ),
+        supportingText = error?.let { { Text(it.asString()) } },
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType, imeAction = ImeAction.Next),
         modifier = Modifier
             .fillMaxWidth()
             .testTag(testTag),
@@ -375,22 +321,12 @@ private fun DeleteRefuelingDialog(state: RefuelingEditUiState, onEvent: (Refueli
     )
 }
 
-@get:StringRes
-val PaymentType.labelRes: Int
-    get() = when (this) {
-        PaymentType.PERSONAL -> R.string.payment_personal
-        PaymentType.FUEL_CARD -> R.string.payment_fuel_card
-        PaymentType.COMPANY -> R.string.payment_company
-    }
 
 object RefuelingTestTags {
     const val DATE = "refueling_date"
     const val LITERS = "refueling_liters"
     const val PRICE = "refueling_price"
     const val TOTAL = "refueling_total"
-    const val ODOMETER = "refueling_odometer"
-    const val STATION = "refueling_station"
-    const val NOTE = "refueling_note"
     const val SAVE = "refueling_save"
     const val DELETE = "refueling_delete"
 }
@@ -403,7 +339,7 @@ private fun RefuelingFormNewPreview() {
             RefuelingFormContent(
                 state = RefuelingEditUiState(
                     target = RefuelingTarget("s-10", 2026, 10),
-                    form = RefuelingForm(date = LocalDate.of(2026, 10, 5), liters = "40", pricePerLiter = "55,5", totalCost = "2220,00"),
+                    form = RefuelingForm(date = LocalDate.of(2026, 10, 5), liters = "40", pricePerLiter = "55,5"),
                 ),
                 onEvent = {},
             )
@@ -420,7 +356,7 @@ private fun RefuelingFormEditPreview() {
             RefuelingFormContent(
                 state = RefuelingEditUiState(
                     target = RefuelingTarget("s-07", 2026, 7, refueling),
-                    form = refueling.toForm().copy(totalCost = "2700,00", isTotalManual = true),
+                    form = refueling.toForm(),
                     errors = RefuelingErrors(liters = UiText.Resource(R.string.error_positive_number)),
                 ),
                 onEvent = {},

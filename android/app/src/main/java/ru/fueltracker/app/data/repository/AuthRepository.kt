@@ -73,12 +73,13 @@ class DefaultAuthRepository @Inject constructor(
             .map { CodeRequest(resendAfterSec = it.resendAfterSec) }
 
     override suspend fun verifyCode(phone: String, code: String): ApiResult<LoginResult> =
-        apiCall { api.verifyCode(VerifyCodeRequest(phone, code)) }.saveTokens()
+        apiCall { api.verifyCode(VerifyCodeRequest(phone, code)) }.saveTokens(askPassword = true)
 
     override suspend fun login(phone: String, password: String): ApiResult<LoginResult> =
-        apiCall { api.login(LoginRequest(phone, password)) }.saveTokens()
+        apiCall { api.login(LoginRequest(phone, password)) }.saveTokens(askPassword = false)
 
-    private suspend fun ApiResult<TokensResponse>.saveTokens(): ApiResult<LoginResult> {
+    /** [askPassword] — вход по SMS: без пароля после входа нужен SetupScreen (07_UI_SCREENS.md). */
+    private suspend fun ApiResult<TokensResponse>.saveTokens(askPassword: Boolean): ApiResult<LoginResult> {
         val data = when (this) {
             is ApiResult.Failure -> return this
             is ApiResult.Success -> data
@@ -96,6 +97,8 @@ class DefaultAuthRepository @Inject constructor(
         appState.signedIn(SignedInUser(user.id, user.phone, user.name, user.hasPassword))
         // is_new_user в ответе входа есть всегда; на всякий случай — «имя не заполнено»
         val serverHasNoName = data.isNewUser ?: user.name.isNullOrBlank()
-        return ApiResult.Success(LoginResult(isNewUser = serverHasNoName && !hadLocalName))
+        return ApiResult.Success(
+            LoginResult(isNewUser = serverHasNoName && !hadLocalName, needsPassword = askPassword && !user.hasPassword),
+        )
     }
 }

@@ -12,10 +12,8 @@ import kotlinx.coroutines.launch
 import ru.fueltracker.app.data.repository.LocalResult
 import ru.fueltracker.app.data.repository.RefuelingRepository
 import ru.fueltracker.app.domain.calc.SheetRuleViolation
-import ru.fueltracker.app.domain.model.PaymentType
 import ru.fueltracker.app.ui.common.UiText
 import ru.fueltracker.app.ui.common.filterDecimalInput
-import ru.fueltracker.app.ui.common.filterDigitsInput
 import ru.fueltracker.app.ui.common.toUiText
 import java.time.LocalDate
 import javax.inject.Inject
@@ -40,11 +38,6 @@ sealed interface RefuelingEditEvent {
     data class DateChanged(val value: LocalDate) : RefuelingEditEvent
     data class LitersChanged(val value: String) : RefuelingEditEvent
     data class PriceChanged(val value: String) : RefuelingEditEvent
-    data class TotalChanged(val value: String) : RefuelingEditEvent
-    data class OdometerChanged(val value: String) : RefuelingEditEvent
-    data class StationChanged(val value: String) : RefuelingEditEvent
-    data class PaymentChanged(val value: PaymentType) : RefuelingEditEvent
-    data class NoteChanged(val value: String) : RefuelingEditEvent
     data object Save : RefuelingEditEvent
     data object RequestDelete : RefuelingEditEvent
     data object ConfirmDelete : RefuelingEditEvent
@@ -79,18 +72,9 @@ class RefuelingEditViewModel @Inject constructor(
         when (event) {
             is RefuelingEditEvent.DateChanged -> edit({ copy(date = event.value) }) { copy(date = null) }
             is RefuelingEditEvent.LitersChanged ->
-                edit({ copy(liters = filterDecimalInput(event.value)).withAutoTotal() }) { copy(liters = null, totalCost = null) }
+                edit({ copy(liters = filterDecimalInput(event.value)) }) { copy(liters = null) }
             is RefuelingEditEvent.PriceChanged ->
-                edit({ copy(pricePerLiter = filterDecimalInput(event.value)).withAutoTotal() }) {
-                    copy(pricePerLiter = null, totalCost = null)
-                }
-            is RefuelingEditEvent.TotalChanged -> edit({ changeTotal(event.value) }) { copy(totalCost = null) }
-            is RefuelingEditEvent.OdometerChanged ->
-                edit({ copy(odometer = filterDigitsInput(event.value)) }) { copy(odometer = null) }
-            is RefuelingEditEvent.StationChanged ->
-                edit({ copy(station = event.value.take(STATION_MAX)) }) { copy(station = null) }
-            is RefuelingEditEvent.PaymentChanged -> edit({ copy(paymentType = event.value) }) { this }
-            is RefuelingEditEvent.NoteChanged -> edit({ copy(note = event.value.take(NOTE_MAX)) }) { copy(note = null) }
+                edit({ copy(pricePerLiter = filterDecimalInput(event.value)) }) { copy(pricePerLiter = null) }
             RefuelingEditEvent.Save -> save()
             RefuelingEditEvent.RequestDelete -> _state.update { it.copy(confirmDelete = true) }
             RefuelingEditEvent.DismissDelete -> _state.update { it.copy(confirmDelete = false) }
@@ -152,12 +136,4 @@ class RefuelingEditViewModel @Inject constructor(
             }
         }
     }
-}
-
-/**
- * Сумма: ввели вручную — больше не пересчитываем; стёрли — снова считаем автоматически.
- */
-private fun RefuelingForm.changeTotal(value: String): RefuelingForm {
-    val text = filterDecimalInput(value)
-    return if (text.isBlank()) copy(isTotalManual = false).withAutoTotal() else copy(totalCost = text, isTotalManual = true)
 }
