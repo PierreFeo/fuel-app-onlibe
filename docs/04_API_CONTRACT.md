@@ -29,6 +29,7 @@ FastAPI автоматически публикует интерактивную
 | 401 | `INVALID_CREDENTIALS` | неверный телефон или пароль (вход по паролю) |
 | 401 | `REFRESH_INVALID` | refresh-токен недействителен |
 | 403 | `PHONE_NOT_ALLOWED` | номер не в белом списке |
+| 403 | `PASSWORD_REQUIRED` | SMS отключены, а у номера задан пароль — войти можно только по паролю |
 | 404 | `NOT_FOUND` | ресурс не найден или чужой; также неизвестный URL или неподдерживаемый HTTP-метод |
 | 429 | `RATE_LIMITED` | слишком часто (details: `{ "retry_after_sec": 45 }`) |
 | 500 | `INTERNAL_ERROR` | непредвиденная ошибка сервера (подробности только в логах) |
@@ -49,8 +50,10 @@ FastAPI автоматически публикует интерактивную
 // запрос
 { "phone": "+79991234567" }
 // 200
-{ "expires_in_sec": 300, "resend_after_sec": 60 }
+{ "expires_in_sec": 300, "resend_after_sec": 60, "delivery": "sms" }
 ```
+`delivery`: `sms` — код отправлен в SMS; `fixed` — SMS отключены (`SMS_PROVIDER=off`), код `000000`
+(`05_AUTH_SMS.md`, «SMS отключены»). Старые версии приложения поле игнорируют.
 Ошибки: 400, 403 `PHONE_NOT_ALLOWED`, 429, 502.
 
 ### POST /auth/verify-code
@@ -65,7 +68,8 @@ FastAPI автоматически публикует интерактивную
   "is_new_user": true
 }
 ```
-Ошибки: 401 `OTP_INVALID`, 401 `OTP_EXPIRED`.
+Ошибки: 401 `OTP_INVALID`, 401 `OTP_EXPIRED`; при `SMS_PROVIDER=off` — 403 `PHONE_NOT_ALLOWED` и
+403 `PASSWORD_REQUIRED` (у номера задан пароль — вход только по паролю).
 
 ### POST /auth/login
 Вход по паролю (без SMS). Логин — номер телефона, нормализуется так же, как в `request-code`.

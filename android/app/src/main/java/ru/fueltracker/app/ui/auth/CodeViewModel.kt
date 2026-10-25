@@ -24,6 +24,8 @@ import javax.inject.Inject
 data class CodeUiState(
     /** `+79991234567`. */
     val phone: String,
+    /** SMS на сервере отключены — код 000000, повторной отправки нет. */
+    val isFixedCode: Boolean = false,
     val code: String = "",
     val isVerifying: Boolean = false,
     /** Через сколько секунд можно запросить код снова; 0 — кнопка «Отправить ещё раз». */
@@ -33,7 +35,7 @@ data class CodeUiState(
     val snackbar: UiText? = null,
     val loggedIn: LoginResult? = null,
 ) {
-    val canResend: Boolean get() = resendSecondsLeft == 0 && !isResending && !isVerifying
+    val canResend: Boolean get() = !isFixedCode && resendSecondsLeft == 0 && !isResending && !isVerifying
 }
 
 sealed interface CodeEvent {
@@ -51,14 +53,20 @@ class CodeViewModel @Inject constructor(
 
     // Аргументы маршрута CodeRoute лежат в SavedStateHandle под именами его полей
     private val _state = MutableStateFlow(
-        CodeUiState(phone = checkNotNull(savedStateHandle.get<String>(ARG_PHONE))),
+        CodeUiState(
+            phone = checkNotNull(savedStateHandle.get<String>(ARG_PHONE)),
+            isFixedCode = savedStateHandle.get<Boolean>(ARG_FIXED_CODE) ?: false,
+        ),
     )
     val state: StateFlow<CodeUiState> = _state.asStateFlow()
 
     private var timerJob: Job? = null
 
     init {
-        startResendTimer(savedStateHandle.get<Int>(ARG_RESEND_AFTER_SEC) ?: DEFAULT_RETRY_SEC)
+        // Без SMS таймер «отправить повторно» не нужен
+        if (!_state.value.isFixedCode) {
+            startResendTimer(savedStateHandle.get<Int>(ARG_RESEND_AFTER_SEC) ?: DEFAULT_RETRY_SEC)
+        }
     }
 
     fun onEvent(event: CodeEvent) {
@@ -146,11 +154,13 @@ class CodeViewModel @Inject constructor(
         const val CODE_LENGTH = 6
         internal const val ARG_PHONE = "phone"
         internal const val ARG_RESEND_AFTER_SEC = "resendAfterSec"
+        internal const val ARG_FIXED_CODE = "fixedCode"
     }
 }
 
 private fun verifyErrorText(error: ApiError): UiText? = when ((error as? ApiError.Http)?.code) {
     ErrorCodes.OTP_INVALID -> UiText.Resource(R.string.error_code_invalid)
     ErrorCodes.OTP_EXPIRED -> UiText.Resource(R.string.error_code_expired)
+    ErrorCodes.PASSWORD_REQUIRED -> UiText.Resource(R.string.error_password_required)
     else -> null
 }

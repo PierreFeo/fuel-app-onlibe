@@ -18,7 +18,7 @@ import ru.fueltracker.app.ui.common.toUiText
 import javax.inject.Inject
 
 /** Куда перейти после успешного запроса кода. */
-data class CodeSent(val phone: String, val resendAfterSec: Int)
+data class CodeSent(val phone: String, val resendAfterSec: Int, val isFixedCode: Boolean = false)
 
 data class PhoneUiState(
     /** 10 цифр после «+7». */
@@ -66,7 +66,7 @@ class PhoneViewModel @Inject constructor(
         viewModelScope.launch {
             when (val result = authRepository.requestCode(phone)) {
                 is ApiResult.Success -> _state.update {
-                    it.copy(isLoading = false, codeSent = CodeSent(phone, result.data.resendAfterSec))
+                    it.copy(isLoading = false, codeSent = CodeSent(phone, result.data.resendAfterSec, result.data.isFixedCode))
                 }
                 is ApiResult.Failure -> _state.update { it.withError(result.error) }
             }

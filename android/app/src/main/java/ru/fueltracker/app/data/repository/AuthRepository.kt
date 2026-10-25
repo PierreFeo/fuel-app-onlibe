@@ -12,6 +12,7 @@ import ru.fueltracker.app.data.remote.ApiResult
 import ru.fueltracker.app.data.remote.api.AuthApi
 import ru.fueltracker.app.data.remote.apiCall
 import ru.fueltracker.app.data.remote.dto.LoginRequest
+import ru.fueltracker.app.data.remote.dto.DELIVERY_FIXED
 import ru.fueltracker.app.data.remote.dto.RefreshRequest
 import ru.fueltracker.app.data.remote.dto.RequestCodeRequest
 import ru.fueltracker.app.data.remote.dto.TokensResponse
@@ -70,7 +71,7 @@ class DefaultAuthRepository @Inject constructor(
 
     override suspend fun requestCode(phone: String): ApiResult<CodeRequest> =
         apiCall { api.requestCode(RequestCodeRequest(phone)) }
-            .map { CodeRequest(resendAfterSec = it.resendAfterSec) }
+            .map { CodeRequest(resendAfterSec = it.resendAfterSec, isFixedCode = it.delivery == DELIVERY_FIXED) }
 
     override suspend fun verifyCode(phone: String, code: String): ApiResult<LoginResult> =
         apiCall { api.verifyCode(VerifyCodeRequest(phone, code)) }.saveTokens(askPassword = true)

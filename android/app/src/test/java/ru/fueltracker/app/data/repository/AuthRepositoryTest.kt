@@ -100,6 +100,15 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun `SMS отключены на сервере — признак кода 000000`() = runTest {
+        server.enqueueJson("""{ "expires_in_sec": 300, "resend_after_sec": 60, "delivery": "fixed" }""")
+
+        val result = repository.requestCode("+79991234567")
+
+        assertEquals(ApiResult.Success(CodeRequest(resendAfterSec = 60, isFixedCode = true)), result)
+    }
+
+    @Test
     fun `verify-code сохраняет токены`() = runTest {
         server.enqueueJson(tokensJson(name = null, isNewUser = true))
 

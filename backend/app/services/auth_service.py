@@ -31,6 +31,8 @@ logger = logging.getLogger(__name__)
 
 OTP_MAX_ATTEMPTS = 5  # совпадает с CHECK-ограничением в таблице otp_codes
 DEV_TEST_CODE = "000000"
+# SMS_PROVIDER=off: SMS не отправляются, код один для всех — только для номеров без пароля
+FIXED_CODE = "000000"
 SMS_TEXT = "Код входа в Учёт топлива: {code}. Никому не сообщайте."
 
 
@@ -126,6 +128,9 @@ async def request_code(
     if retry_after is not None:
         raise _rate_limited(retry_after)
     await _ensure_phone_allowed(session, phone, settings)
+    if settings.sms_provider == "off":
+        # Шлюз выключен: код не создаём и не отправляем, приложение подскажет 000000
+        return response.model_copy(update={"delivery": "fixed"})
     await _ensure_phone_rate_limit(session, phone, now, settings)
 
     # Новый код отменяет все прежние коды этого номера.
@@ -177,6 +182,24 @@ async def _check_code(
     otp.used_at = now
 
 
+async def _check_fixed_code(
+    session: AsyncSession, phone: str, code: str, settings: Settings
+) -> None:
+    """
+    SMS отключены (docs/05_AUTH_SMS.md, «SMS отключены»): код всегда 000000. request-code можно
+    пропустить, поэтому номер проверяется здесь же. У кого есть пароль — только вход по паролю,
+    иначе по чужому номеру и 000000 мог бы войти кто угодно.
+    """
+    await _ensure_phone_allowed(session, phone, settings)
+    if code != FIXED_CODE:
+        raise AppError(ErrorCode.OTP_INVALID, "Неверный код", 401)
+    user = await _get_user(session, phone)
+    if user is not None and user.password_hash is not None:
+        raise AppError(
+            ErrorCode.PASSWORD_REQUIRED, "Для этого номера задан пароль — войдите по паролю", 403
+        )
+
+
 def _issue_tokens(
     session: AsyncSession, user: User, now: datetime, settings: Settings
 ) -> TokensOut:
@@ -204,7 +227,10 @@ async def verify_code(
     settings: Settings,
 ) -> VerifyCodeOut:
     phone = _normalize(raw_phone, settings)
-    await _check_code(session, phone, code, now, settings)
+    if settings.sms_provider == "off" and not _is_dev_test_phone(phone, settings):
+        await _check_fixed_code(session, phone, code, settings)
+    else:
+        await _check_code(session, phone, code, now, settings)
 
     user = await _get_user(session, phone)
     is_new_user = user is None

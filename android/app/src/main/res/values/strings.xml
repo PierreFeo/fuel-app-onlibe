@@ -27,6 +27,7 @@
     <!-- Вход: код из SMS -->
     <string name="code_title">Код из SMS</string>
     <string name="code_subtitle">Отправили код на номер %1$s</string>
+    <string name="code_subtitle_fixed">SMS временно не отправляются. Введите код 000000</string>
     <string name="code_input_description">Код из 6 цифр</string>
     <string name="code_resend_timer">Отправить код повторно через %1$s</string>
     <string name="code_resend">Отправить ещё раз</string>
@@ -274,6 +275,7 @@
     <string name="error_password_blank">Пароль не может состоять только из пробелов</string>
     <string name="error_password_mismatch">Пароли не совпадают</string>
     <string name="error_password_wrong">Неверный пароль</string>
+    <string name="error_password_required">Для этого номера задан пароль — войдите по паролю</string>
 
     <string name="error_whole_number">Введите целое число</string>
     <string name="error_non_negative_number">Введите число 0 или больше</string>

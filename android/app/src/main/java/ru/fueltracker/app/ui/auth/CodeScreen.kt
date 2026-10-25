@@ -82,7 +82,11 @@ fun CodeContent(
 
     AuthLayout(
         title = stringResource(R.string.code_title),
-        subtitle = stringResource(R.string.code_subtitle, PhoneFormat.display(state.phone)),
+        subtitle = if (state.isFixedCode) {
+            stringResource(R.string.code_subtitle_fixed)
+        } else {
+            stringResource(R.string.code_subtitle, PhoneFormat.display(state.phone))
+        },
         step = AuthStep.CODE,
         snackbarHostState = snackbarHostState,
         modifier = modifier,
@@ -103,15 +107,16 @@ fun CodeContent(
                 )
             }
         }
-        if (state.resendSecondsLeft > 0) {
-            Text(
+        when {
+            // SMS отключены — «Отправить ещё раз» не нужно
+            state.isFixedCode -> Unit
+            state.resendSecondsLeft > 0 -> Text(
                 text = stringResource(R.string.code_resend_timer, formatCountdown(state.resendSecondsLeft)),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
-        } else {
-            TextButton(
+            else -> TextButton(
                 onClick = { onEvent(CodeEvent.Resend) },
                 enabled = state.canResend,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
@@ -123,7 +128,7 @@ fun CodeContent(
             Text(stringResource(R.string.code_change_phone))
         }
         TextButton(onClick = onPasswordLogin, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Text(stringResource(R.string.code_password_login))
+            Text(stringResource(if (state.isFixedCode) R.string.phone_password_login else R.string.code_password_login))
         }
     }
 }
@@ -201,6 +206,19 @@ private fun CodeContentPreview() {
     FuelTrackerTheme {
         CodeContent(
             state = CodeUiState(phone = "+79991234567", code = "123", resendSecondsLeft = 42),
+            onEvent = {},
+            onChangePhone = {},
+            onPasswordLogin = {},
+        )
+    }
+}
+
+@PreviewLightDark
+@Composable
+private fun CodeContentFixedPreview() {
+    FuelTrackerTheme {
+        CodeContent(
+            state = CodeUiState(phone = "+79991234567", isFixedCode = true, code = "000"),
             onEvent = {},
             onChangePhone = {},
             onPasswordLogin = {},

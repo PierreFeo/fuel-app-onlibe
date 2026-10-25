@@ -17,7 +17,7 @@ async def test_sends_code_by_sms(api: AsyncClient, sms: FakeSmsSender, db: Async
     response = await api.post(URL, json={"phone": "8 999 123-45-67"})
 
     assert response.status_code == 200
-    assert response.json() == {"expires_in_sec": 300, "resend_after_sec": 60}
+    assert response.json() == {"expires_in_sec": 300, "resend_after_sec": 60, "delivery": "sms"}
     assert len(sms.sent) == 1
     assert sms.sent[0].phone == ALLOWED_PHONE
     code = sms.last_code()

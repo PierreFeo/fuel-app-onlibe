@@ -10,6 +10,8 @@ data class RequestCodeRequest(val phone: String)
 data class RequestCodeResponse(
     @SerialName("expires_in_sec") val expiresInSec: Int,
     @SerialName("resend_after_sec") val resendAfterSec: Int,
+    /** `sms` — код в SMS; `fixed` — SMS отключены на сервере, код 000000. Нет в старом сервере — `sms`. */
+    @SerialName("delivery") val delivery: String = DELIVERY_SMS,
 )
 
 @Serializable
@@ -53,3 +55,6 @@ data class PasswordChangeRequest(
     @SerialName("current_password") val currentPassword: String?,
     @SerialName("new_password") val newPassword: String,
 )
+
+const val DELIVERY_SMS = "sms"
+const val DELIVERY_FIXED = "fixed"

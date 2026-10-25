@@ -14,6 +14,8 @@ class RequestCodeIn(BaseModel):
 class RequestCodeOut(BaseModel):
     expires_in_sec: int
     resend_after_sec: int
+    # sms — код ушёл в SMS; fixed — SMS отключены (SMS_PROVIDER=off), код 000000
+    delivery: Literal["sms", "fixed"] = "sms"
 
 
 class VerifyCodeIn(BaseModel):

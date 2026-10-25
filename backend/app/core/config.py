@@ -15,8 +15,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://fuel:fuel@db:5432/fuel"
     test_database_url: str = "postgresql+asyncpg://fuel:fuel@db:5432/fuel_test"
 
-    # Отправка SMS (docs/05_AUTH_SMS.md). smsgate — настоящие SMS через домашний телефон.
-    sms_provider: Literal["console", "smsgate"] = "console"
+    # Отправка SMS (docs/05_AUTH_SMS.md). smsgate — настоящие SMS через домашний телефон;
+    # off — SMS не отправляются, код всегда 000000 и только для номеров без пароля.
+    sms_provider: Literal["console", "smsgate", "off"] = "console"
     smsgate_url: str = "https://api.sms-gate.app/3rdparty/v1"
     smsgate_username: str = ""
     smsgate_password: str = ""

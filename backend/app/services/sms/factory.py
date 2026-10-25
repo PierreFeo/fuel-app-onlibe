@@ -7,6 +7,7 @@ from app.services.sms.smsgate import SmsGateSender
 def get_sms_sender() -> SmsSender:
     """Зависимость FastAPI: отдаёт отправщика по SMS_PROVIDER. В тестах подменяется на фейк."""
     settings = get_settings()
+    # off — SMS не отправляются вовсе (auth_service не вызывает отправщика)
     if settings.sms_provider == "smsgate":
         return SmsGateSender(
             base_url=settings.smsgate_url,

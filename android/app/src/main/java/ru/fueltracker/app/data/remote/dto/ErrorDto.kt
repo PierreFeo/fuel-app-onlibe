@@ -27,4 +27,5 @@ object ErrorCodes {
     const val RATE_LIMITED = "RATE_LIMITED"
     const val INTERNAL_ERROR = "INTERNAL_ERROR"
     const val SMS_SEND_FAILED = "SMS_SEND_FAILED"
+    const val PASSWORD_REQUIRED = "PASSWORD_REQUIRED"
 }
