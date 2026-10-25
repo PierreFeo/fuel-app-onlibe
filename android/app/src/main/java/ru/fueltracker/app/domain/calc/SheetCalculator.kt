@@ -71,7 +71,8 @@ object SheetCalculator {
             val actual = round2(fuelAvailableL - sheet.fuelEndActualL)
             actualConsumptionL = actual
             deviationL = round2(actual - normConsumptionL)
-            if (mileageKm > 0) {
+            // Топливо не убыло (нет заправок, остаток не изменился) — данных не хватает, расход не считаем
+            if (mileageKm > 0 && actual.signum() > 0) {
                 val perHundred = round3((actual * HUNDRED).divide(BigDecimal.valueOf(mileageKm), DIVISION))
                 actualLPer100km = perHundred
                 // Сравниваем то же число с 3 знаками, что видит пользователь: ровно по норме — зелёный.

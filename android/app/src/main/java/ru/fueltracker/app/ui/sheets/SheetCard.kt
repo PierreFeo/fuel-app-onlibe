@@ -272,7 +272,8 @@ private fun SheetMenu(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardActio
 
 /**
  * «Начало / Конец» слева, «Расход» справа. Закрытый лист — 🔒 сразу за пробегом на конец;
- * открытый — вместо «—» кнопка «Закрыть месяц».
+ * открытый — всегда кнопка «Закрыть месяц», даже если пробег на конец уже есть (лист переоткрыли):
+ * введённые цифры подставятся в диалог закрытия.
  */
 @Composable
 private fun OdometerAndConsumption(sheet: FuelSheet, isBusy: Boolean, actions: SheetCardActions) {
@@ -285,7 +286,7 @@ private fun OdometerAndConsumption(sheet: FuelSheet, isBusy: Boolean, actions: S
             OdometerRow(stringResource(R.string.sheet_month_end_short)) {
                 val end = sheet.odometerEndKm
                 when {
-                    !sheet.isClosed && end == null -> CloseMonthButton(sheet, isBusy, actions.onClose)
+                    !sheet.isClosed -> CloseMonthButton(sheet, isBusy, actions.onClose)
                     else -> {
                         Mileage(end?.let { Formatters.km(it) } ?: stringResource(R.string.sheet_no_value))
                         if (sheet.isClosed) {
@@ -320,19 +321,18 @@ private fun OdometerAndConsumption(sheet: FuelSheet, isBusy: Boolean, actions: S
             )
             val perHundred = sheet.calc.actualLPer100km
             Text(
-                text = perHundred?.let { Formatters.consumption(it) } ?: stringResource(R.string.sheet_no_value),
+                text = perHundred?.let { Formatters.consumption(it) } ?: stringResource(R.string.sheet_consumption_na),
                 style = MaterialTheme.typography.titleLarge,
                 fontSize = 21.sp,
                 color = consumptionColor(sheet.calc.consumptionStatus),
                 modifier = Modifier.testTag(SheetsFeedTestTags.consumption(sheet.id)),
             )
-            if (perHundred != null) {
-                Text(
-                    text = stringResource(R.string.sheet_consumption_unit),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            // Не посчитан — «н/д» и «мало данных», а не 0 (06_BUSINESS_RULES.md, пример J)
+            Text(
+                text = stringResource(if (perHundred != null) R.string.sheet_consumption_unit else R.string.sheet_consumption_na_hint),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }

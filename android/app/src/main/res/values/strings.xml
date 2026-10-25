@@ -27,7 +27,6 @@
     <!-- Вход: код из SMS -->
     <string name="code_title">Код из SMS</string>
     <string name="code_subtitle">Отправили код на номер %1$s</string>
-    <string name="code_subtitle_fixed">SMS временно не отправляются. Введите код 000000</string>
     <string name="code_input_description">Код из 6 цифр</string>
     <string name="code_resend_timer">Отправить код повторно через %1$s</string>
     <string name="code_resend">Отправить ещё раз</string>
@@ -156,6 +155,8 @@
     <string name="refueling_sum">%1$s ₽</string>
     <string name="sheet_consumption">Расход</string>
     <string name="sheet_consumption_unit">л/100 км</string>
+    <string name="sheet_consumption_na">н/д</string>
+    <string name="sheet_consumption_na_hint">мало данных</string>
     <string name="sheet_warning">⚠ %1$s</string>
     <string name="warning_fuel_end_negative">Расчётный остаток отрицательный — проверьте пробег и заправки</string>
     <string name="warning_fuel_end_over_tank">Остаток на конец месяца больше объёма бака</string>

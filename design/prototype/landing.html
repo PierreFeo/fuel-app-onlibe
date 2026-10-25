@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Лендинг fuelapp.ru</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+/* Стенд: варианты лендинга fuelapp.ru в рамке «телефон» или «компьютер», светлая и тёмная тема */
+:root {
+  --stand-bg: #E4E7EB; --stand-ink: #1C232D; --stand-muted: #5A6472; --stand-card: #FFFFFF;
+  --tab-on: #1C232D; --tab-on-ink: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --stand-bg: #1A1F26; --stand-ink: #E8ECF1; --stand-muted: #9AA4B2; --stand-card: #262D37;
+    --tab-on: #E8ECF1; --tab-on-ink: #1A1F26;
+  }
+}
+:root[data-theme="dark"] {
+  --stand-bg: #1A1F26; --stand-ink: #E8ECF1; --stand-muted: #9AA4B2; --stand-card: #262D37;
+  --tab-on: #E8ECF1; --tab-on-ink: #1A1F26;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--stand-bg); color: var(--stand-ink); font: 15px/1.5 "Onest", system-ui, sans-serif; }
+.stand { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+.stand h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+.stand > p { margin: 0 0 14px; color: var(--stand-muted); max-width: 72ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.bar.small button { padding: 6px 12px; font-size: 13px; }
+.bar button { font: inherit; font-weight: 500; border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer; background: var(--stand-card); color: var(--stand-ink); }
+.bar button[aria-pressed="true"] { background: var(--tab-on); color: var(--tab-on-ink); }
+.bar button:focus-visible { outline: 3px solid #3B82F6; outline-offset: 2px; }
+.idea { margin: 4px 0 18px; color: var(--stand-muted); max-width: 72ch; min-height: 3em; }
+.frame-wrap { display: flex; justify-content: center; }
+.frame { width: 390px; max-width: 100%; height: 780px; overflow: auto; border-radius: 34px; border: 10px solid #11161C;
+         box-shadow: 0 20px 50px rgba(0,0,0,.18); container: lp / inline-size; scrollbar-width: thin; }
+.frame.desktop { width: 1140px; height: 760px; border-radius: 14px; border-width: 8px 8px 8px; border-top-width: 30px; }
+
+/* ===== Токены лендинга: палитра «Петроль» из приложения ===== */
+.lp {
+  --bg: #EDF1F0; --card: #FFFFFF; --ink: #142326; --muted: #586B6F; --line: #DCE5E4;
+  --primary: #0D6170; --primary-deep: #0A4A55; --on-primary: #FFFFFF; --container: #D5ECEE; --on-container: #0A4A55;
+  --amber: #A86400; --amber-soft: #FCEBD0; --road: #24363A; --road-line: #FFFFFF;
+  --hero-ink: #FFFFFF; --hero-muted: rgba(255,255,255,.78);
+  min-height: 100%; background: var(--bg); color: var(--ink);
+  font: 16px/1.55 "Onest", system-ui, sans-serif;
+}
+.frame[data-theme="dark"] .lp {
+  --bg: #0E1719; --card: #172326; --ink: #E3EEEF; --muted: #93A9AD; --line: #27393D;
+  --primary: #5CC7D6; --primary-deep: #1D4248; --on-primary: #062A31; --container: #1D4248; --on-container: #C8F0F5;
+  --amber: #F2B45A; --amber-soft: #3D2E14; --road: #0A1214; --road-line: #C8F0F5;
+}
+.lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+.lp h1, .lp h2, .lp h3, .lp p, .lp ol { margin: 0; }
+.lp .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+.lp .num { font-family: "Nunito", system-ui, sans-serif; font-weight: 800; font-variant-numeric: tabular-nums; }
+.lp a.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none;
+  background: var(--primary); color: var(--on-primary); font-weight: 700; font-size: 17px; padding: 16px 26px;
+  border-radius: 14px; transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 6px 18px rgba(13,97,112,.28); }
+.lp a.btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(13,97,112,.34); }
+.lp a.btn:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+.lp a.btn svg { width: 22px; height: 22px; flex: none; }
+.lp .meta { font-size: 13px; color: var(--muted); }
+.lp .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; }
+.lp .brand svg { width: 34px; height: 34px; border-radius: 30%; flex: none; }
+.lp .steps { list-style: none; padding: 0; counter-reset: s; display: grid; gap: 14px; }
+.lp .steps li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+.lp .steps li::before { content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--container); color: var(--on-container); font: 800 16px/1 "Nunito", sans-serif; }
+.lp .steps b { font-weight: 600; white-space: nowrap; }
+.lp .note { font-size: 14px; color: var(--muted); }
+.lp .feat { display: grid; gap: 12px; }
+.lp .feat > div { background: var(--card); border-radius: 18px; padding: 18px; display: grid; grid-template-columns: 40px 1fr; gap: 12px; }
+.lp .feat .ico { width: 40px; height: 40px; border-radius: 12px; background: var(--container); color: var(--primary); display: grid; place-items: center; }
+.lp .feat .ico svg { width: 22px; height: 22px; }
+.lp .feat h3 { font-size: 16px; font-weight: 600; }
+.lp .feat p { font-size: 14px; color: var(--muted); }
+.lp .qr { display: none; }
+.lp footer { padding: 28px 0 32px; font-size: 13px; color: var(--muted); text-align: center; }
+@container lp (min-width: 760px) {
+  .lp .feat { grid-template-columns: repeat(3, 1fr); }
+  .lp .qr { display: flex; align-items: center; gap: 14px; }
+}
+.lp .qr .code { width: 104px; height: 104px; background: #fff; border-radius: 14px; padding: 8px; flex: none; }
+.lp .qr .code svg { width: 100%; height: 100%; display: block; }
+.lp .qr p { font-size: 14px; color: var(--muted); max-width: 22ch; }
+
+/* Дорога с машинкой (как в карточке ЛУТ) */
+.lp .road { position: relative; height: 54px; }
+.lp .road .asphalt { position: absolute; left: 0; right: 0; top: 26px; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--primary) 22%, transparent); }
+.lp .road .done { position: absolute; left: 0; top: 26px; height: 6px; border-radius: 3px; background: var(--primary); width: 0; animation: drive 5s cubic-bezier(.45,.05,.3,1) infinite; }
+.lp .road .car { position: absolute; top: 6px; width: 46px; height: 24px; margin-left: -23px; left: 0; animation: car 5s cubic-bezier(.45,.05,.3,1) infinite; }
+.lp .road .flag { position: absolute; right: -2px; top: 6px; width: 20px; height: 26px; }
+@keyframes drive { 0% { width: 4%; } 70%, 100% { width: 88%; } }
+@keyframes car { 0% { left: 4%; } 70%, 100% { left: 88%; } }
+@media (prefers-reduced-motion: reduce) {
+  .lp .road .done, .lp .road .car, .lp .odo .roll { animation: none !important; }
+  .lp .road .done { width: 62%; } .lp .road .car { left: 62%; }
+}
+
+/* ===== A. Дорога ===== */
+.vA header { padding: 18px 0; }
+.vA .hero { padding: 18px 0 34px; }
+.vA .hero h1 { font-size: 40px; line-height: 1.08; font-weight: 800; letter-spacing: -.02em; }
+.vA .hero h1 span { color: var(--primary); }
+.vA .hero .lead { margin: 14px 0 22px; font-size: 18px; color: var(--muted); max-width: 34ch; }
+.vA .hero .cta { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.vA .hero .road { margin: 34px 0 0; }
+.vA .board { background: var(--card); border-radius: 24px; padding: 22px; display: grid; gap: 18px; }
+.vA .board h2 { font-size: 22px; font-weight: 700; }
+.vA section { padding: 10px 0; }
+.vA .grid2 { display: grid; gap: 16px; }
+@container lp (min-width: 760px) {
+  .vA .hero { padding: 40px 0 46px; display: grid; grid-template-columns: 1.15fr .85fr; gap: 40px; align-items: end; }
+  .vA .hero h1 { font-size: 60px; }
+  .vA .hero .road { grid-column: 1 / -1; margin-top: 18px; }
+  .vA .grid2 { grid-template-columns: 1.3fr .7fr; align-items: start; }
+}
+
+/* ===== B. Одометр ===== */
+.vB .top { background: radial-gradient(120% 90% at 85% 0%, #14808F 0%, #0D6170 45%, #083C46 100%); color: var(--hero-ink); padding-bottom: 40px; }
+.frame[data-theme="dark"] .vB .top { background: radial-gradient(120% 90% at 85% 0%, #1A5C66 0%, #12393F 50%, #0A1F23 100%); }
+.vB header { padding: 18px 0; }
+.vB .brand { color: #fff; }
+.vB .brand svg { box-shadow: 0 0 0 1.5px rgba(255,255,255,.4); }
+.vB .hero { padding: 20px 0 0; }
+.vB .kicker { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--hero-muted); }
+.vB h1 { font-size: 40px; line-height: 1.08; font-weight: 800; margin: 8px 0 14px; letter-spacing: -.02em; }
+.vB .lead { color: var(--hero-muted); font-size: 18px; max-width: 34ch; }
+.vB .odo { display: flex; gap: 6px; margin: 28px 0; align-items: center; }
+.vB .odo .d { width: 42px; height: 58px; border-radius: 10px; background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.22);
+  overflow: hidden; display: grid; place-items: center; font: 800 32px/1 "Nunito", sans-serif; color: #fff; }
+.vB .odo .d.hi { background: #fff; color: #0D6170; border-color: #fff; }
+.vB .odo .roll { display: flex; flex-direction: column; animation: roll 6s steps(1) infinite; }
+.vB .odo .roll span { height: 58px; display: grid; place-items: center; }
+@keyframes roll { 0% { transform: translateY(0); } 25% { transform: translateY(-58px); } 50% { transform: translateY(-116px); } 75% { transform: translateY(-174px); } }
+.vB .odo .unit { color: var(--hero-muted); font-weight: 600; margin-left: 6px; }
+.vB a.btn { background: #fff; color: #0D6170; box-shadow: 0 10px 26px rgba(0,0,0,.25); }
+.vB .top .meta { color: var(--hero-muted); margin-top: 10px; }
+.vB .body { padding: 28px 0 0; display: grid; gap: 22px; }
+.vB .card { background: var(--card); border-radius: 22px; padding: 22px; display: grid; gap: 16px; }
+.vB h2 { font-size: 22px; font-weight: 700; }
+@container lp (min-width: 760px) {
+  .vB .hero { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: center; padding-top: 34px; }
+  .vB h1 { font-size: 58px; }
+  .vB .odo .d { width: 56px; height: 76px; font-size: 42px; }
+  .vB .odo .roll span { height: 76px; }
+  @keyframes roll { 0% { transform: translateY(0); } 25% { transform: translateY(-76px); } 50% { transform: translateY(-152px); } 75% { transform: translateY(-228px); } }
+  .vB .body { grid-template-columns: 1.2fr .8fr; align-items: start; margin-top: -14px; }
+}
+
+/* ===== C. Телефон в руке ===== */
+.vC header { padding: 18px 0; }
+.vC .hero { display: grid; gap: 30px; padding: 14px 0 30px; }
+.vC h1 { font-size: 38px; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; }
+.vC .lead { margin: 14px 0 22px; font-size: 18px; color: var(--muted); max-width: 36ch; }
+.vC .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.vC .chips span { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
+.vC .mock { justify-self: center; width: 270px; border-radius: 34px; padding: 10px; background: #0F171A;
+  box-shadow: 0 30px 60px rgba(10,74,85,.28); transform: rotate(-3deg); }
+.vC .screen { border-radius: 26px; background: var(--bg); padding: 16px 12px 18px; display: grid; gap: 10px; }
+.vC .scr-top { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 15px; padding: 0 4px; }
+.vC .plate { font: 800 12px/1 "Nunito", sans-serif; border: 1.5px solid var(--ink); border-radius: 5px; padding: 3px 6px; background: var(--card); }
+.vC .lut { background: var(--card); border-radius: 18px; padding: 14px; display: grid; gap: 10px; }
+.vC .lut.dim { opacity: .65; }
+.vC .lut-h { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+.vC .pill { font-size: 12px; background: var(--container); color: var(--on-container); border-radius: 999px; padding: 3px 9px; font-weight: 600; }
+.vC .lut .road { height: 36px; }
+.vC .lut .road .asphalt, .vC .lut .road .done { top: 22px; height: 5px; }
+.vC .lut .road .car { top: 4px; width: 34px; height: 18px; margin-left: -17px; }
+.vC .lut .road .flag { top: 3px; width: 15px; height: 20px; }
+.vC .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+.vC .row3 b { display: block; font: 800 16px/1.2 "Nunito", sans-serif; }
+.vC .row3 b.ok { color: #1E7F45; }
+.frame[data-theme="dark"] .vC .row3 b.ok { color: #5BCB86; }
+.vC .row3 small { font-size: 10.5px; color: var(--muted); }
+.vC .how { background: var(--card); border-radius: 24px; padding: 22px; display: grid; gap: 18px; }
+.vC h2 { font-size: 22px; font-weight: 700; }
+.vC section { padding: 10px 0; }
+@container lp (min-width: 760px) {
+  .vC .hero { grid-template-columns: 1.1fr .9fr; align-items: center; padding: 36px 0 44px; }
+  .vC h1 { font-size: 56px; }
+  .vC .mock { width: 300px; }
+  .vC .how { grid-template-columns: 1fr auto; align-items: start; gap: 30px; }
+}
+
+/* ===== D. Минимал ===== */
+.vD { display: grid; place-items: start center; padding: 28px 0 0; background:
+  radial-gradient(60% 40% at 50% 0%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 70%), var(--bg); }
+.vD .sheet { width: 100%; max-width: 520px; padding: 0 16px; display: grid; gap: 16px; }
+.vD .main { background: var(--card); border-radius: 28px; padding: 30px 22px 24px; text-align: center; display: grid; gap: 14px; justify-items: center; }
+.vD .main > svg { width: 92px; height: 92px; border-radius: 30%; box-shadow: 0 14px 30px rgba(13,97,112,.3); }
+.vD h1 { font-size: 30px; font-weight: 800; letter-spacing: -.01em; }
+.vD .lead { color: var(--muted); max-width: 32ch; }
+.vD a.btn { width: 100%; margin-top: 6px; }
+.vD .ver { display: inline-flex; gap: 8px; align-items: center; }
+.vD .ver span:first-child { background: var(--container); color: var(--on-container); font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.vD details { background: var(--card); border-radius: 22px; padding: 4px 20px; }
+.vD summary { cursor: pointer; padding: 16px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+.vD summary::-webkit-details-marker { display: none; }
+.vD summary::after { content: ""; width: 10px; height: 10px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .2s; margin-right: 4px; }
+.vD details[open] summary::after { transform: rotate(-135deg); }
+.vD details .steps { padding-bottom: 18px; }
+.vD .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.vD .mini > div { background: var(--card); border-radius: 18px; padding: 14px 10px; text-align: center; font-size: 13px; font-weight: 500; display: grid; gap: 6px; justify-items: center; }
+.vD .mini svg { width: 24px; height: 24px; color: var(--primary); }
+.vD .qr { justify-content: center; background: var(--card); border-radius: 22px; padding: 16px; }
+</style>
+</head>
+<body>
+<div class="stand">
+  <h1>Лендинг fuelapp.ru</h1>
+  <p>Четыре варианта главной страницы, все в палитре и со шрифтами приложения. Большинство откроет страницу на телефоне, поэтому начинайте с рамки «Телефон». Подсказки про код 000000 нигде нет.</p>
+  <div class="bar" id="variants"></div>
+  <p class="idea" id="idea"></p>
+  <div class="bar small" id="view">
+    <button data-v="phone" aria-pressed="true">Телефон</button>
+    <button data-v="desktop">Компьютер</button>
+    <span style="width:12px"></span>
+    <button data-t="light" aria-pressed="true">Светлая</button>
+    <button data-t="dark">Тёмная</button>
+  </div>
+  <div class="frame-wrap"><div class="frame" id="frame" data-theme="light"></div></div>
+</div>
+
+<script>
+// ---- Общие куски ----
+const CAR = `<svg viewBox="0 0 34 18" aria-hidden="true"><path fill="var(--primary)" d="M2,12.6V9.6c0,-1 0.6,-1.8 1.6,-2L6,7l3.4,-4.1C9.9,2.3 10.6,2 11.4,2h6.8c0.8,0 1.5,0.3 2,0.9L23.6,7l6.8,1.1c1,0.2 1.6,1 1.6,2v2.5c0,0.7 -0.6,1.3 -1.3,1.3H3.3C2.6,13.9 2,13.3 2,12.6z M5.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0zM22.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0z"/><path fill="var(--card)" d="M7.6,6.9l2.7,-3.3H14v3.3zM15.2,3.6H18l3,3.3h-5.8zM29.6,9h2.2v1.6h-2.2zM7.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0zM24.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0z"/></svg>`;
+const FLAG = `<svg viewBox="0 0 20 26" aria-hidden="true"><path d="M3 2 V24" stroke="var(--amber)" stroke-width="2.4" stroke-linecap="round"/><path d="M4 2 H17 L14 6.5 L17 11 H4z" fill="var(--amber)"/></svg>`;
+const ROAD = `<div class="road" aria-hidden="true"><div class="asphalt"></div><div class="done"></div><div class="car">${CAR}</div><div class="flag">${FLAG}</div></div>`;
+// Иконка приложения — вариант «Дорога месяца» (icons.html), видимая часть 72×72
+const APP_ICON = `<svg viewBox="18 18 72 72" aria-hidden="true"><defs><linearGradient id="gi" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0D6170"/><stop offset="1" stop-color="#0A4A55"/></linearGradient></defs><rect width="108" height="108" fill="url(#gi)"/><path d="M26 70 H82" stroke="#fff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M26 70 H58" stroke="#fff" stroke-width="3" stroke-linecap="round"/><g transform="translate(25 40) scale(1.4)"><path d="M2,12.6V9.6c0,-1 0.6,-1.8 1.6,-2L6,7l3.4,-4.1C9.9,2.3 10.6,2 11.4,2h6.8c0.8,0 1.5,0.3 2,0.9L23.6,7l6.8,1.1c1,0.2 1.6,1 1.6,2v2.5c0,0.7 -0.6,1.3 -1.3,1.3H3.3C2.6,13.9 2,13.3 2,12.6z M5.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0zM22.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0z" fill="#fff"/><path d="M7.6,6.9l2.7,-3.3H14v3.3zM15.2,3.6H18l3,3.3h-5.8zM29.6,9h2.2v1.6h-2.2zM7.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0zM24.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0z" fill="#0D6170"/></g><g transform="translate(77 53)"><path d="M0 0 V16" stroke="#F2B45A" stroke-width="2.4" stroke-linecap="round"/><path d="M1 0 H9 L7 3.5 L9 7 H1z" fill="#F2B45A"/></g></svg>`;
+const DL = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>`;
+const I_OFF = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8.8a15 15 0 0 1 4.2-2.6M9.8 5.2A15 15 0 0 1 22 8.8M5.5 12.4a10 10 0 0 1 3-1.8M13.6 10.3a10 10 0 0 1 4.9 2.1M9 16a5 5 0 0 1 6 0M12 19.5h.01M3 3l18 18"/></svg>`;
+const I_CALC = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5s-6 6.9-6 11a6 6 0 0 0 12 0c0-4.1-6-11-6-11z"/><path d="M9.5 15.5h5"/></svg>`;
+const I_SYNC = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16m0 4v-4h-4"/></svg>`;
+
+const TITLE = 'Учёт топлива';
+const LEAD = 'Листы учёта топлива личных автомобилей — прямо в телефоне. Пробег, расход и остаток считаются сами.';
+const META = 'Версия 1.1 · 10 МБ · Android 8 и новее';
+const STEPS = `<ol class="steps">
+  <li><span>Нажмите «Скачать для Android» и откройте файл <b>fuel-tracker.apk</b>.</span></li>
+  <li><span>Если телефон спросит — разрешите установку из этого источника, вернитесь назад и нажмите «Установить».</span></li>
+  <li><span>Если Play Защита предупредит о неизвестном приложении — «Подробнее» → «Всё равно установить».</span></li>
+  <li><span>Откройте «Учёт топлива», введите номер телефона и код входа. При первом входе задайте пароль — дальше входите по нему.</span></li>
+</ol>`;
+const UPDATE = '<p class="note">Обновление — по этой же ссылке, удалять старую версию не нужно. Данные сохранятся.</p>';
+const FEAT = `<div class="feat">
+  <div><span class="ico">${I_OFF}</span><div><h3>Без интернета</h3><p>Всё хранится и считается на телефоне. Связь нужна только для синхронизации.</p></div></div>
+  <div><span class="ico">${I_CALC}</span><div><h3>Расход — сам</h3><p>Введите пробег и заправки, приложение посчитает расход по норме и остаток в баке.</p></div></div>
+  <div><span class="ico">${I_SYNC}</span><div><h3>Синхронизация</h3><p>Одна кнопка — и листы в безопасности на сервере. Новый телефон получит их обратно.</p></div></div>
+</div>`;
+const BTN = `<a class="btn" href="#">${DL}Скачать для Android</a>`;
+const BRAND = `<div class="brand">${APP_ICON}<span>${TITLE}</span></div>`;
+function qrBlock() {
+  return `<div class="qr"><div class="code" data-qr></div><p>Открыли на компьютере? Наведите камеру телефона на код.</p></div>`;
+}
+const FOOT = `<footer>fuelapp.ru · Учёт топлива для сотрудников организации</footer>`;
+
+const VARIANTS = [
+  {
+    id: 'A', name: 'A · Дорога',
+    idea: 'Как главный экран приложения: светлый фон, крупный заголовок и дорога, по которой машинка едет к финишу. Ниже карточка «Как установить» и три преимущества.',
+    html: () => `<div class="lp vA"><div class="wrap">
+      <header>${BRAND}</header>
+      <div class="hero">
+        <div><h1>Учёт топлива<br><span>без бумажек</span></h1><p class="lead">${LEAD}</p></div>
+        <div class="cta">${BTN}<span class="meta">${META}</span></div>
+        ${ROAD}
+      </div>
+      <section class="grid2">
+        <div class="board"><h2>Как установить</h2>${STEPS}${UPDATE}</div>
+        ${qrBlock()}
+      </section>
+      <section>${FEAT}</section>
+      ${FOOT}
+    </div></div>`,
+  },
+  {
+    id: 'B', name: 'B · Одометр',
+    idea: 'Яркая шапка цвета «Петроль» с крутящимся одометром, как ячейки кода входа в приложении. Белая кнопка сразу видна. Инструкция и преимущества — на светлом фоне ниже.',
+    html: () => `<div class="lp vB">
+      <div class="top"><div class="wrap">
+        <header>${BRAND}</header>
+        <div class="hero">
+          <div>
+            <div class="kicker">Для сотрудников организации</div>
+            <h1>Листы учёта топлива в телефоне</h1>
+            <p class="lead">Пробег, расход и остаток считаются сами. Работает без интернета.</p>
+          </div>
+          <div>
+            <div class="odo" aria-label="Одометр"><div class="d">0</div><div class="d">4</div><div class="d">8</div><div class="d">2</div><div class="d">1</div><div class="d hi"><div class="roll"><span>6</span><span>7</span><span>8</span><span>9</span></div></div><span class="unit">км</span></div>
+            ${BTN}<div class="meta">${META}</div>
+          </div>
+        </div>
+      </div></div>
+      <div class="wrap"><div class="body">
+        <div class="card"><h2>Как установить</h2>${STEPS}${UPDATE}</div>
+        <div style="display:grid;gap:16px">${qrBlock()}</div>
+      </div>
+      <div style="padding-top:22px">${FEAT}</div>
+      ${FOOT}</div>
+    </div>`,
+  },
+  {
+    id: 'C', name: 'C · Телефон',
+    idea: 'Показывает само приложение: рядом с кнопкой — телефон с лентой листов ЛУТ, как в новом дизайне. Сразу понятно, что скачиваешь.',
+    html: () => `<div class="lp vC"><div class="wrap">
+      <header>${BRAND}</header>
+      <div class="hero">
+        <div>
+          <h1>Лист учёта топлива — за минуту в месяц</h1>
+          <p class="lead">${LEAD}</p>
+          ${BTN}
+          <div class="meta" style="margin-top:10px">${META}</div>
+          <div class="chips"><span>Без интернета</span><span>Летняя и зимняя норма</span><span>Синхронизация по кнопке</span></div>
+        </div>
+        <div class="mock" aria-hidden="true"><div class="screen">
+          <div class="scr-top"><span>Листы</span><span class="plate">А123ВС 25</span></div>
+          <div class="lut">
+            <div class="lut-h"><span>☀️ Июль 2026</span><span class="pill">⛽ 3</span></div>
+            ${ROAD}
+            <div class="row3"><div><b>1 240</b><small>пробег, км</small></div><div><b class="ok">9,6</b><small>расход</small></div><div><b>18,4</b><small>остаток, л</small></div></div>
+          </div>
+          <div class="lut dim">
+            <div class="lut-h"><span>☀️ Июнь 2026</span><span class="pill">⛽ 4</span></div>
+            <div class="row3"><div><b>1 512</b><small>пробег, км</small></div><div><b class="ok">9,9</b><small>расход</small></div><div><b>12,0</b><small>остаток, л</small></div></div>
+          </div>
+        </div></div>
+      </div>
+      <section class="how"><div style="display:grid;gap:18px"><h2>Как установить</h2>${STEPS}${UPDATE}</div>${qrBlock()}</section>
+      ${FOOT}
+    </div></div>`,
+  },
+  {
+    id: 'D', name: 'D · Минимал',
+    idea: 'Одна карточка по центру: иконка, название, кнопка. Инструкция спрятана под «Как установить» и раскрывается по нажатию. Самый короткий путь к кнопке.',
+    html: () => `<div class="lp vD"><div class="sheet">
+      <div class="main">
+        ${APP_ICON}
+        <h1>${TITLE}</h1>
+        <p class="lead">${LEAD}</p>
+        ${BTN}
+        <div class="ver"><span>1.1</span><span class="meta">10 МБ · Android 8+</span></div>
+      </div>
+      <details open><summary>Как установить</summary>${STEPS}${UPDATE}</details>
+      <div class="mini"><div>${I_OFF}Без интернета</div><div>${I_CALC}Расход сам</div><div>${I_SYNC}Синхронизация</div></div>
+      ${qrBlock()}
+      ${FOOT}
+    </div></div>`,
+  },
+];
+
+// ---- Стенд ----
+const frame = document.getElementById('frame');
+const variants = document.getElementById('variants');
+const idea = document.getElementById('idea');
+let current = 'A';
+
+function drawQr() {
+  if (typeof qrcode !== 'function') return;
+  const q = qrcode(0, 'M'); q.addData('https://fuelapp.ru'); q.make();
+  frame.querySelectorAll('[data-qr]').forEach(el => { el.innerHTML = q.createSvgTag({ margin: 0, scalable: true }); });
+}
+function show(id) {
+  current = id;
+  const v = VARIANTS.find(x => x.id === id);
+  frame.innerHTML = v.html();
+  frame.scrollTop = 0;
+  idea.textContent = v.idea;
+  variants.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
+  drawQr();
+}
+variants.innerHTML = VARIANTS.map(v => `<button data-id="${v.id}">${v.name}</button>`).join('');
+variants.addEventListener('click', e => { const b = e.target.closest('button'); if (b) show(b.dataset.id); });
+document.getElementById('view').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.v) {
+    frame.classList.toggle('desktop', b.dataset.v === 'desktop');
+    document.querySelectorAll('[data-v]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  } else {
+    frame.dataset.theme = b.dataset.t;
+    document.querySelectorAll('[data-t]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  }
+});
+frame.querySelectorAll('a').forEach(a => a.addEventListener('click', e => e.preventDefault()));
+frame.addEventListener('click', e => { if (e.target.closest('a.btn')) e.preventDefault(); });
+
+// Для скриншотов: landing.html#B-desktop-dark
+const [hv, hw, ht] = location.hash.slice(1).split('-');
+if (hw === 'desktop') document.querySelector('[data-v="desktop"]').click();
+if (ht === 'dark') document.querySelector('[data-t="dark"]').click();
+show(hv && VARIANTS.some(v => v.id === hv) ? hv : 'A');
+</script>
+</body>
+</html>

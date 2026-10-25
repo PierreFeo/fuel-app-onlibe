@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Иконка приложения</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Стенд выбора иконки: адаптивная иконка Android (слой 108×108; лаунчер показывает центр 72×72, безопасная зона — круг 66) */
+:root {
+  --stand-bg: #E4E7EB; --stand-ink: #1C232D; --stand-muted: #5A6472; --stand-card: #FFFFFF;
+  --tab-on: #1C232D; --tab-on-ink: #FFFFFF;
+  /* Палитра «Петроль» из приложения */
+  --petrol: #0D6170; --petrol-deep: #0A4A55; --petrol-light: #5CC7D6; --mint: #D5ECEE; --amber: #F2B45A;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --stand-bg: #1A1F26; --stand-ink: #E8ECF1; --stand-muted: #9AA4B2; --stand-card: #262D37;
+    --tab-on: #E8ECF1; --tab-on-ink: #1A1F26;
+  }
+}
+:root[data-theme="dark"] {
+  --stand-bg: #1A1F26; --stand-ink: #E8ECF1; --stand-muted: #9AA4B2; --stand-card: #262D37;
+  --tab-on: #E8ECF1; --tab-on-ink: #1A1F26;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--stand-bg); color: var(--stand-ink); font: 15px/1.5 "Onest", system-ui, sans-serif; }
+.stand { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+.stand > p { margin: 0 0 20px; color: var(--stand-muted); max-width: 72ch; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.opt { background: var(--stand-card); border-radius: 20px; padding: 20px 16px 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.opt h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.opt p { margin: 0; color: var(--stand-muted); font-size: 13px; text-align: center; min-height: 3.2em; }
+.big { width: 132px; height: 132px; }
+.shapes { display: flex; gap: 12px; align-items: center; }
+.shapes .ic { width: 52px; height: 52px; }
+.label { font-size: 12px; color: var(--stand-muted); }
+.ic { display: block; }
+.ic.circle { clip-path: circle(50%); }
+.ic.squircle { clip-path: inset(0 round 30%); }
+.ic.square { clip-path: inset(0 round 16%); }
+
+/* Рабочий стол телефона */
+h3 { font-size: 17px; font-weight: 600; margin: 32px 0 4px; }
+.homes { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-top: 12px; }
+.home { width: 300px; border-radius: 28px; padding: 22px 14px 26px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 6px; }
+.home.light { background: linear-gradient(160deg, #F3E9DC, #D9E4EC 60%, #C8D9DE); }
+.home.dark { background: linear-gradient(160deg, #1D2733, #10161D 60%, #0B1014); }
+.home.themed { background: linear-gradient(160deg, #E8EFE6, #D7E3DA); }
+.app { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 11px; text-align: center; line-height: 1.2; }
+.home.light .app, .home.themed .app { color: #1A1F26; }
+.home.dark .app { color: #EEF2F5; }
+.app .ic { width: 52px; height: 52px; }
+.dummy { width: 52px; height: 52px; border-radius: 50%; }
+.home-cap { width: 100%; text-align: center; font-size: 13px; color: var(--stand-muted); margin-top: 6px; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.tabs button { font: inherit; font-weight: 500; border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer; background: var(--stand-card); color: var(--stand-ink); }
+.tabs button[aria-pressed="true"] { background: var(--tab-on); color: var(--tab-on-ink); }
+.tabs button:focus-visible { outline: 3px solid #3B82F6; outline-offset: 2px; }
+.homes-wrap > div { display: flex; flex-direction: column; align-items: center; }
+</style>
+</head>
+<body>
+<div class="stand">
+  <h1>Иконка приложения</h1>
+  <p>Сейчас у приложения стандартный робот Android. Ниже четыре варианта в палитре «Петроль». На разных телефонах иконку обрезают по-разному (круг, «сквиркл», квадрат), поэтому показаны все формы. Внизу иконка на рабочем столе, в том числе в «тематическом» режиме Android 13+, где иконки перекрашиваются в один цвет.</p>
+
+  <div class="grid" id="grid"></div>
+
+  <h3>На рабочем столе</h3>
+  <div class="tabs" id="tabs"></div>
+  <div class="homes homes-wrap" id="homes"></div>
+</div>
+
+<script>
+// Машинка из приложения (ic_car_body + ic_car_details, сетка 34×18)
+const CAR_BODY = 'M2,12.6V9.6c0,-1 0.6,-1.8 1.6,-2L6,7l3.4,-4.1C9.9,2.3 10.6,2 11.4,2h6.8c0.8,0 1.5,0.3 2,0.9L23.6,7l6.8,1.1c1,0.2 1.6,1 1.6,2v2.5c0,0.7 -0.6,1.3 -1.3,1.3H3.3C2.6,13.9 2,13.3 2,12.6z M5.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0zM22.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0z';
+const CAR_DETAILS = 'M7.6,6.9l2.7,-3.3H14v3.3zM15.2,3.6H18l3,3.3h-5.8zM29.6,9h2.2v1.6h-2.2zM7.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0zM24.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0z';
+const PUMP = 'M4.5,20.5V5.5a2,2 0,0 1,2 -2h5a2,2 0,0 1,2 2v15M3,20.5h12M8,6.5h2a1,1 0,0 1,1 1v1.5a1,1 0,0 1,-1 1h-2a1,1 0,0 1,-1 -1v-1.5a1,1 0,0 1,1 -1zM13.5,9.5h1.25a1.5,1.5 0,0 1,1.5 1.5v4.25a1.5,1.5 0,0 0,3 0V8.6a1.5,1.5 0,0 0,-0.44 -1.06L17,5.75';
+const DROP = 'M54,24 C54,24 34,47 34,61 a20,20 0 0 0 40,0 C74,47 54,24 54,24z';
+
+// Каждый вариант: фон (bg), рисунок (fg) и одноцветная версия (mono) для тематических иконок.
+// c — цвета: base (фон), ink (рисунок), accent, cut (вырезы цветом фона)
+const ICONS = [
+  {
+    id: 'road', name: '1 · Дорога месяца',
+    note: 'Машинка из приложения едет по дороге к финишу. Узнаётся сразу после главного экрана.',
+    bg: c => `<defs><linearGradient id="g-road-${c.k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c.base}"/><stop offset="1" stop-color="${c.deep}"/></linearGradient></defs>
+      <rect width="108" height="108" fill="url(#g-road-${c.k})"/>`,
+    fg: c => `
+      <path d="M26 70 H82" stroke="${c.ink}" stroke-opacity=".35" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 7"/>
+      <path d="M26 70 H58" stroke="${c.ink}" stroke-width="3" stroke-linecap="round"/>
+      <g transform="translate(25 40) scale(1.4)"><path d="${CAR_BODY}" fill="${c.ink}"/><path d="${CAR_DETAILS}" fill="${c.cut}"/></g>
+      <g transform="translate(77 53)"><path d="M0 0 V16" stroke="${c.accent}" stroke-width="2.4" stroke-linecap="round"/><path d="M1 0 H9 L7 3.5 L9 7 H1z" fill="${c.accent}"/></g>`,
+  },
+  {
+    id: 'drop', name: '2 · Капля-датчик',
+    note: 'Капля топлива со стрелкой датчика: «сколько налито и сколько потрачено».',
+    bg: c => `<rect width="108" height="108" fill="${c.base}"/>`,
+    fg: c => `
+      <path d="${DROP}" fill="${c.ink}"/>
+      <path d="M41 63 a13 13 0 0 1 26 0" fill="none" stroke="${c.cut}" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M43.5 63 h1.5 M63 63 h1.5" stroke="${c.cut}" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M54 63 L61 54" stroke="${c.accent}" stroke-width="3.4" stroke-linecap="round"/>
+      <circle cx="54" cy="63" r="3.6" fill="${c.cut}"/>`,
+  },
+  {
+    id: 'pump', name: '3 · Колонка',
+    note: 'Топливная колонка, как на капсуле заправок. Светлый фон, рисунок цветом «Петроль».',
+    bg: c => `<rect width="108" height="108" fill="${c.soft}"/>`,
+    fg: c => `
+      <g transform="translate(29 27) scale(2.15)" fill="none" stroke="${c.strong}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${PUMP}"/></g>
+      <path d="M71.5 70 c0 0 -4 4.6 -4 7.4 a4 4 0 0 0 8 0 c0 -2.8 -4 -7.4 -4 -7.4z" fill="${c.accent}" transform="translate(4 -2)"/>`,
+  },
+  {
+    id: 'sheet', name: '4 · Лист учёта',
+    note: 'Лист ЛУТ с загнутым уголком и каплей. Подчёркивает, что это учёт, а не навигатор.',
+    bg: c => `<defs><linearGradient id="g-sheet-${c.k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c.base}"/><stop offset="1" stop-color="${c.deep}"/></linearGradient></defs>
+      <rect width="108" height="108" fill="url(#g-sheet-${c.k})"/>`,
+    fg: c => `
+      <path d="M36 28 H62 L74 40 V78 a4 4 0 0 1 -4 4 H36 a4 4 0 0 1 -4 -4 V32 a4 4 0 0 1 4 -4z" fill="${c.ink}"/>
+      <path d="M62 28 V36 a4 4 0 0 0 4 4 H74" fill="${c.cut}" fill-opacity=".35"/>
+      <path d="M40 48 H58 M40 56 H54 M40 64 H50" stroke="${c.cut}" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M67 54 c0 0 -10 11.5 -10 18.5 a10 10 0 0 0 20 0 c0 -7 -10 -18.5 -10 -18.5z" fill="${c.accent}" stroke="${c.ink}" stroke-width="3.5"/>`,
+  },
+];
+
+const COLORS = {
+  normal: { k: 'n', base: '#0D6170', deep: '#0A4A55', ink: '#FFFFFF', cut: '#0D6170', accent: '#F2B45A', soft: '#D5ECEE', strong: '#0D6170' },
+  // Тематическая иконка Android 13+: система берёт одноцветный рисунок и сама красит фон и рисунок
+  themed: { k: 't', base: '#CFE6D5', deep: '#CFE6D5', ink: '#1F4D2E', cut: '#CFE6D5', accent: '#1F4D2E', soft: '#CFE6D5', strong: '#1F4D2E' },
+};
+
+function svg(icon, colors, cls) {
+  return `<svg class="ic ${cls}" viewBox="18 18 72 72" role="img" aria-label="${icon.name}">${icon.bg(colors)}${icon.fg(colors)}</svg>`;
+}
+
+const grid = document.getElementById('grid');
+grid.innerHTML = ICONS.map(i => `
+  <div class="opt">
+    <h2>${i.name}</h2>
+    <div class="big">${svg(i, COLORS.normal, 'squircle big')}</div>
+    <div class="shapes">${svg(i, COLORS.normal, 'circle')}${svg(i, COLORS.normal, 'square')}${svg(i, COLORS.themed, 'circle')}</div>
+    <span class="label">круг · квадрат · тематическая</span>
+    <p>${i.note}</p>
+  </div>`).join('');
+
+// Соседи на рабочем столе — просто цветные кружки, чтобы оценить заметность
+const DUMMIES = ['#E8453C', '#4285F4', '#34A853', '#FBBC05', '#7E57C2', '#26A69A', '#EC407A'];
+function home(icon, kind) {
+  const colors = kind === 'themed' ? COLORS.themed : COLORS.normal;
+  const cells = [];
+  for (let n = 0; n < 12; n++) {
+    if (n === 5) {
+      cells.push(`<div class="app">${svg(icon, colors, 'circle')}<span>Учёт топлива</span></div>`);
+    } else {
+      const bg = kind === 'themed' ? '#CFE6D5' : DUMMIES[n % DUMMIES.length];
+      cells.push(`<div class="app"><div class="dummy" style="background:${bg}"></div><span>&nbsp;</span></div>`);
+    }
+  }
+  return `<div class="home ${kind}">${cells.join('')}</div>`;
+}
+
+const tabs = document.getElementById('tabs');
+const homes = document.getElementById('homes');
+function show(id) {
+  const icon = ICONS.find(i => i.id === id);
+  homes.innerHTML = [['light', 'Светлые обои'], ['dark', 'Тёмные обои'], ['themed', 'Тематические иконки']]
+    .map(([k, cap]) => `<div>${home(icon, k)}<div class="home-cap">${cap}</div></div>`).join('');
+  tabs.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.id === id)));
+}
+tabs.innerHTML = ICONS.map(i => `<button data-id="${i.id}">${i.name}</button>`).join('');
+tabs.addEventListener('click', e => { const b = e.target.closest('button'); if (b) show(b.dataset.id); });
+show(location.hash.slice(1) || 'road');
+</script>
+</body>
+</html>

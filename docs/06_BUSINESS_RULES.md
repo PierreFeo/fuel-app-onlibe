@@ -21,7 +21,7 @@
 | `fuel_end_calc_l` | `fuel_available_l` − `norm_consumption_l` | если есть `mileage_km` |
 | `fuel_end_l` | `fuel_end_actual_l`, иначе `fuel_end_calc_l` | итоговый остаток на конец месяца |
 | `actual_consumption_l` | `fuel_available_l` − `fuel_end_actual_l` | если введены пробег на конец И фактический остаток |
-| `actual_l_per_100km` | `actual_consumption_l` / `mileage_km` × 100, **3 знака** | если есть `actual_consumption_l` и `mileage_km` > 0 |
+| `actual_l_per_100km` | `actual_consumption_l` / `mileage_km` × 100, **3 знака** | если есть `actual_consumption_l` и `mileage_km` > 0 и `actual_consumption_l` > 0 |
 | `consumption_status` | `NORMAL`, если `actual_l_per_100km` <= `norm_l_per_100km` листа, иначе `OVER` | если есть `actual_l_per_100km` |
 | `deviation_l` | `actual_consumption_l` − `norm_consumption_l` (> 0 — перерасход, < 0 — экономия) | если есть оба |
 | `cost_per_km` | `refueled_cost` / `mileage_km` | если `mileage_km` > 0 |
@@ -154,6 +154,11 @@ deviation_l — null.
 **Пример E — нулевой пробег.**
 Пробег 53340 → 53340, заправка 20.00 л → mileage_km 0 · norm_consumption_l 0.00 ·
 actual_l_per_100km null · consumption_status null · cost_per_km null.
+
+**Пример J — топливо не убыло.** Пробег 53340 → 53840 (500 км), норма 8.50, остаток на начало 15.00,
+заправок нет, фактический остаток 15.00 → norm_consumption_l 42.50 · actual_consumption_l 0.00 ·
+deviation_l −42.50 · actual_l_per_100km null · consumption_status null. Проехать 500 км без топлива
+нельзя — значит, не внесены заправки; в карточке расход «н/д», а не 0.
 
 **Пример F — округление.**
 Пробег 333 км, норма 7.77 → 333 × 7.77 / 100 = 25.8741 → norm_consumption_l 25.87.

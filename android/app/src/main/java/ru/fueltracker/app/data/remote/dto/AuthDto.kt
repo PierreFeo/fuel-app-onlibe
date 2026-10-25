@@ -10,7 +10,8 @@ data class RequestCodeRequest(val phone: String)
 data class RequestCodeResponse(
     @SerialName("expires_in_sec") val expiresInSec: Int,
     @SerialName("resend_after_sec") val resendAfterSec: Int,
-    /** `sms` — код в SMS; `fixed` — SMS отключены на сервере, код 000000. Нет в старом сервере — `sms`. */
+    /** `sms` — код в SMS; `fixed` — SMS отключены на сервере, код 000000. Нет в старом сервере — `sms`.
+     * Приложение поле не показывает: о коде 000000 пользователям не подсказываем. */
     @SerialName("delivery") val delivery: String = DELIVERY_SMS,
 )
 

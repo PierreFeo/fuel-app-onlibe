@@ -186,6 +186,20 @@ class SheetCalculatorTest {
     }
 
     @Test
+    fun `пример J — топливо не убыло, расход не рассчитан`() {
+        val sheet = SheetData(53_340, 53_840, d("15.00"), d("15.00"), d("8.50"))
+        val calc = calc(sheet)
+
+        assertEquals(500L, calc.mileageKm)
+        assertEquals(d("42.50"), calc.normConsumptionL)
+        assertEquals(d("15.00"), calc.fuelEndL)
+        assertEquals(d("0.00"), calc.actualConsumptionL)
+        assertEquals(d("-42.50"), calc.deviationL)
+        assertNull(calc.actualLPer100km)
+        assertNull(calc.consumptionStatus)
+    }
+
+    @Test
     fun `без заправок — нули, а не null`() {
         val calc = calc(SheetData(0, null, d("0"), null, d("8.50")))
 

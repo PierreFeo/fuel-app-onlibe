@@ -1,43 +1,166 @@
 <!doctype html>
-<!-- Главная https://<домен>/ — ссылка на скачивание APK (docs/RELEASE.md). Отдаёт Caddy, не api. -->
+<!-- Главная https://<домен>/ — ссылка на скачивание APK (docs/RELEASE.md). Отдаёт Caddy, не api.
+     Дизайн — вариант «C · Телефон» из design/prototype/landing.html. Caddy отдаёт из этой папки
+     только «/», поэтому всё (иконка, QR-код, стили) — внутри файла; шрифты — Google Fonts,
+     без них страница показывается системным шрифтом. -->
 <html lang="ru">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Учёт топлива</title>
+<meta name="description" content="Листы учёта топлива личных автомобилей в телефоне. Скачать приложение для Android.">
+<meta name="theme-color" content="#0D6170">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='18 18 72 72'%3E%3Crect x='18' y='18' width='72' height='72' rx='16' fill='%230D6170'/%3E%3Cpath d='M26 70H58' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Cg transform='translate(25 40) scale(1.4)'%3E%3Cpath fill='%23fff' d='M2,12.6V9.6c0,-1 0.6,-1.8 1.6,-2L6,7l3.4,-4.1C9.9,2.3 10.6,2 11.4,2h6.8c0.8,0 1.5,0.3 2,0.9L23.6,7l6.8,1.1c1,0.2 1.6,1 1.6,2v2.5c0,0.7 -0.6,1.3 -1.3,1.3H3.3C2.6,13.9 2,13.3 2,12.6z M5.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0zM22.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0z'/%3E%3C/g%3E%3Cpath d='M77 53V69' stroke='%23F2B45A' stroke-width='2.4' stroke-linecap='round'/%3E%3Cpath d='M78 53H86L84 56.5L86 60H78z' fill='%23F2B45A'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Nunito:wght@800&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #f6f7f9; --card: #fff; --text: #1b1f24; --muted: #5b6470; --accent: #1f6feb; --on-accent: #fff; }
+  /* Палитра «Петроль» из приложения (android/.../ui/theme/Color.kt) */
+  :root {
+    --bg: #EDF1F0; --card: #FFFFFF; --ink: #142326; --muted: #586B6F; --line: #DCE5E4;
+    --primary: #0D6170; --on-primary: #FFFFFF; --container: #D5ECEE; --on-container: #0A4A55;
+    --ok: #1E7F45; --amber: #A86400; --shadow: rgba(13,97,112,.28);
+  }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #121417; --card: #1c1f24; --text: #e8eaed; --muted: #9aa3ad; --accent: #4c8dff; --on-accent: #0b0d10; }
+    :root {
+      --bg: #0E1719; --card: #172326; --ink: #E3EEEF; --muted: #93A9AD; --line: #27393D;
+      --primary: #5CC7D6; --on-primary: #062A31; --container: #1D4248; --on-container: #C8F0F5;
+      --ok: #5BCB86; --amber: #F2B45A; --shadow: rgba(0,0,0,.4);
+    }
+    body .mock { box-shadow: 0 0 0 1.5px #34494D, 0 30px 60px var(--shadow); } /* body — чтобы перебить .mock ниже */
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 480px; margin: 0 auto; padding: 32px 16px; }
-  .card { background: var(--card); border-radius: 16px; padding: 24px; }
-  h1 { margin: 0 0 4px; font-size: 26px; }
-  p { margin: 0 0 16px; color: var(--muted); }
-  .btn { display: block; text-align: center; background: var(--accent); color: var(--on-accent);
-         text-decoration: none; font-weight: 600; padding: 14px; border-radius: 12px; margin: 20px 0; }
-  ol { padding-left: 20px; margin: 0; }
-  li { margin-bottom: 8px; }
-  small { display: block; margin-top: 20px; color: var(--muted); }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1, h2, p, ol { margin: 0; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+  header { padding: 18px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; }
+  .brand svg { width: 34px; height: 34px; border-radius: 30%; flex: none; }
+
+  .hero { display: grid; gap: 30px; padding: 14px 0 30px; }
+  h1 { font-size: 38px; line-height: 1.1; font-weight: 800; letter-spacing: -.02em; }
+  .lead { margin: 14px 0 22px; font-size: 18px; color: var(--muted); max-width: 36ch; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none;
+    background: var(--primary); color: var(--on-primary); font-weight: 700; font-size: 17px; padding: 16px 26px;
+    border-radius: 14px; transition: transform .15s ease, box-shadow .15s ease; box-shadow: 0 6px 18px var(--shadow); }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px var(--shadow); }
+  .btn:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
+  .btn svg { width: 22px; height: 22px; flex: none; }
+  .meta { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .chips span { background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
+
+  /* Телефон с лентой листов ЛУТ — рисунок, не скриншот */
+  .mock { justify-self: center; width: 270px; border-radius: 34px; padding: 10px; background: #0F171A;
+    box-shadow: 0 30px 60px var(--shadow); transform: rotate(-3deg); }
+  .screen { border-radius: 26px; background: var(--bg); padding: 16px 12px 18px; display: grid; gap: 10px; }
+  .scr-top { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 15px; padding: 0 4px; }
+  .plate { font: 800 12px/1 "Nunito", sans-serif; border: 1.5px solid var(--ink); border-radius: 5px; padding: 3px 6px; background: var(--card); }
+  .lut { background: var(--card); border-radius: 18px; padding: 14px; display: grid; gap: 10px; }
+  .lut.dim { opacity: .65; }
+  .lut-h { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+  .pill { font-size: 12px; background: var(--container); color: var(--on-container); border-radius: 999px; padding: 3px 9px; font-weight: 600; }
+  .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+  .row3 b { display: block; font: 800 16px/1.2 "Nunito", sans-serif; }
+  .row3 b.ok { color: var(--ok); }
+  .row3 small { font-size: 10.5px; color: var(--muted); }
+  .road { position: relative; height: 36px; }
+  .road .asphalt, .road .done { position: absolute; left: 0; top: 22px; height: 5px; border-radius: 3px; }
+  .road .asphalt { right: 0; background: color-mix(in srgb, var(--primary) 22%, transparent); }
+  .road .done { background: var(--primary); width: 62%; animation: drive 5s cubic-bezier(.45,.05,.3,1) infinite; }
+  .road .car { position: absolute; top: 4px; left: 62%; width: 34px; height: 18px; margin-left: -17px; animation: car 5s cubic-bezier(.45,.05,.3,1) infinite; }
+  .road .flag { position: absolute; right: -2px; top: 3px; width: 15px; height: 20px; }
+  .road svg { display: block; width: 100%; height: 100%; }
+  @keyframes drive { 0% { width: 4%; } 70%, 100% { width: 88%; } }
+  @keyframes car { 0% { left: 4%; } 70%, 100% { left: 88%; } }
+  @media (prefers-reduced-motion: reduce) { .road .done, .road .car { animation: none; } }
+
+  .how { background: var(--card); border-radius: 24px; padding: 22px; display: grid; gap: 18px; margin: 10px 0; }
+  h2 { font-size: 22px; font-weight: 700; }
+  .steps { list-style: none; padding: 0; counter-reset: s; display: grid; gap: 14px; margin-top: 18px; }
+  .steps li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; }
+  .steps li::before { content: counter(s); width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--container); color: var(--on-container); font: 800 16px/1 "Nunito", sans-serif; }
+  .steps b { font-weight: 600; white-space: nowrap; }
+  .note { font-size: 14px; color: var(--muted); margin-top: 18px; }
+  .qr { display: none; }
+  .qr .code { width: 104px; height: 104px; background: #fff; border-radius: 14px; padding: 8px; flex: none; }
+  .qr .code svg { width: 100%; height: 100%; display: block; }
+  .qr p { font-size: 14px; color: var(--muted); max-width: 22ch; }
+  footer { padding: 28px 0 32px; font-size: 13px; color: var(--muted); text-align: center; }
+
+  @media (min-width: 760px) {
+    .hero { grid-template-columns: 1.1fr .9fr; align-items: center; padding: 36px 0 44px; }
+    h1 { font-size: 56px; }
+    .mock { width: 300px; }
+    .how { grid-template-columns: 1fr auto; align-items: start; gap: 30px; }
+    /* QR — только на компьютере: открыть страницу на телефоне */
+    .qr { display: flex; align-items: center; gap: 14px; }
+  }
 </style>
 </head>
 <body>
-<main>
-  <div class="card">
-    <h1>⛽ Учёт топлива</h1>
-    <p>Листы учёта топлива личных автомобилей. Работает без интернета.</p>
-    <a class="btn" href="/app.apk">Скачать для Android</a>
-    <ol>
-      <li>Откройте скачанный файл <b>fuel-tracker.apk</b>.</li>
-      <li>Если телефон спросит — разрешите установку из этого источника, вернитесь назад и нажмите «Установить».</li>
-      <li>Если Play Защита предупредит о неизвестном приложении — «Подробнее» → «Всё равно установить».</li>
-      <li>Откройте «Учёт топлива», введите номер телефона и код <b>000000</b> (SMS сейчас не отправляются). При первом входе задайте пароль — дальше входите по нему.</li>
-    </ol>
-    <small>Версия 1.1. Обновление — так же по этой ссылке, удалять старую версию не нужно.</small>
-  </div>
-</main>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <svg viewBox="18 18 72 72" aria-hidden="true"><defs><linearGradient id="gi" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0D6170"/><stop offset="1" stop-color="#0A4A55"/></linearGradient></defs><rect width="108" height="108" fill="url(#gi)"/><path d="M26 70 H82" stroke="#fff" stroke-opacity=".35" stroke-width="3" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M26 70 H58" stroke="#fff" stroke-width="3" stroke-linecap="round"/><g transform="translate(25 40) scale(1.4)"><path fill="#fff" d="M2,12.6V9.6c0,-1 0.6,-1.8 1.6,-2L6,7l3.4,-4.1C9.9,2.3 10.6,2 11.4,2h6.8c0.8,0 1.5,0.3 2,0.9L23.6,7l6.8,1.1c1,0.2 1.6,1 1.6,2v2.5c0,0.7 -0.6,1.3 -1.3,1.3H3.3C2.6,13.9 2,13.3 2,12.6z M5.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0zM22.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0z"/><path fill="#0D6170" d="M7.6,6.9l2.7,-3.3H14v3.3zM15.2,3.6H18l3,3.3h-5.8zM29.6,9h2.2v1.6h-2.2zM7.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0zM24.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0z"/></g><path d="M77 53 V69" stroke="#F2B45A" stroke-width="2.4" stroke-linecap="round"/><path d="M78 53 H86 L84 56.5 L86 60 H78z" fill="#F2B45A"/></svg>
+      <span>Учёт топлива</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <h1>Лист учёта топлива — за минуту в месяц</h1>
+        <p class="lead">Листы учёта топлива личных автомобилей — прямо в телефоне. Пробег, расход и остаток считаются сами.</p>
+        <a class="btn" href="/app.apk">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>
+          Скачать для Android
+        </a>
+        <p class="meta">Версия 1.1 · около 10 МБ · Android 8 и новее</p>
+        <div class="chips"><span>Без интернета</span><span>Летняя и зимняя норма</span><span>Синхронизация по кнопке</span></div>
+      </div>
+
+      <div class="mock" aria-hidden="true">
+        <div class="screen">
+          <div class="scr-top"><span>Листы</span><span class="plate">А123ВС 25</span></div>
+          <div class="lut">
+            <div class="lut-h"><span>☀️ Июль 2026</span><span class="pill">⛽ 3</span></div>
+            <div class="road">
+              <div class="asphalt"></div><div class="done"></div>
+              <div class="car"><svg viewBox="0 0 34 18"><path fill="var(--primary)" d="M2,12.6V9.6c0,-1 0.6,-1.8 1.6,-2L6,7l3.4,-4.1C9.9,2.3 10.6,2 11.4,2h6.8c0.8,0 1.5,0.3 2,0.9L23.6,7l6.8,1.1c1,0.2 1.6,1 1.6,2v2.5c0,0.7 -0.6,1.3 -1.3,1.3H3.3C2.6,13.9 2,13.3 2,12.6z M5.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0zM22.5,14a3,3 0,1 0,6 0a3,3 0,1 0,-6 0z"/><path fill="var(--card)" d="M7.6,6.9l2.7,-3.3H14v3.3zM15.2,3.6H18l3,3.3h-5.8zM29.6,9h2.2v1.6h-2.2zM7.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0zM24.3,14a1.2,1.2 0,1 0,2.4 0a1.2,1.2 0,1 0,-2.4 0z"/></svg></div>
+              <div class="flag"><svg viewBox="0 0 20 26"><path d="M3 2 V24" stroke="var(--amber)" stroke-width="2.4" stroke-linecap="round"/><path d="M4 2 H17 L14 6.5 L17 11 H4z" fill="var(--amber)"/></svg></div>
+            </div>
+            <div class="row3"><div><b>1 240</b><small>пробег, км</small></div><div><b class="ok">9,6</b><small>расход</small></div><div><b>18,4</b><small>остаток, л</small></div></div>
+          </div>
+          <div class="lut dim">
+            <div class="lut-h"><span>☀️ Июнь 2026</span><span class="pill">⛽ 4</span></div>
+            <div class="row3"><div><b>1 512</b><small>пробег, км</small></div><div><b class="ok">9,9</b><small>расход</small></div><div><b>12,0</b><small>остаток, л</small></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="how">
+      <div>
+        <h2>Как установить</h2>
+        <ol class="steps">
+          <li><span>Нажмите «Скачать для Android» и откройте файл <b>fuel-tracker.apk</b>.</span></li>
+          <li><span>Если телефон спросит — разрешите установку из этого источника, вернитесь назад и нажмите «Установить».</span></li>
+          <li><span>Если Play Защита предупредит о неизвестном приложении — «Подробнее» → «Всё равно установить».</span></li>
+          <li><span>Откройте «Учёт топлива», введите номер телефона и код входа. При первом входе задайте пароль — дальше входите по нему.</span></li>
+        </ol>
+        <p class="note">Обновление — по этой же ссылке, удалять старую версию не нужно. Данные сохранятся.</p>
+      </div>
+      <div class="qr">
+        <div class="code"><svg aria-label="QR-код со ссылкой на fuelapp.ru" role="img" version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50"  preserveAspectRatio="xMinYMin meet"><rect width="100%" height="100%" fill="white" cx="0" cy="0"/><path d="M0,0l2,0 0,2 -2,0 0,-2z M2,0l2,0 0,2 -2,0 0,-2z M4,0l2,0 0,2 -2,0 0,-2z M6,0l2,0 0,2 -2,0 0,-2z M8,0l2,0 0,2 -2,0 0,-2z M10,0l2,0 0,2 -2,0 0,-2z M12,0l2,0 0,2 -2,0 0,-2z M16,0l2,0 0,2 -2,0 0,-2z M22,0l2,0 0,2 -2,0 0,-2z M24,0l2,0 0,2 -2,0 0,-2z M26,0l2,0 0,2 -2,0 0,-2z M30,0l2,0 0,2 -2,0 0,-2z M32,0l2,0 0,2 -2,0 0,-2z M36,0l2,0 0,2 -2,0 0,-2z M38,0l2,0 0,2 -2,0 0,-2z M40,0l2,0 0,2 -2,0 0,-2z M42,0l2,0 0,2 -2,0 0,-2z M44,0l2,0 0,2 -2,0 0,-2z M46,0l2,0 0,2 -2,0 0,-2z M48,0l2,0 0,2 -2,0 0,-2z M0,2l2,0 0,2 -2,0 0,-2z M12,2l2,0 0,2 -2,0 0,-2z M18,2l2,0 0,2 -2,0 0,-2z M22,2l2,0 0,2 -2,0 0,-2z M24,2l2,0 0,2 -2,0 0,-2z M26,2l2,0 0,2 -2,0 0,-2z M36,2l2,0 0,2 -2,0 0,-2z M48,2l2,0 0,2 -2,0 0,-2z M0,4l2,0 0,2 -2,0 0,-2z M4,4l2,0 0,2 -2,0 0,-2z M6,4l2,0 0,2 -2,0 0,-2z M8,4l2,0 0,2 -2,0 0,-2z M12,4l2,0 0,2 -2,0 0,-2z M20,4l2,0 0,2 -2,0 0,-2z M24,4l2,0 0,2 -2,0 0,-2z M28,4l2,0 0,2 -2,0 0,-2z M32,4l2,0 0,2 -2,0 0,-2z M36,4l2,0 0,2 -2,0 0,-2z M40,4l2,0 0,2 -2,0 0,-2z M42,4l2,0 0,2 -2,0 0,-2z M44,4l2,0 0,2 -2,0 0,-2z M48,4l2,0 0,2 -2,0 0,-2z M0,6l2,0 0,2 -2,0 0,-2z M4,6l2,0 0,2 -2,0 0,-2z M6,6l2,0 0,2 -2,0 0,-2z M8,6l2,0 0,2 -2,0 0,-2z M12,6l2,0 0,2 -2,0 0,-2z M16,6l2,0 0,2 -2,0 0,-2z M18,6l2,0 0,2 -2,0 0,-2z M30,6l2,0 0,2 -2,0 0,-2z M36,6l2,0 0,2 -2,0 0,-2z M40,6l2,0 0,2 -2,0 0,-2z M42,6l2,0 0,2 -2,0 0,-2z M44,6l2,0 0,2 -2,0 0,-2z M48,6l2,0 0,2 -2,0 0,-2z M0,8l2,0 0,2 -2,0 0,-2z M4,8l2,0 0,2 -2,0 0,-2z M6,8l2,0 0,2 -2,0 0,-2z M8,8l2,0 0,2 -2,0 0,-2z M12,8l2,0 0,2 -2,0 0,-2z M16,8l2,0 0,2 -2,0 0,-2z M18,8l2,0 0,2 -2,0 0,-2z M22,8l2,0 0,2 -2,0 0,-2z M28,8l2,0 0,2 -2,0 0,-2z M30,8l2,0 0,2 -2,0 0,-2z M32,8l2,0 0,2 -2,0 0,-2z M36,8l2,0 0,2 -2,0 0,-2z M40,8l2,0 0,2 -2,0 0,-2z M42,8l2,0 0,2 -2,0 0,-2z M44,8l2,0 0,2 -2,0 0,-2z M48,8l2,0 0,2 -2,0 0,-2z M0,10l2,0 0,2 -2,0 0,-2z M12,10l2,0 0,2 -2,0 0,-2z M16,10l2,0 0,2 -2,0 0,-2z M18,10l2,0 0,2 -2,0 0,-2z M22,10l2,0 0,2 -2,0 0,-2z M24,10l2,0 0,2 -2,0 0,-2z M36,10l2,0 0,2 -2,0 0,-2z M48,10l2,0 0,2 -2,0 0,-2z M0,12l2,0 0,2 -2,0 0,-2z M2,12l2,0 0,2 -2,0 0,-2z M4,12l2,0 0,2 -2,0 0,-2z M6,12l2,0 0,2 -2,0 0,-2z M8,12l2,0 0,2 -2,0 0,-2z M10,12l2,0 0,2 -2,0 0,-2z M12,12l2,0 0,2 -2,0 0,-2z M16,12l2,0 0,2 -2,0 0,-2z M20,12l2,0 0,2 -2,0 0,-2z M24,12l2,0 0,2 -2,0 0,-2z M28,12l2,0 0,2 -2,0 0,-2z M32,12l2,0 0,2 -2,0 0,-2z M36,12l2,0 0,2 -2,0 0,-2z M38,12l2,0 0,2 -2,0 0,-2z M40,12l2,0 0,2 -2,0 0,-2z M42,12l2,0 0,2 -2,0 0,-2z M44,12l2,0 0,2 -2,0 0,-2z M46,12l2,0 0,2 -2,0 0,-2z M48,12l2,0 0,2 -2,0 0,-2z M16,14l2,0 0,2 -2,0 0,-2z M18,14l2,0 0,2 -2,0 0,-2z M20,14l2,0 0,2 -2,0 0,-2z M22,14l2,0 0,2 -2,0 0,-2z M26,14l2,0 0,2 -2,0 0,-2z M0,16l2,0 0,2 -2,0 0,-2z M8,16l2,0 0,2 -2,0 0,-2z M12,16l2,0 0,2 -2,0 0,-2z M14,16l2,0 0,2 -2,0 0,-2z M16,16l2,0 0,2 -2,0 0,-2z M18,16l2,0 0,2 -2,0 0,-2z M20,16l2,0 0,2 -2,0 0,-2z M22,16l2,0 0,2 -2,0 0,-2z M26,16l2,0 0,2 -2,0 0,-2z M30,16l2,0 0,2 -2,0 0,-2z M34,16l2,0 0,2 -2,0 0,-2z M36,16l2,0 0,2 -2,0 0,-2z M38,16l2,0 0,2 -2,0 0,-2z M40,16l2,0 0,2 -2,0 0,-2z M42,16l2,0 0,2 -2,0 0,-2z M48,16l2,0 0,2 -2,0 0,-2z M0,18l2,0 0,2 -2,0 0,-2z M2,18l2,0 0,2 -2,0 0,-2z M6,18l2,0 0,2 -2,0 0,-2z M8,18l2,0 0,2 -2,0 0,-2z M10,18l2,0 0,2 -2,0 0,-2z M18,18l2,0 0,2 -2,0 0,-2z M20,18l2,0 0,2 -2,0 0,-2z M26,18l2,0 0,2 -2,0 0,-2z M28,18l2,0 0,2 -2,0 0,-2z M30,18l2,0 0,2 -2,0 0,-2z M34,18l2,0 0,2 -2,0 0,-2z M40,18l2,0 0,2 -2,0 0,-2z M42,18l2,0 0,2 -2,0 0,-2z M46,18l2,0 0,2 -2,0 0,-2z M8,20l2,0 0,2 -2,0 0,-2z M12,20l2,0 0,2 -2,0 0,-2z M14,20l2,0 0,2 -2,0 0,-2z M16,20l2,0 0,2 -2,0 0,-2z M18,20l2,0 0,2 -2,0 0,-2z M30,20l2,0 0,2 -2,0 0,-2z M32,20l2,0 0,2 -2,0 0,-2z M40,20l2,0 0,2 -2,0 0,-2z M42,20l2,0 0,2 -2,0 0,-2z M44,20l2,0 0,2 -2,0 0,-2z M0,22l2,0 0,2 -2,0 0,-2z M2,22l2,0 0,2 -2,0 0,-2z M10,22l2,0 0,2 -2,0 0,-2z M14,22l2,0 0,2 -2,0 0,-2z M18,22l2,0 0,2 -2,0 0,-2z M20,22l2,0 0,2 -2,0 0,-2z M22,22l2,0 0,2 -2,0 0,-2z M28,22l2,0 0,2 -2,0 0,-2z M30,22l2,0 0,2 -2,0 0,-2z M32,22l2,0 0,2 -2,0 0,-2z M38,22l2,0 0,2 -2,0 0,-2z M44,22l2,0 0,2 -2,0 0,-2z M46,22l2,0 0,2 -2,0 0,-2z M2,24l2,0 0,2 -2,0 0,-2z M10,24l2,0 0,2 -2,0 0,-2z M12,24l2,0 0,2 -2,0 0,-2z M14,24l2,0 0,2 -2,0 0,-2z M16,24l2,0 0,2 -2,0 0,-2z M18,24l2,0 0,2 -2,0 0,-2z M20,24l2,0 0,2 -2,0 0,-2z M22,24l2,0 0,2 -2,0 0,-2z M26,24l2,0 0,2 -2,0 0,-2z M28,24l2,0 0,2 -2,0 0,-2z M32,24l2,0 0,2 -2,0 0,-2z M34,24l2,0 0,2 -2,0 0,-2z M36,24l2,0 0,2 -2,0 0,-2z M38,24l2,0 0,2 -2,0 0,-2z M42,24l2,0 0,2 -2,0 0,-2z M44,24l2,0 0,2 -2,0 0,-2z M46,24l2,0 0,2 -2,0 0,-2z M48,24l2,0 0,2 -2,0 0,-2z M0,26l2,0 0,2 -2,0 0,-2z M4,26l2,0 0,2 -2,0 0,-2z M8,26l2,0 0,2 -2,0 0,-2z M14,26l2,0 0,2 -2,0 0,-2z M24,26l2,0 0,2 -2,0 0,-2z M30,26l2,0 0,2 -2,0 0,-2z M32,26l2,0 0,2 -2,0 0,-2z M40,26l2,0 0,2 -2,0 0,-2z M46,26l2,0 0,2 -2,0 0,-2z M4,28l2,0 0,2 -2,0 0,-2z M10,28l2,0 0,2 -2,0 0,-2z M12,28l2,0 0,2 -2,0 0,-2z M14,28l2,0 0,2 -2,0 0,-2z M22,28l2,0 0,2 -2,0 0,-2z M24,28l2,0 0,2 -2,0 0,-2z M26,28l2,0 0,2 -2,0 0,-2z M28,28l2,0 0,2 -2,0 0,-2z M30,28l2,0 0,2 -2,0 0,-2z M32,28l2,0 0,2 -2,0 0,-2z M38,28l2,0 0,2 -2,0 0,-2z M40,28l2,0 0,2 -2,0 0,-2z M42,28l2,0 0,2 -2,0 0,-2z M44,28l2,0 0,2 -2,0 0,-2z M8,30l2,0 0,2 -2,0 0,-2z M18,30l2,0 0,2 -2,0 0,-2z M20,30l2,0 0,2 -2,0 0,-2z M22,30l2,0 0,2 -2,0 0,-2z M26,30l2,0 0,2 -2,0 0,-2z M30,30l2,0 0,2 -2,0 0,-2z M32,30l2,0 0,2 -2,0 0,-2z M38,30l2,0 0,2 -2,0 0,-2z M40,30l2,0 0,2 -2,0 0,-2z M44,30l2,0 0,2 -2,0 0,-2z M46,30l2,0 0,2 -2,0 0,-2z M0,32l2,0 0,2 -2,0 0,-2z M2,32l2,0 0,2 -2,0 0,-2z M8,32l2,0 0,2 -2,0 0,-2z M12,32l2,0 0,2 -2,0 0,-2z M14,32l2,0 0,2 -2,0 0,-2z M16,32l2,0 0,2 -2,0 0,-2z M24,32l2,0 0,2 -2,0 0,-2z M26,32l2,0 0,2 -2,0 0,-2z M32,32l2,0 0,2 -2,0 0,-2z M34,32l2,0 0,2 -2,0 0,-2z M36,32l2,0 0,2 -2,0 0,-2z M38,32l2,0 0,2 -2,0 0,-2z M40,32l2,0 0,2 -2,0 0,-2z M42,32l2,0 0,2 -2,0 0,-2z M44,32l2,0 0,2 -2,0 0,-2z M16,34l2,0 0,2 -2,0 0,-2z M26,34l2,0 0,2 -2,0 0,-2z M28,34l2,0 0,2 -2,0 0,-2z M30,34l2,0 0,2 -2,0 0,-2z M32,34l2,0 0,2 -2,0 0,-2z M40,34l2,0 0,2 -2,0 0,-2z M0,36l2,0 0,2 -2,0 0,-2z M2,36l2,0 0,2 -2,0 0,-2z M4,36l2,0 0,2 -2,0 0,-2z M6,36l2,0 0,2 -2,0 0,-2z M8,36l2,0 0,2 -2,0 0,-2z M10,36l2,0 0,2 -2,0 0,-2z M12,36l2,0 0,2 -2,0 0,-2z M16,36l2,0 0,2 -2,0 0,-2z M20,36l2,0 0,2 -2,0 0,-2z M32,36l2,0 0,2 -2,0 0,-2z M36,36l2,0 0,2 -2,0 0,-2z M40,36l2,0 0,2 -2,0 0,-2z M0,38l2,0 0,2 -2,0 0,-2z M12,38l2,0 0,2 -2,0 0,-2z M20,38l2,0 0,2 -2,0 0,-2z M24,38l2,0 0,2 -2,0 0,-2z M28,38l2,0 0,2 -2,0 0,-2z M32,38l2,0 0,2 -2,0 0,-2z M40,38l2,0 0,2 -2,0 0,-2z M42,38l2,0 0,2 -2,0 0,-2z M44,38l2,0 0,2 -2,0 0,-2z M46,38l2,0 0,2 -2,0 0,-2z M48,38l2,0 0,2 -2,0 0,-2z M0,40l2,0 0,2 -2,0 0,-2z M4,40l2,0 0,2 -2,0 0,-2z M6,40l2,0 0,2 -2,0 0,-2z M8,40l2,0 0,2 -2,0 0,-2z M12,40l2,0 0,2 -2,0 0,-2z M16,40l2,0 0,2 -2,0 0,-2z M22,40l2,0 0,2 -2,0 0,-2z M26,40l2,0 0,2 -2,0 0,-2z M28,40l2,0 0,2 -2,0 0,-2z M32,40l2,0 0,2 -2,0 0,-2z M34,40l2,0 0,2 -2,0 0,-2z M36,40l2,0 0,2 -2,0 0,-2z M38,40l2,0 0,2 -2,0 0,-2z M40,40l2,0 0,2 -2,0 0,-2z M42,40l2,0 0,2 -2,0 0,-2z M44,40l2,0 0,2 -2,0 0,-2z M48,40l2,0 0,2 -2,0 0,-2z M0,42l2,0 0,2 -2,0 0,-2z M4,42l2,0 0,2 -2,0 0,-2z M6,42l2,0 0,2 -2,0 0,-2z M8,42l2,0 0,2 -2,0 0,-2z M12,42l2,0 0,2 -2,0 0,-2z M18,42l2,0 0,2 -2,0 0,-2z M20,42l2,0 0,2 -2,0 0,-2z M24,42l2,0 0,2 -2,0 0,-2z M30,42l2,0 0,2 -2,0 0,-2z M34,42l2,0 0,2 -2,0 0,-2z M36,42l2,0 0,2 -2,0 0,-2z M38,42l2,0 0,2 -2,0 0,-2z M44,42l2,0 0,2 -2,0 0,-2z M46,42l2,0 0,2 -2,0 0,-2z M48,42l2,0 0,2 -2,0 0,-2z M0,44l2,0 0,2 -2,0 0,-2z M4,44l2,0 0,2 -2,0 0,-2z M6,44l2,0 0,2 -2,0 0,-2z M8,44l2,0 0,2 -2,0 0,-2z M12,44l2,0 0,2 -2,0 0,-2z M22,44l2,0 0,2 -2,0 0,-2z M24,44l2,0 0,2 -2,0 0,-2z M26,44l2,0 0,2 -2,0 0,-2z M28,44l2,0 0,2 -2,0 0,-2z M30,44l2,0 0,2 -2,0 0,-2z M32,44l2,0 0,2 -2,0 0,-2z M34,44l2,0 0,2 -2,0 0,-2z M36,44l2,0 0,2 -2,0 0,-2z M42,44l2,0 0,2 -2,0 0,-2z M46,44l2,0 0,2 -2,0 0,-2z M0,46l2,0 0,2 -2,0 0,-2z M12,46l2,0 0,2 -2,0 0,-2z M18,46l2,0 0,2 -2,0 0,-2z M20,46l2,0 0,2 -2,0 0,-2z M22,46l2,0 0,2 -2,0 0,-2z M26,46l2,0 0,2 -2,0 0,-2z M30,46l2,0 0,2 -2,0 0,-2z M36,46l2,0 0,2 -2,0 0,-2z M38,46l2,0 0,2 -2,0 0,-2z M40,46l2,0 0,2 -2,0 0,-2z M42,46l2,0 0,2 -2,0 0,-2z M44,46l2,0 0,2 -2,0 0,-2z M46,46l2,0 0,2 -2,0 0,-2z M0,48l2,0 0,2 -2,0 0,-2z M2,48l2,0 0,2 -2,0 0,-2z M4,48l2,0 0,2 -2,0 0,-2z M6,48l2,0 0,2 -2,0 0,-2z M8,48l2,0 0,2 -2,0 0,-2z M10,48l2,0 0,2 -2,0 0,-2z M12,48l2,0 0,2 -2,0 0,-2z M16,48l2,0 0,2 -2,0 0,-2z M20,48l2,0 0,2 -2,0 0,-2z M24,48l2,0 0,2 -2,0 0,-2z M26,48l2,0 0,2 -2,0 0,-2z M30,48l2,0 0,2 -2,0 0,-2z M36,48l2,0 0,2 -2,0 0,-2z M44,48l2,0 0,2 -2,0 0,-2z M46,48l2,0 0,2 -2,0 0,-2z M48,48l2,0 0,2 -2,0 0,-2z " stroke="transparent" fill="black"/></svg></div>
+        <p>Открыли на компьютере? Наведите камеру телефона на код.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>fuelapp.ru · Учёт топлива для сотрудников организации</footer>
+</div>
 </body>
 </html>

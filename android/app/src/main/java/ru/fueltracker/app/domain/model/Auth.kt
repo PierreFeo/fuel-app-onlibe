@@ -1,10 +1,7 @@
 package ru.fueltracker.app.domain.model
 
-/**
- * Код запрошен; повторить запрос можно через [resendAfterSec] секунд. [isFixedCode] — SMS на сервере
- * отключены, код всегда 000000 (docs/05_AUTH_SMS.md, «SMS отключены»).
- */
-data class CodeRequest(val resendAfterSec: Int, val isFixedCode: Boolean = false)
+/** Код запрошен; повторить запрос можно через [resendAfterSec] секунд. */
+data class CodeRequest(val resendAfterSec: Int)
 
 /**
  * Вход выполнен, токены сохранены. [isNewUser] — имя ещё не заполнено; [needsPassword] — вход по

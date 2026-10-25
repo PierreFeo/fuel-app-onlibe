@@ -11,11 +11,10 @@ data object SplashRoute
 data object PhoneRoute
 
 /**
- * phone — `+79991234567`; resendAfterSec — таймер повторной отправки из ответа request-code;
- * fixedCode — SMS на сервере отключены, код 000000.
+ * phone — `+79991234567`; resendAfterSec — таймер повторной отправки из ответа request-code.
  */
 @Serializable
-data class CodeRoute(val phone: String, val resendAfterSec: Int = 60, val fixedCode: Boolean = false)
+data class CodeRoute(val phone: String, val resendAfterSec: Int = 60)
 
 /** Запасной вход; номер подставляется, если уже введён. */
 @Serializable

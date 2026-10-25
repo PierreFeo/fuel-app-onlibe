@@ -174,31 +174,15 @@ class CodeViewModelTest {
 
     // --- SMS отключены (docs/05_AUTH_SMS.md, «SMS отключены») ---
 
-    private fun createFixedViewModel() = CodeViewModel(
-        SavedStateHandle(mapOf("phone" to PHONE, "resendAfterSec" to 60, "fixedCode" to true)),
-        repository,
-    )
-
-    @Test
-    fun `SMS отключены — без таймера и повторной отправки`() = runTest {
-        val viewModel = createFixedViewModel()
-
-        assertTrue(viewModel.state.value.isFixedCode)
-        assertEquals(0, viewModel.state.value.resendSecondsLeft)
-        assertFalse(viewModel.state.value.canResend)
-        viewModel.onEvent(CodeEvent.Resend)
-        runCurrent()
-        assertTrue(repository.requestCodeCalls.isEmpty())
-    }
-
     @Test
     fun `номер с паролем — понятная ошибка под кодом`() = runTest {
         repository.verifyCodeResult = httpError(403, ErrorCodes.PASSWORD_REQUIRED, message = "Для этого номера задан пароль")
-        val viewModel = createFixedViewModel()
+        val viewModel = createViewModel()
 
         viewModel.onEvent(CodeEvent.CodeChanged("000000"))
         runCurrent()
 
         assertEquals(UiText.Resource(R.string.error_password_required), viewModel.state.value.error)
+        finishTimer()
     }
 }

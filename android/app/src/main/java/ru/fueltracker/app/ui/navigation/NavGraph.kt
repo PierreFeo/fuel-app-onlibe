@@ -59,7 +59,7 @@ fun NavGraph(
             // Гость пришёл из профиля, чтобы войти, — второй раз «без входа» не предлагаем
             val isFirstStart = appViewModel.session.value?.mode == null
             PhoneScreen(
-                onCodeSent = { navController.navigate(CodeRoute(it.phone, it.resendAfterSec, it.isFixedCode)) },
+                onCodeSent = { navController.navigate(CodeRoute(it.phone, it.resendAfterSec)) },
                 onPasswordLogin = { navController.navigate(PasswordLoginRoute(it)) },
                 onContinueAsGuest = if (isFirstStart) ({ navController.navigate(SetupRoute(guest = true)) }) else null,
             )
